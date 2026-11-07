@@ -43,6 +43,16 @@ code {
   padding: 0 5px;
 }
 
+/* Shared sticky-header rule (budget's .sticky): sticky positioning,
+ * translucent overlay background, and a unified stacking level for all
+ * sticky headers. `top` and any padding/height are per-consumer — this only
+ * owns the pattern's invariants. */
+.sticky {
+  position: sticky;
+  background-color: var(--bgOverlay);
+  z-index: 110;
+}
+
 :focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
@@ -129,7 +139,7 @@ input::-webkit-scrollbar-thumb:hover {
 }
 
 body,
-.main_pane {
+.shell {
   background-color: var(--bg);
   color: var(--textBright);
 }

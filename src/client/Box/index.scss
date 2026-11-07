@@ -1,49 +1,126 @@
-.pane {
-  overflow: visible;
+/* The shell grid (design doc §4): an 80px rail, the 320px accounts column,
+ * and the centered message list. The accounts column is an `auto` track, so
+ * when it is hidden the track collapses to zero and the center column takes
+ * the freed width. Below 1050px the accounts column leaves the grid and
+ * becomes an overlay (see Accounts/index.scss); below 750px the rail
+ * becomes a bottom bar and the grid is a single column. */
+.shell {
+  height: calc(100vh - var(--headerHeight));
+  height: calc(100dvh - var(--headerHeight));
+  display: grid;
+  grid-template-columns: 80px auto minmax(0, 1fr);
+  background-color: var(--bg);
+  color: var(--textBright);
 
-  &,
-  & > .curtain {
-    position: fixed;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    transition: 350ms cubic-bezier(0.31, 0.25, 0.52, 1.19);
-    top: 55px;
+  /* Left edge of the center column, where the center curtain starts.
+   * Wide + accounts open: rail 80 + accounts 320. Wide + accounts closed:
+   * rail only. Narrow: the accounts column is an overlay, so the center
+   * always starts at the rail. */
+  --center-left: 400px;
+
+  &.accounts-closed {
+    --center-left: 80px;
+
+    .accounts {
+      display: none;
+    }
   }
 
-  .curtain {
+  .center-col {
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 5px 0.5rem 0.5rem 0.5rem;
+    background-color: var(--bg);
+
+    /* The list doesn't scroll while the accounts overlay is open — the
+     * old mobile behavior. Gated to the overlay range: wide screens keep
+     * the in-grid accounts column scrollable alongside the list. */
+    &.lock-scroll {
+      @media (max-width: 1050px) {
+        overflow: hidden;
+      }
+    }
+  }
+
+  /* The centered 950px content column (design doc §4). */
+  .center-inner {
     width: 100%;
-    height: 100%;
-    z-index: 10;
+    max-width: var(--maxWidth);
+    margin: 0 auto;
+  }
+
+  /* Clicking the visible center column dismisses whatever overlay is open
+   * (writer, or the accounts overlay on narrow screens). The curtain covers
+   * the center column only — the rail stays clickable, so collapsing the
+   * accounts panel never hides navigation. */
+  .center-curtain {
+    display: none;
+    position: fixed;
+    top: var(--headerHeight);
+    bottom: 0;
+    left: var(--center-left);
+    right: 0;
+    z-index: 12;
     pointer-events: none;
 
     &.on {
+      display: block;
       pointer-events: all;
+    }
+
+    /* Wide screens: the accounts column is in the grid, so there is no
+     * accounts overlay to dismiss — the curtain only covers the writer. */
+    &.on-accounts:not(.on-writer) {
+      @media (min-width: 1051px) {
+        display: none;
+      }
+    }
+  }
+
+  /* Compose docks inside the grid: right: 0, width min(600px, 100%),
+   * fully on-screen when open. Closed it slides off with a transform —
+   * there is no negative offset and no teaser strip to click. */
+  .writer-pane {
+    position: fixed;
+    top: var(--headerHeight);
+    right: 0;
+    bottom: 0;
+    width: min(600px, 100%);
+    z-index: 28;
+    overflow: hidden;
+    background-color: var(--panel);
+    transform: translateX(102%);
+    transition: transform 350ms cubic-bezier(0.31, 0.25, 0.52, 1.19);
+
+    &.open {
+      transform: none;
+      box-shadow: rgb(0 0 0 / 10%) -10px 10px 10px 10px;
     }
   }
 }
 
-.main_pane {
-  padding: 5px 0.5rem 0.5rem 0.5rem;
-
-  &.lock_scroll {
-    overflow: hidden;
-    padding-right: calc(0.5rem + 5px);
+@media (max-width: 1050px) {
+  .shell {
+    grid-template-columns: 80px minmax(0, 1fr);
+    --center-left: 80px;
   }
 }
 
-.side_pane.lock_scroll {
-  .accounts {
-    overflow: hidden;
-    padding-right: 5px;
-  }
-}
+@media (max-width: 750px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    --center-left: 0;
 
-.writer_pane {
-  z-index: 10;
-  overflow: hidden;
+    /* The rail is a bottom bar here; keep the list's tail above it, and
+     * dock the writer above it too so the bar (and its Compose toggle)
+     * stays visible while composing. */
+    .center-col {
+      padding-bottom: calc(0.5rem + 56px);
+    }
 
-  &,
-  & > .curtain {
-    max-width: 950px;
+    .writer-pane {
+      bottom: 56px;
+    }
   }
 }

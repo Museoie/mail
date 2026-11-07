@@ -17,10 +17,15 @@ import {
   RefreshIcon,
   LogoutIcon,
   SettingsIcon,
+  InboxIcon,
+  NewMailIcon,
   SortDownIcon,
   SortUpIcon,
   Allowlist
 } from "./components";
+import { EmptyStarIcon, BanIcon } from "../Mails/components";
+import { SendIcon } from "../Writer/components";
+import WriteIcon from "../../../Header/components/RightMenu/components/WriteIcon";
 
 import { Account } from "common";
 import {
@@ -94,6 +99,7 @@ const Accounts = ({
     isAccountsOpen,
     setIsAccountsOpen,
     isWriterOpen,
+    setIsWriterOpen,
     newMailsTotal,
     setNewMailsTotal
   } = useContext(Context);
@@ -241,13 +247,13 @@ const Accounts = ({
             categoryForAccount(accountName, { received, sent, spam })
           );
           setSelectedAccount(accountName);
-          if (viewSize.width <= 750) setIsAccountsOpen(false);
+          if (viewSize.width <= 1050) setIsAccountsOpen(false);
           return;
         }
         if (selectedAccount !== accountName) {
           setPage(1);
           setSelectedAccount(accountName);
-          if (viewSize.width <= 750) setIsAccountsOpen(false);
+          if (viewSize.width <= 1050) setIsAccountsOpen(false);
         }
       };
 
@@ -306,6 +312,15 @@ const Accounts = ({
 
     const accountComponents = sortedAccountData.map(renderAccount);
 
+    const categoryIcons = {
+      [Category.NewMails]: NewMailIcon,
+      [Category.AllMails]: InboxIcon,
+      [Category.SavedMails]: EmptyStarIcon,
+      [Category.SentMails]: SendIcon,
+      [Category.SpamMails]: BanIcon,
+      [Category.Search]: SearchIcon
+    };
+
     const categoryComponents = Object.values(Category).map((e, i) => {
       const onClickCategory = () => {
         if (e === Category.Search) {
@@ -336,9 +351,14 @@ const Accounts = ({
           setSelectedAccount(targetAccounts[0].key);
         }
       };
-      const classes = [];
+      const classes = ["rail-item"];
       if (selectedCategory === e) classes.push("clicked");
-      if (e === Category.Search) classes.push("flex");
+
+      const Icon = categoryIcons[e];
+      const showDot =
+        e !== selectedCategory &&
+        ((e === Category.NewMails && newMailsTotal) ||
+          (e === Category.SpamMails && spamUnread));
 
       return (
         <div
@@ -350,20 +370,9 @@ const Accounts = ({
           onClick={onClickCategory}
           onKeyDown={onKeyboardActivate(onClickCategory)}
         >
-          {e === Category.Search ? (
-            <SearchIcon />
-          ) : (
-            <div>
-              {e.split(" ")[0]}
-              {e !== selectedCategory &&
-              ((e === Category.NewMails && newMailsTotal) ||
-                (e === Category.SpamMails && spamUnread)) ? (
-                <div className="numberBall" />
-              ) : (
-                <></>
-              )}
-            </div>
-          )}
+          <Icon />
+          <span className="rail-label">{e.split(" ")[0]}</span>
+          {showDot ? <div className="numberBall" /> : null}
         </div>
       );
     });
@@ -403,8 +412,16 @@ const Accounts = ({
         // Search immediately instead of waiting out the debounce.
         clearTimeout(searchDelay);
         setSelectedAccount(target.value);
-        if (viewSize.width <= 750) setIsAccountsOpen(false);
+        if (viewSize.width <= 1050) setIsAccountsOpen(false);
       }
+    };
+
+    const onClickCompose = () => {
+      // One overlay at a time on narrow screens: the writer docks over the
+      // list, so the accounts overlay (which also covers the list) closes.
+      if (!isWriterOpen && isAccountsOpen && viewSize.width <= 1050)
+        setIsAccountsOpen(false);
+      setIsWriterOpen(!isWriterOpen);
     };
 
     const onClickRefresh = () => {
@@ -449,36 +466,57 @@ const Accounts = ({
     return (
       <div className="tab-holder">
         <div className="categories">
-          <div>{categoryComponents}</div>
           <div>
-            <div className="flex">
-              <RefreshIcon onClick={onClickRefresh} />
+            {categoryComponents}
+            <div
+              className="rail-item"
+              role="button"
+              tabIndex={0}
+              aria-pressed={isWriterOpen}
+              onClick={onClickCompose}
+              onKeyDown={onKeyboardActivate(onClickCompose)}
+            >
+              <WriteIcon />
+              <span className="rail-label">Compose</span>
             </div>
-            <div className="flex">
-              <button
-                className="icon-button"
-                onClick={() => setIsAllowlistOpen(true)}
-                aria-label="Allowlist settings"
-                title="Allowlist"
-              >
-                <SettingsIcon />
-              </button>
+          </div>
+          <div>
+            <div
+              className="rail-item"
+              role="button"
+              tabIndex={0}
+              aria-label="Settings"
+              onClick={() => setIsAllowlistOpen(true)}
+              onKeyDown={onKeyboardActivate(() => setIsAllowlistOpen(true))}
+            >
+              <SettingsIcon />
+              <span className="rail-label">Settings</span>
             </div>
-            <div className="flex">
-              <button
-                className="icon-button"
-                onClick={onClickLogout}
-                aria-label="Logout"
-                disabled={!isOnline}
-                title={
-                  isOnline
-                    ? "Logout"
-                    : "You're offline — reconnect to log out"
-                }
-              >
-                <LogoutIcon />
-              </button>
+            <div
+              className="rail-item"
+              role="button"
+              tabIndex={0}
+              aria-label="Refresh"
+              onClick={onClickRefresh}
+              onKeyDown={onKeyboardActivate(onClickRefresh)}
+            >
+              <RefreshIcon />
+              <span className="rail-label">Refresh</span>
             </div>
+            <button
+              className="rail-item"
+              onClick={onClickLogout}
+              aria-label="Logout"
+              disabled={!isOnline}
+              title={
+                isOnline
+                  ? "Logout"
+                  : "You're offline — reconnect to log out"
+              }
+            >
+              <LogoutIcon />
+              <span className="rail-label">Logout</span>
+            </button>
           </div>
         </div>
         {isAllowlistOpen ? (

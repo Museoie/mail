@@ -1,9 +1,9 @@
 /*
- * The app shell is a fixed layout: #title_bar is `position: fixed; top: 0` and
- * the mail panes are `position: fixed; top: 55px`. A normal-flow banner would
- * sit underneath them, so the banner is itself fixed — pinned to the bottom
- * edge, above the panes (z-index 30 > #title_bar's 20) — which keeps it visible
- * without reflowing the pinned header/content.
+ * The app shell is a fixed-viewport layout: #title_bar is sticky at the top
+ * and the shell grid fills the rest below it. A normal-flow banner would sit
+ * underneath them, so the banner is itself fixed — pinned to the bottom edge,
+ * above the shell (z-index 30) — which keeps it visible without reflowing
+ * the pinned header/content.
  */
 .offline-banner {
   position: fixed;
