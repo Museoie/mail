@@ -21,7 +21,7 @@ const Header = () => {
     : selectedAccount.split("@")[0];
 
   return (
-    <div id="title_bar">
+    <div id="title_bar" className="sticky">
       {userInfo ? <LeftMenu /> : null}
       <h1>{title}</h1>
       {userInfo ? <RightMenu /> : null}

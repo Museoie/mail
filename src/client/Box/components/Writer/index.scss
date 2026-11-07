@@ -2,14 +2,10 @@
   height: calc(100% - 10px);
   margin-top: 5px;
   padding-top: 1rem;
-  padding-right: calc(1rem + 50px);
+  padding-right: 1rem;
 
   span {
     white-space: nowrap;
-  }
-
-  &.shadow {
-    box-shadow: rgb(0 0 0 / 10%) -10px 10px 10px 10px;
   }
 
   .margin_box {

@@ -1,10 +1,8 @@
 .tab-holder {
+  display: contents;
+
   .categories {
     background-color: var(--bg);
-
-    div.clicked {
-      background-color: var(--panel);
-    }
   }
 
   .accounts {
@@ -30,101 +28,89 @@
   }
 }
 
+/* The 80px left rail (design doc §4): folders, Search, Compose on top;
+ * Settings, Refresh, Logout at the bottom. Icon plus a text label under
+ * each. The rail is a grid item of the shell in Box/index.scss; it never
+ * hides when the accounts column collapses. */
 .tab-holder {
-  display: flex;
-  height: 100%;
-
   .categories {
-    padding: 0 0 0.5rem calc(0.5rem + 50px);
-    width: 130px;
+    width: 80px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    padding: 0.5rem 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 
     > div {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rail-item {
       position: relative;
-      width: 72px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      min-height: 52px;
+      padding: 6px 2px;
+      color: var(--textBright);
+      background: none;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: center;
 
-      > div {
-        height: 60px;
-        font-size: 20px;
-        padding: 1rem;
-        border-top-left-radius: 10px;
-        border-bottom-left-radius: 10px;
-        display: flex;
-        justify-content: center;
+      svg {
+        height: 20px;
+        width: 20px;
+      }
 
-        &.flex {
-          padding: 0;
-          display: flex;
-          justify-content: center;
-          align-items: center;
+      .rail-label {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-          svg {
-            height: 20px;
+      &:hover {
+        background-color: var(--surface);
+      }
 
-            &:hover {
-              height: 24px;
-            }
+      &.clicked {
+        background-color: var(--panel);
+      }
 
-            &:active {
-              height: 22px;
-            }
-          }
+      &:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: -2px;
+      }
 
-          button.icon-button {
-            background: none;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            color: inherit;
+      /* Offline-disabled control (logout): dim it so it doesn't read as
+       * interactive. */
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
 
-            svg {
-              height: 20px;
-            }
-
-            &:hover svg {
-              height: 24px;
-            }
-
-            &:active svg {
-              height: 22px;
-            }
-
-            // Offline-disabled control (e.g. logout): dim it and suppress the
-            // hover/active grow so it doesn't read as interactive.
-            &:disabled {
-              opacity: 0.4;
-              cursor: not-allowed;
-
-              &:hover svg,
-              &:active svg {
-                height: 20px;
-              }
-            }
-
-            &:focus-visible {
-              outline: 2px solid currentColor;
-              outline-offset: 2px;
-              border-radius: 3px;
-            }
-          }
-        }
-
-        > div {
-          position: relative;
-        }
+      /* Unread dot on the New / Spam rail items — the 8px dot, parked at
+       * the icon's top-right corner. */
+      .numberBall {
+        top: 4px;
+        right: 20px;
       }
     }
 
-    &:not(.skeleton) > div > div {
-      &,
-      * {
-        cursor: pointer;
-      }
+    &.skeleton > div > div {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     &.skeleton > div > div > div {
@@ -138,8 +124,8 @@
   .accounts {
     position: relative;
     height: 100%;
-    width: calc(100% - 80px);
-    overflow-y: scroll;
+    width: 320px;
+    overflow-y: auto;
     overflow-x: hidden;
 
     > * {
@@ -171,10 +157,11 @@
       justify-content: flex-start;
       width: 100%;
       align-items: center;
-      position: relative;
+      position: sticky;
+      top: 0;
+      z-index: 10;
       padding: 0.5rem 0.5rem 0;
       margin: 0 0.5rem 0.5rem 0;
-      z-index: 6;
 
       > div {
         height: 30px;
@@ -251,6 +238,62 @@
       background-color: var(--red);
       color: white;
     }
+  }
+}
+
+/* Below 1050px the accounts column leaves the grid and becomes an overlay
+ * opened from the rail (design doc §4); the rail stays in the grid. */
+@media (max-width: 1050px) {
+  .tab-holder .accounts {
+    position: fixed;
+    top: var(--headerHeight);
+    bottom: 0;
+    left: 80px;
+    /* height: auto so top + bottom size it; the base 100% height would
+     * over-constrain it and push 50px past the viewport bottom. */
+    height: auto;
+    z-index: 24;
+    box-shadow: rgb(0 0 0 / 30%) 8px 0 24px;
+  }
+}
+
+/* Below 750px the rail becomes a bottom bar (design doc §4) and the
+ * accounts overlay spans the full width above it. Labels hide — ten
+ * labeled items do not fit a phone width; the icons carry the items. */
+@media (max-width: 750px) {
+  .tab-holder .categories {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: auto;
+    height: 56px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: stretch;
+    padding: 0;
+    border-top: 1px solid var(--divider);
+
+    > div {
+      display: contents;
+    }
+
+    .rail-item {
+      flex: 1;
+      min-height: 0;
+      padding: 6px 0;
+
+      .rail-label {
+        display: none;
+      }
+    }
+  }
+
+  .tab-holder .accounts {
+    left: 0;
+    width: min(320px, 100%);
+    bottom: 56px;
   }
 }
 
