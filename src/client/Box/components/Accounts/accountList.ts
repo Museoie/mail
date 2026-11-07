@@ -41,10 +41,11 @@ export const filterAccounts = (
 
 /**
  * The count badge for one account row under `category` (design doc §8):
- * saved for Saved, unread everywhere else — mirroring what the list header
- * shows for the selected account via `accountCountForCategory`. The row
- * already holds the account, so this reads the field directly instead of
- * re-finding it in the payload.
+ * saved for Saved, unread everywhere else. This deliberately differs from
+ * the list header for Sent and Spam, where the header shows `doc_count`
+ * totals; the badge is always a per-account unread (or saved) count. The
+ * row already holds the account, so this reads the field directly instead
+ * of re-finding it in the payload.
  */
 export const accountBadgeCount = (
   account: Account,
