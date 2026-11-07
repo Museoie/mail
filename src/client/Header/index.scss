@@ -1,8 +1,5 @@
-@use "sass:color";
-@use "../variables" as *;
-
 #title_bar {
-  background-color: color.adjust($color-dark, $lightness: -8%);
+  background-color: var(--bg);
 }
 
 #title_bar {

@@ -8,6 +8,7 @@ import {
   startCachePersistence,
 } from "client";
 
+import "./client/variables.css";
 import "./index.scss";
 
 // Report unhandled JS errors to server

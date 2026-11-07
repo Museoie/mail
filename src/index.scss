@@ -1,5 +1,4 @@
 @use "sass:color";
-@use "./client/variables" as *;
 
 body {
   overflow: hidden;
@@ -26,7 +25,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 
   * {
-    font-weight: 100;
     box-sizing: border-box;
     scrollbar-color: grey transparent;
   }
@@ -45,9 +43,37 @@ code {
   padding: 0 5px;
 }
 
-/* Remove the border */
-*:focus {
-  outline: none;
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* No height here: a fixed height would clip the padded allowlist/error-boundary buttons. */
+button {
+  background-color: var(--surface);
+  color: var(--textBright);
+  border: none;
+  border-radius: 3px;
+  min-width: 20px;
+  padding: 0 5px;
+}
+
+button:disabled {
+  background-color: var(--bg);
+  color: var(--surfaceRaised);
+  border: var(--surfaceRaised) solid 0.5px;
+}
+
+button:not(:disabled):hover {
+  background-color: var(--surfaceRaised);
+}
+
+input:not([type="checkbox"]) {
+  cursor: text;
+  background-color: var(--surface);
+  color: var(--textBright);
+  border: none;
+  padding: 0 5px;
 }
 
 /* scrollbar */
@@ -104,21 +130,21 @@ input::-webkit-scrollbar-thumb:hover {
 
 body,
 .main_pane {
-  background-color: $color-dark;
-  color: $color-light;
+  background-color: var(--bg);
+  color: var(--textBright);
 }
 
 .login_card,
 .writer-buttons {
   & > button {
-    color: $color-light;
-    background-color: color.adjust($color-accent, $lightness: 7%);
+    color: var(--textBright);
+    background-color: color.adjust(rgba(0, 63, 99, 1), $lightness: 7%);
 
     &:hover {
-      background-color: color.adjust($color-accent, $lightness: 14%);
+      background-color: color.adjust(rgba(0, 63, 99, 1), $lightness: 14%);
     }
     &:active {
-      background-color: color.adjust($color-accent, $lightness: 12%);
+      background-color: color.adjust(rgba(0, 63, 99, 1), $lightness: 12%);
     }
   }
 }
@@ -126,15 +152,15 @@ body,
 .mailcard,
 .writer,
 .login_card {
-  background-color: color.adjust($color-dark, $lightness: 3%);
-  border-left: 3px solid color.adjust($color-dark, $lightness: 10%);
+  background-color: var(--panel);
+  border-left: 3px solid var(--surface);
 }
 
 .mailcard:not(.skeleton):hover {
-  background-color: color.adjust($color-dark, $lightness: 4%);
+  background-color: var(--hover);
 
   .insight {
-    background-color: color.adjust($color-dark, $lightness: 3%);
+    background-color: var(--panel);
   }
 }
 
@@ -142,60 +168,60 @@ body,
 .search_container,
 .login_card {
   input {
-    color: $color-light;
-    background-color: color.adjust($color-dark, $lightness: -3%);
+    color: var(--textBright);
+    background-color: var(--bg);
     box-shadow:
-      1px 1px 2px color.adjust($color-dark, $lightness: -10%) inset,
-      -0.5px -0.5px 2px color.adjust($color-dark, $lightness: 10%) inset;
+      1px 1px 2px var(--bg) inset,
+      -0.5px -0.5px 2px var(--surface) inset;
   }
 }
 
 .writer-content {
   box-shadow:
-    1px 1px 2px color.adjust($color-dark, $lightness: -10%) inset,
-    -0.5px -0.5px 2px color.adjust($color-dark, $lightness: 10%) inset;
+    1px 1px 2px var(--bg) inset,
+    -0.5px -0.5px 2px var(--surface) inset;
 
   &,
   * {
-    color: $color-light;
-    background-color: color.adjust($color-dark, $lightness: -3%);
+    color: var(--textBright);
+    background-color: var(--bg);
   }
 }
 
 .attachment {
-  background-color: color.adjust($color-dark, $lightness: 10%);
+  background-color: var(--surface);
 
   &:hover {
-    background-color: color.adjust($color-dark, $lightness: 13%);
+    background-color: var(--hover);
   }
 }
 
 .tag {
-  background-color: color.adjust($color-dark, $lightness: 7%);
-  color: $color-light;
+  background-color: var(--surfaceRaised);
+  color: var(--textBright);
 
   &:not(.skeleton):not(.clicked):hover {
-    background-color: color.adjust($color-dark, $lightness: 14%);
+    background-color: var(--hover);
   }
 
   &:not(.skeleton):not(.clicked):active {
-    background-color: color.adjust($color-dark, $lightness: 10%);
+    background-color: var(--surface);
   }
 
   &.clicked {
-    background-color: color.adjust($color-dark, $lightness: -4%);
+    background-color: var(--bg);
   }
 }
 
 .curtain.on {
-  background-color: color.adjust($color-dark, $alpha: -0.4);
+  background-color: color-mix(in srgb, var(--bg) 60%, transparent);
 }
 
 .writer-content {
   &.open {
     box-shadow:
-      2px 2px 2px color.adjust($color-light, $lightness: -5%) inset,
-      -1px -1px 2px color.adjust($color-light, $lightness: 20%) inset;
+      2px 2px 2px var(--textBright) inset,
+      -1px -1px 2px var(--textWhite) inset;
 
     &,
     * {
@@ -205,13 +231,13 @@ body,
     .original_message {
       &,
       * {
-        background-color: color.adjust($color-light, $lightness: 12%);
+        background-color: color.adjust(rgba(216, 216, 216, 1), $lightness: 12%);
       }
 
       &:hover {
         &,
         * {
-          background-color: color.adjust($color-light, $lightness: 10%);
+          background-color: color.adjust(rgba(216, 216, 216, 1), $lightness: 10%);
         }
       }
     }
@@ -237,12 +263,14 @@ h4,
 h5 {
   margin-top: 1rem;
   margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--textBrighter);
 }
 a {
-  color: rgb(100, 130, 220);
+  color: var(--blue);
 }
 a:visited {
-  color: rgb(100, 130, 220);
+  color: var(--blue);
 }
 
 .inputBox-flex,
@@ -251,16 +279,16 @@ a:visited {
   input {
     font-size: 16px;
     border: none;
-    padding: 0.5rem;
+    padding: 0 5px;
     border-radius: 3px;
     cursor: auto;
     text-align: center;
-    height: 30px;
+    height: 24px;
   }
 }
 
 ::placeholder {
-  color: grey;
+  color: var(--textDim);
   font-size: 0.8rem;
 }
 
@@ -271,11 +299,10 @@ a:visited {
     box-sizing: border-box;
     text-align: center;
     border-radius: 3px;
-    height: 30px;
+    height: 24px;
     font-size: 16px;
     font-weight: 500;
     overflow: hidden;
-    $color-light-space: nowrap;
   }
 }
 
@@ -324,14 +351,6 @@ svg {
 
   &:active > .iconBox svg {
     height: 32px;
-  }
-}
-
-@media only screen and (max-width: 750px) {
-  body {
-    * {
-      font-weight: 400;
-    }
   }
 }
 
