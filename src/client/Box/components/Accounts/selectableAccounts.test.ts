@@ -85,11 +85,25 @@ describe("resolveSelectedAccount", () => {
       .toBe(null);
   });
 
-  it("re-anchors to the category's first account when the selection is not in it", () => {
+  // Changing folders never changes the selected mailbox (design doc §8): a
+  // real account the category does not list stays selected, and the mail pane
+  // shows that folder's empty state for it instead of another account's mail.
+  it("keeps a real selection the category does not list", () => {
     expect(resolveSelectedAccount("sender@x.com", Category.AllMails, lists))
-      .toBe("read@x.com");
+      .toBe(null);
     expect(resolveSelectedAccount("read@x.com", Category.NewMails, lists))
-      .toBe("unread@x.com");
+      .toBe(null);
+  });
+
+  // A name no list holds is unreachable state, not a selection — re-anchor it
+  // to the category's first account rather than stranding the header over an
+  // empty pane.
+  it("re-anchors a name no list holds to the category's first account", () => {
+    expect(resolveSelectedAccount("phantom@x.com", Category.AllMails, lists))
+      .toBe("read@x.com");
+    expect(resolveSelectedAccount("keyword", Category.NewMails, lists)).toBe(
+      "unread@x.com"
+    );
   });
 
   it("picks the category's first account when nothing is selected", () => {

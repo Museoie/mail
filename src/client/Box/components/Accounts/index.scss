@@ -98,6 +98,12 @@
         cursor: not-allowed;
       }
 
+      /* Refresh in progress: spin the icon while the refetch round-trip runs
+       * (design doc §8 — refresh shows a loading indicator). */
+      &.refreshing svg {
+        animation: rail-spin 1s linear infinite;
+      }
+
       /* Unread dot on the New / Spam rail items — the 8px dot, parked at
        * the icon's top-right corner. */
       .numberBall {
@@ -150,6 +156,63 @@
       border-radius: 5px;
       overflow-wrap: break-word;
       vertical-align: bottom;
+
+      .account-name {
+        display: block;
+      }
+
+      /* Second line, shown only when the display name is duplicated in the
+       * visible list (design doc §8): the full address tells two "annie"
+       * entries apart. */
+      .account-address {
+        display: block;
+        font-size: 13px;
+        line-height: 1.3;
+        color: var(--textDim);
+        overflow-wrap: anywhere;
+      }
+    }
+
+    /* Sticky accounts header (design doc §8): the filter box stays visible
+     * above the sort control while the list scrolls. The sort dropdown is
+     * anchored to .sort_box, which keeps position: relative now that the
+     * sticky positioning lives on this wrapper. */
+    .accounts_header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      margin: 0 0.5rem 0 0;
+      padding-top: 0.5rem;
+      background-color: var(--panel);
+    }
+
+    .filter_box {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0 0.5rem 0.5rem 0.5rem;
+
+      input {
+        flex: 1;
+        min-width: 0;
+        height: 24px;
+      }
+
+      .filter_clear {
+        flex-shrink: 0;
+        height: 24px;
+        min-width: 24px;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1;
+        color: var(--textDim);
+        background: transparent;
+
+        &:hover {
+          color: var(--textBright);
+          background-color: var(--surface);
+        }
+      }
     }
 
     .sort_box {
@@ -157,11 +220,9 @@
       justify-content: flex-start;
       width: 100%;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      padding: 0.5rem 0.5rem 0;
-      margin: 0 0.5rem 0.5rem 0;
+      position: relative;
+      padding: 0 0.5rem 0;
+      margin: 0 0 0.5rem 0;
 
       > div {
         height: 30px;
@@ -222,6 +283,15 @@
 
     .tags_container {
       z-index: 5;
+    }
+
+    /* The accounts panel's only empty state (design doc §8): shown when the
+     * filter matches nothing. An empty category shows no message here — the
+     * mail pane's empty state covers it. */
+    .accounts_empty {
+      padding: 1rem 0.5rem;
+      font-size: 14px;
+      color: var(--textDim);
     }
 
     .numberBall {
@@ -307,4 +377,10 @@
   border-radius: 4px;
   background-color: var(--red);
   color: white;
+}
+
+@keyframes rail-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -119,10 +119,10 @@ const driveLoad = async (
 
 /**
  * Mounts, then applies one external change: a category switch, or a
- * `selectedAccount` write from outside the hook as `onClickRefresh` makes.
- * One `lists` identity is held across both renders, so only a dependency array
- * naming the axis under test re-runs the effect — and neither case writes on
- * mount, so the log is the change alone.
+ * `selectedAccount` write from outside the hook. One `lists` identity is held
+ * across both renders, so only a dependency array naming the axis under test
+ * re-runs the effect — and neither case writes on mount, so the log is the
+ * change alone.
  */
 const driveRerender = async (
   selection: string,
@@ -295,14 +295,17 @@ describe("useAnchoredSelectedAccount", () => {
     expect(writes).toEqual(["first@x.com"]);
   });
 
-  it("re-anchors when the category moves under a held payload", async () => {
+  // Changing folders never changes the selected mailbox (design doc §8): a
+  // real account the destination category does not list stays selected, and
+  // the mail pane shows that folder's empty state for it.
+  it("keeps the selection when the category moves under a held payload", async () => {
     const writes = await driveRerender(
       "sender@x.com",
       Category.SentMails,
       { received, sent, spam },
       { category: Category.AllMails }
     );
-    expect(writes).toEqual(["first@x.com"]);
+    expect(writes).toEqual([]);
   });
 
   // The one line no render reaches: the call site decides when a payload counts

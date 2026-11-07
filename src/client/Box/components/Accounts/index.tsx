@@ -50,6 +50,12 @@ import {
   accountsForCategory,
   categoryForAccount
 } from "./selectableAccounts";
+import {
+  accountBadgeCount,
+  displayNameFor,
+  duplicatedDisplayNames,
+  filterAccounts
+} from "./accountList";
 import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
 
 import "./index.scss";
@@ -99,6 +105,9 @@ const Accounts = ({
   );
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [isAllowlistOpen, setIsAllowlistOpen] = useState(false);
+  // Substring filter for the accounts list (design doc §8): local view state
+  // only — it never touches the selection or the folder.
+  const [accountFilter, setAccountFilter] = useState("");
 
   const {
     viewSize,
@@ -243,7 +252,8 @@ const Accounts = ({
 
     const renderAccount = (data: Account, i: number) => {
       const accountName = data.key;
-      const unreadNo = data.unread_doc_count;
+      const badgeCount = accountBadgeCount(data, selectedCategory);
+      const displayName = displayNameFor(accountName);
       const onClickAccount = () => {
         // A found account in the search side-tab jumps to the category that
         // lists it (the search term lives in selectedAccount, so we must
@@ -277,9 +287,12 @@ const Accounts = ({
             onClick={onClickAccount}
             onKeyDown={onKeyboardActivate(onClickAccount)}
           >
-            <span>{accountName?.split("@")[0] || "Unknown"}</span>
-            {unreadNo && selectedCategory !== Category.SavedMails ? (
-              <div className="numberBall">{unreadNo}</div>
+            <span className="account-name">{displayName}</span>
+            {duplicatedNames.has(displayName) ? (
+              <span className="account-address">{accountName}</span>
+            ) : null}
+            {badgeCount ? (
+              <div className="numberBall">{badgeCount}</div>
             ) : null}
           </div>
         </div>
@@ -317,7 +330,15 @@ const Accounts = ({
       );
     }
 
-    const accountComponents = sortedAccountData.map(renderAccount);
+    // The filter narrows the visible rows only; the selection, the sort, and
+    // the folder are untouched. Duplicates are judged over the visible list,
+    // so a filter that hides one of a pair needs no disambiguation.
+    const filteredAccountData = filterAccounts(
+      sortedAccountData,
+      accountFilter
+    );
+    const duplicatedNames = duplicatedDisplayNames(filteredAccountData);
+    const accountComponents = filteredAccountData.map(renderAccount);
 
     const categoryIcons = {
       [Category.NewMails]: NewMailIcon,
@@ -340,23 +361,15 @@ const Accounts = ({
           return;
         }
 
-        // The account to keep selected in the destination category. Leaving
-        // search restores the pre-search account (selectedAccount currently
-        // holds the search term, so we can't read it here); otherwise we keep
-        // the current account.
-        const candidate =
-          selectedCategory === Category.Search
-            ? preSearchAccount.current
-            : selectedAccount;
-
-        const targetAccounts = accountsForCategory(e, { received, sent, spam });
-
-        setSelectedCategory(e);
-        if (candidate && targetAccounts.some((a) => a.key === candidate)) {
-          if (candidate !== selectedAccount) setSelectedAccount(candidate);
-        } else if (targetAccounts.length > 0) {
-          setSelectedAccount(targetAccounts[0].key);
+        // Leaving search restores the pre-search account (selectedAccount
+        // currently holds the search term, so we can't read it here).
+        // Otherwise the selection is left alone: changing folders never
+        // changes the selected mailbox (design doc §8). A name no list holds
+        // is cleaned up by the anchor hook, not by re-anchoring here.
+        if (selectedCategory === Category.Search && preSearchAccount.current) {
+          setSelectedAccount(preSearchAccount.current);
         }
+        setSelectedCategory(e);
       };
       const classes = ["rail-item"];
       if (selectedCategory === e) classes.push("clicked");
@@ -431,9 +444,12 @@ const Accounts = ({
       setIsWriterOpen(!isWriterOpen);
     };
 
+    // Refresh re-fetches without moving the selection: the account, folder,
+    // scroll position, and open/closed state all stay where they were
+    // (design doc §8). `query.isFetching` drives the spinner on the rail
+    // item while the round-trip runs.
     const onClickRefresh = () => {
       query.refetch();
-      setSelectedAccount("");
     };
 
     const onClickLogout = async () => {
@@ -500,10 +516,11 @@ const Accounts = ({
               <span className="rail-label">Settings</span>
             </div>
             <div
-              className="rail-item"
+              className={"rail-item" + (query.isFetching ? " refreshing" : "")}
               role="button"
               tabIndex={0}
               aria-label="Refresh"
+              aria-busy={query.isFetching}
               onClick={onClickRefresh}
               onKeyDown={onKeyboardActivate(onClickRefresh)}
             >
@@ -530,7 +547,31 @@ const Accounts = ({
           <Allowlist onClose={() => setIsAllowlistOpen(false)} />
         ) : null}
         <div className="accounts">
-          <div className="sort_box">
+          <div className="accounts_header">
+            <div className="filter_box">
+              <input
+                type="search"
+                value={accountFilter}
+                onChange={(e) => setAccountFilter(e.target.value)}
+                placeholder="Filter accounts…"
+                aria-label="Filter accounts"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+              />
+              {accountFilter ? (
+                <button
+                  type="button"
+                  className="filter_clear"
+                  aria-label="Clear filter"
+                  onClick={() => setAccountFilter("")}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+            <div className="sort_box">
             {showSortOptions ? (
               <></>
             ) : (
@@ -567,6 +608,7 @@ const Accounts = ({
               )}
             </div>
           </div>
+          </div>
           <div className="tags_container">
             {!showSortOptions && selectedCategory === Category.Search ? (
               <div className="search_container">
@@ -585,9 +627,13 @@ const Accounts = ({
                 />
               </div>
             ) : null}
-            {!showSortOptions && accountComponents?.length
-              ? accountComponents
-              : "This category is empty"}
+            {accountComponents.length ? (
+              accountComponents
+            ) : accountFilter ? (
+              <p className="accounts_empty">
+                No accounts match “{accountFilter}”.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
