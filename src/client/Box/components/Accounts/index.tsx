@@ -54,13 +54,24 @@ import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
 
 import "./index.scss";
 
-const queryUrl = "/api/mails/accounts";
+export const accountsQueryUrl = "/api/mails/accounts";
 
 export class AccountsCache extends QueryCache<AccountsGetResponse> {
   constructor() {
-    super(queryUrl);
+    super(accountsQueryUrl);
   }
 }
+
+// Shared by the Accounts sidebar and by the list header, which subscribes to
+// the same query key (enabled: false — it never fetches, it only re-renders
+// when the sidebar's data changes) to show the selected account's count.
+export const fetchAccounts = async () => {
+  const { status, body, message } = await call.get<AccountsGetResponse>(
+    accountsQueryUrl
+  );
+  if (status === "success") return body as AccountsGetResponse;
+  else throw new Error(message);
+};
 
 let isFetched = false;
 
@@ -108,11 +119,7 @@ const Accounts = ({
 
   const getAccounts = async () => {
     isFetched = false;
-    const { status, body, message } = await call.get<AccountsGetResponse>(
-      queryUrl
-    );
-    if (status === "success") return body as AccountsGetResponse;
-    else throw new Error(message);
+    return fetchAccounts();
   };
 
   const onSuccess = (data: AccountsGetResponse) => {
@@ -130,7 +137,7 @@ const Accounts = ({
     }
   };
 
-  const query = useQuery<AccountsGetResponse>(queryUrl, getAccounts, {
+  const query = useQuery<AccountsGetResponse>(accountsQueryUrl, getAccounts, {
     onSuccess,
     cacheTime: Infinity,
     refetchInterval: 1000 * 60 * 10,

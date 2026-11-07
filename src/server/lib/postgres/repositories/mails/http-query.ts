@@ -26,6 +26,7 @@ import {
   SENT,
   IS_SPAM,
   INSIGHT,
+  TEXT,
 } from "../../models";
 
 export interface GetMailHeadersOptions {
@@ -76,8 +77,11 @@ export const buildMailHeadersQuery = (
 ): { sql: string; values: ParamValue[] } => {
   const addressJson = JSON.stringify([{ address }]);
   const addressCondition = buildHeaderAddressCondition(options);
-  // Select only columns needed for mail headers — excludes html/text/attachments
-  // to avoid loading full email bodies into memory for every concurrent request.
+  // Select only columns needed for mail headers — excludes html/attachments
+  // and full text bodies to avoid loading them into memory for every
+  // concurrent request. The one exception is a bounded prefix of the plain
+  // text body, which the list snippet is built from (design doc §5); it is
+  // capped at 400 chars so the headers payload stays small.
   const headerColumns = [
     MAIL_ID, USER_ID, SUBJECT, DATE,
     FROM_ADDRESS, FROM_TEXT,
@@ -85,6 +89,7 @@ export const buildMailHeadersQuery = (
     CC_ADDRESS, CC_TEXT,
     BCC_ADDRESS, BCC_TEXT,
     READ, SAVED, SENT, IS_SPAM, INSIGHT,
+    `left(${TEXT}, 400) AS text_prefix`,
   ].join(", ");
   let sql = `
     SELECT ${headerColumns} FROM mails 

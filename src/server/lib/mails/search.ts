@@ -1,5 +1,6 @@
 import { MailHeaderData, SignedUser, MailAddressValueType, Insight } from "common";
 import { searchMails, SearchMailModel } from "../postgres/repositories/mails";
+import { buildSnippet } from "./snippet";
 
 export const searchMail = async (
   user: SignedUser,
@@ -34,6 +35,7 @@ export const searchMail = async (
         ? { value: m.bcc_address as MailAddressValueType[], text: m.bcc_text || "" }
         : undefined,
       highlight: m.highlight,
+      snippet: buildSnippet(m.text),
     });
   });
 };

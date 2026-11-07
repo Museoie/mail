@@ -114,6 +114,8 @@ describe("getMailHeaders", () => {
       saved: false,
       sent: false,
       insight: null,
+      text_prefix:
+        "The new part is here.\nOn Tue, Jan 5, 2021 at 3:00 PM, A <a@x.com> wrote:\n> quoted old part",
     };
     mockGetMailHeaders.mockResolvedValue([mailModel]);
 
@@ -125,6 +127,7 @@ describe("getMailHeaders", () => {
     expect(results[0].read).toBe(true);
     expect(results[0].saved).toBe(false);
     expect(results[0].sent).toBe(false);
+    expect(results[0].snippet).toBe("The new part is here.");
   });
 
   it("should handle null from/to addresses", async () => {

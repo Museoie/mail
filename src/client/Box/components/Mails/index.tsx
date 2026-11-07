@@ -11,6 +11,7 @@ import { MailBodyData, MailHeaderData, ReplyData } from "common";
 
 import {
   ApiResponse,
+  AccountsGetResponse,
   BodyGetResponse,
   HeadersGetResponse,
   MarkMailPostBody,
@@ -40,6 +41,7 @@ import {
 import {
   Context,
   Category,
+  Density,
   QueryCache,
   call,
   isSentMail,
@@ -50,9 +52,14 @@ import {
   formatDataAge,
   isShowingStaleData
 } from "client";
-import { AccountsCache } from "client/Box/components/Accounts";
+import {
+  AccountsCache,
+  accountsQueryUrl,
+  fetchAccounts
+} from "client/Box/components/Accounts";
 import { getMailsQueryUrl } from "./mailsQuery";
 import {
+  accountCountForCategory,
   bucketsForMail,
   evictAccountFromCategory,
   updateAccountInBuckets
@@ -79,6 +86,42 @@ export class MailsCache extends QueryCache<MailHeaderData[]> {
     super(getMailsQueryUrl(account, category));
   }
 }
+
+// List header (design doc §5): the current folder with the selected
+// account's count from the accounts buckets, plus the density toggle. The
+// count is per-account — the same doc_count / unread_doc_count the sidebar
+// already carries — not the loaded page size.
+const ListHeader = ({
+  countLabel,
+  density,
+  setDensity
+}: {
+  countLabel: string;
+  density: Density;
+  setDensity: Dispatch<SetStateAction<Density>>;
+}) => (
+  <div className="list-header">
+    <div className="list-header-count">{countLabel}</div>
+    <div className="density-toggle" role="group" aria-label="List density">
+      <button
+        type="button"
+        className={density === "comfortable" ? "active" : ""}
+        aria-pressed={density === "comfortable"}
+        onClick={() => setDensity("comfortable")}
+      >
+        Comfortable
+      </button>
+      <button
+        type="button"
+        className={density === "compact" ? "active" : ""}
+        aria-pressed={density === "compact"}
+        onClick={() => setDensity("compact")}
+      >
+        Compact
+      </button>
+    </div>
+  </div>
+);
 
 interface RenderedMailProps {
   mail: MailHeaderData;
@@ -107,6 +150,8 @@ interface RenderedMailProps {
   isWriterOpen: boolean;
   openedKebab: string;
   setOpenedKebab: Dispatch<SetStateAction<string>>;
+  density: Density;
+  isSent: boolean;
 }
 
 const RenderedMail = ({
@@ -128,7 +173,9 @@ const RenderedMail = ({
   markSavedInQueryData,
   isWriterOpen,
   openedKebab,
-  setOpenedKebab
+  setOpenedKebab,
+  density,
+  isSent
 }: RenderedMailProps) => {
   const isActive = !!activeMailId[mail.id];
 
@@ -337,6 +384,7 @@ const RenderedMail = ({
   const classes = ["mailcard"];
 
   if (!mail.read) classes.push("unread");
+  if (isActive) classes.push("active");
   if (!isWriterOpen) classes.push("shadow");
   if (mail.saved) classes.push("star");
 
@@ -390,6 +438,8 @@ const RenderedMail = ({
       <MailHeader
         mail={mail}
         isActive={isActive}
+        density={density}
+        isSent={isSent}
         onClick={onClickMailcard}
         onMouseLeave={() => setOpenedKebab("")}
       />
@@ -533,13 +583,27 @@ const RenderedMails = ({ page }: { page: number }) => {
     setReplyData,
     selectedAccount,
     selectedCategory,
-    domainName
+    domainName,
+    density,
+    setDensity
   } = useContext(Context);
 
   const [activeMailId, setActiveMailId] = useState<ActiveMailMap>({});
   const [openedKebab, setOpenedKebab] = useState("");
 
   const accountsCache = new AccountsCache();
+
+  // Subscribe to the sidebar's accounts query without fetching: the header
+  // count re-renders when the accounts data changes (including optimistic
+  // mark-read edits), and never triggers its own request.
+  const accountsQuery = useQuery<AccountsGetResponse>(
+    accountsQueryUrl,
+    fetchAccounts,
+    { enabled: false }
+  );
+
+  const containerClass =
+    "mails_container" + (density === "compact" ? " compact" : "");
 
   useEffect(() => {
     setActiveMailId({});
@@ -570,7 +634,7 @@ const RenderedMails = ({ page }: { page: number }) => {
 
   if (query.isLoading) {
     return (
-      <div className="mails_container">
+      <div className={containerClass}>
         <SkeletonMail />
         <SkeletonMail />
         <SkeletonMail />
@@ -584,7 +648,7 @@ const RenderedMails = ({ page }: { page: number }) => {
   // fall back on. The retained list is labelled by staleNotice below.
   if (query.error && !query.data) {
     return (
-      <div className="mails_container error">Mails List Request Failed</div>
+      <div className={containerClass + " error"}>Mails List Request Failed</div>
     );
   }
 
@@ -715,6 +779,31 @@ const RenderedMails = ({ page }: { page: number }) => {
     const mails = Array.isArray(query.data) ? query.data : [];
     const pagedMails = mails.slice(0, 4 + 8 * page);
 
+    // Search shows the loaded result count; every folder shows the selected
+    // account's count from the accounts buckets (null until they load, in
+    // which case the header is the category name alone).
+    const accountCount =
+      selectedCategory === Category.Search
+        ? null
+        : accountCountForCategory(
+            accountsQuery.data,
+            selectedCategory,
+            selectedAccount
+          );
+    const countLabel =
+      selectedCategory === Category.Search
+        ? `${mails.length} ${mails.length === 1 ? "result" : "results"}`
+        : accountCount
+          ? `${selectedCategory} · ${accountCount.count} ${accountCount.noun}`
+          : selectedCategory;
+    const listHeader = (
+      <ListHeader
+        countLabel={countLabel}
+        density={density}
+        setDensity={setDensity}
+      />
+    );
+
     const result = pagedMails.map((mail, i) => {
       return (
         <RenderedMail
@@ -738,6 +827,8 @@ const RenderedMails = ({ page }: { page: number }) => {
           isWriterOpen={isWriterOpen}
           openedKebab={openedKebab}
           setOpenedKebab={setOpenedKebab}
+          density={density}
+          isSent={isSentMail(mail, domainName)}
         />
       );
     });
@@ -760,7 +851,8 @@ const RenderedMails = ({ page }: { page: number }) => {
         }
       })();
       return (
-        <div className="mails_container empty">
+        <div className={containerClass + " empty"}>
+          {listHeader}
           {staleNotice}
           <p className="empty_state">{emptyMessage}</p>
         </div>
@@ -768,7 +860,8 @@ const RenderedMails = ({ page }: { page: number }) => {
     }
 
     return (
-      <div className="mails_container">
+      <div className={containerClass}>
+        {listHeader}
         {staleNotice}
         {result}
       </div>

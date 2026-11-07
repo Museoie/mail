@@ -12,6 +12,7 @@ import {
   GetMailHeadersOptions,
   MailHeaderResult,
 } from "../postgres/repositories/mails";
+import { buildSnippet } from "./snippet";
 
 export interface GetMailsOptions {
   sent: boolean;
@@ -55,6 +56,7 @@ const toMailHeaderData = (m: MailHeaderResult): MailHeaderData =>
     saved: m.saved,
     sent: m.sent,
     insight: m.insight as Insight | undefined,
+    snippet: buildSnippet(m.text_prefix),
   });
 
 export const getMailHeaders = async (

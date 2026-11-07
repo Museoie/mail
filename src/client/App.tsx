@@ -38,6 +38,11 @@ export enum Category {
   Search = "Search"
 }
 
+// List density (design doc §5): Comfortable shows the snippet at 12px row
+// padding; Compact hides it at 8px. Persisted in localStorage like the other
+// UI preferences below.
+export type Density = "comfortable" | "compact";
+
 export interface ContextType {
   viewSize: {
     width: number;
@@ -60,6 +65,8 @@ export interface ContextType {
   >;
   newMailsTotal: number;
   setNewMailsTotal: Dispatch<SetStateAction<ContextType["newMailsTotal"]>>;
+  density: Density;
+  setDensity: Dispatch<SetStateAction<ContextType["density"]>>;
 }
 
 export const Context = createContext<ContextType>({} as ContextType);
@@ -102,6 +109,11 @@ const App = ({ user: session }: Props) => {
     (v) => (v === Category.Search ? Category.AllMails : v)
   );
   const [newMailsTotal, setNewMailsTotal] = useState(0);
+  const [density, setDensity] = useLocalStorage<Density>(
+    "density",
+    "comfortable",
+    (v) => (v === "compact" ? "compact" : "comfortable")
+  );
 
   const lastRefresh = useRef(Date.now());
   const lastFocusCheck = useRef(0);
@@ -197,7 +209,9 @@ const App = ({ user: session }: Props) => {
     selectedCategory,
     setSelectedCategory,
     newMailsTotal,
-    setNewMailsTotal
+    setNewMailsTotal,
+    density,
+    setDensity
   };
 
   return (

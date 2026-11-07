@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { Account, MailHeaderData } from "common";
 import { Category } from "client";
 import {
+  accountCountForCategory,
   bucketsForMail,
   evictAccountFromCategory,
   removeAccountFromBucket,
@@ -359,6 +360,51 @@ describe("evictAccountFromCategory", () => {
 // that hand-rolls the mapping is invisible to every other assertion here — and
 // the counter it writes stays plausible until the next payload lands.
 // `getAccountStats` builds `received` under `AND is_spam = FALSE`, so a
+describe("accountCountForCategory", () => {
+  it("reads unread for New and All from the received bucket", () => {
+    expect(accountCountForCategory(data(), Category.NewMails, "me@x.com")).toEqual({
+      count: 2,
+      noun: "unread"
+    });
+    expect(accountCountForCategory(data(), Category.AllMails, "me@x.com")).toEqual({
+      count: 2,
+      noun: "unread"
+    });
+  });
+
+  it("reads saved for Saved from the received bucket", () => {
+    expect(
+      accountCountForCategory(data(), Category.SavedMails, "me@x.com")
+    ).toEqual({ count: 1, noun: "saved" });
+  });
+
+  it("reads totals for Sent and Spam from their own buckets", () => {
+    expect(
+      accountCountForCategory(data(), Category.SentMails, "me@x.com")
+    ).toEqual({ count: 5, noun: "emails" });
+    expect(
+      accountCountForCategory(data(), Category.SpamMails, "spammy@x.com")
+    ).toEqual({ count: 5, noun: "emails" });
+  });
+
+  it("returns null when the payload or the account has not loaded", () => {
+    expect(
+      accountCountForCategory(undefined, Category.AllMails, "me@x.com")
+    ).toBeNull();
+    expect(
+      accountCountForCategory(data(), Category.AllMails, "nobody@x.com")
+    ).toBeNull();
+    // A sent-only account has no received row: no count to show in All.
+    expect(
+      accountCountForCategory(
+        { received: [], sent: [makeAccount("solo@x.com")], spam: [] },
+        Category.AllMails,
+        "solo@x.com"
+      )
+    ).toBeNull();
+  });
+});
+
 // Spam-view star credited to `received` goes to the one bucket the server will
 // never count it in. Read via `Bun.file` rather than `fs`: sibling suites
 // `mock.module("fs", ...)`, which is process-global in Bun. The whole source is
