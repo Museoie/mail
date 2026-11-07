@@ -82,7 +82,7 @@ const App = ({ user: session }: Props) => {
   const [userInfo, setUserInfo] = useState(session);
   const [isAccountsOpen, setIsAccountsOpen] = useLocalStorage(
     "isAccountsOpen",
-    window.innerWidth > 750
+    window.innerWidth > 1050
   );
   const [isWriterOpen, setIsWriterOpen] = useLocalStorage(
     "isWriterOpen",
@@ -163,7 +163,7 @@ const App = ({ user: session }: Props) => {
       setSelectedAccount("");
       setSelectedCategory(Category.AllMails);
       setIsWriterOpen(false);
-      setIsAccountsOpen(window.innerWidth > 750);
+      setIsAccountsOpen(window.innerWidth > 1050);
       setReplyData({});
       setNewMailsTotal(0);
     } else {
