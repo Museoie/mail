@@ -3,11 +3,14 @@ import { Category } from "client";
 import { AccountLists, resolveSelectedAccount } from "./selectableAccounts";
 
 /**
- * Keeps `selectedAccount` on an account the current category lists — picking
- * its first one on a fresh login, and re-anchoring a name no list contains.
+ * Keeps `selectedAccount` where the user put it — picking the category's first
+ * one on a fresh login, and re-anchoring a name no list contains.
  *
- * Outside Search the value is an account key, so such a name is unreachable
- * state rather than a selection: a search term left behind by a reload out of
+ * A real account the current category cannot list stays selected: changing
+ * folders never changes the selected mailbox (design doc §8), and the mail
+ * pane shows that folder's empty state for the account. Outside Search the
+ * value is an account key, so a name no list holds is unreachable state
+ * rather than a selection: a search term left behind by a reload out of
  * Search mode, or an account whose last mail here was deleted. No row
  * highlights, the pane has nothing to render, and no affordance recovers it.
  *

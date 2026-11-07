@@ -56,10 +56,12 @@ const isKnownAccount = (
  * behind by a reload, or an account whose last mail was deleted — and it has to
  * go, or the header renders it over an empty pane with no affordance to
  * recover. A real account this category cannot show is a selection rather than
- * a phantom, so an empty category keeps it: clicking an empty tab and clicking
- * back lands where the user left off instead of on a first row. A category that
- * does list accounts re-anchors to its first one either way — some row has to
- * highlight.
+ * a phantom, so it stays: changing folders never changes the selected mailbox
+ * (design doc §8), and the mail pane shows that folder's empty state for the
+ * account instead of another account's mail. An empty selection is anchored to
+ * the category's first account — a fresh login has nothing to keep — and a
+ * phantom is re-anchored there too, which is cleanup of unreachable state
+ * rather than a switch of a user selection.
  *
  * Deciding validity and the fallback together is what keeps the caller
  * loop-free: the only account ever returned is a member of the category's own
@@ -91,6 +93,8 @@ export const resolveSelectedAccount = (
     return "";
   }
 
+  if (!selectedAccount) return listed[0].key;
+  if (isKnownAccount(selectedAccount, lists)) return null;
   return listed[0].key;
 };
 
