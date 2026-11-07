@@ -89,6 +89,21 @@ describe("buildMailHeadersQuery", () => {
     }
   });
 
+  it("selects a bounded text prefix for the list snippet, not full bodies", () => {
+    // The snippet is built from the stored plain-text body (design doc §5);
+    // the prefix keeps the headers payload small while the full body stays
+    // behind the per-mail body endpoint.
+    expect(headersSql()).toContain("left(text, 400) AS text_prefix");
+    expect(headersSql()).not.toContain("SELECT *");
+    // Pin the shape positively: a bare `text` column in the SELECT list would
+    // load full bodies for every row. The regex only matches `text` as a
+    // standalone select item — `left(text, 400)` (preceded by `(`) and
+    // `text_prefix` (followed by `_`) do not match.
+    const selectList = headersSql().match(/SELECT ([\s\S]*?) FROM mails/);
+    expect(selectList).not.toBeNull();
+    expect(selectList![1]).not.toMatch(/(?:^|,)\s*text\s*(?:,|$)/i);
+  });
+
   it("restricts the spam view to is_spam received mail", () => {
     const sql = headersSql({ spam: true });
     expect(sql).toContain("AND is_spam = TRUE AND sent = FALSE");

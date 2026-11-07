@@ -37,6 +37,9 @@ export interface MailHeaderResult {
   sent: boolean;
   is_spam: boolean;
   insight: object | null;
+  // Bounded prefix of the plain-text body the list snippet is built from
+  // (design doc §5) — not the full body.
+  text_prefix: string | null;
 }
 
 export const getMailHeaders = async (

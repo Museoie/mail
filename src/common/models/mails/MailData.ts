@@ -24,6 +24,9 @@ export interface MailHeaderDataType {
     subject?: string[];
     text?: string[];
   };
+  // One-line body preview for list rows (design doc §5), quote-stripped.
+  // Absent when the body has no unquoted content to show.
+  snippet?: string;
 }
 
 export class MailHeaderData
@@ -45,6 +48,7 @@ export class MailHeaderData
     subject?: string[];
     text?: string[];
   };
+  declare snippet?: string;
 
   constructor(data?: Partial<MailHeaderData>) {
     super(data);

@@ -121,6 +121,34 @@ export const removeAccountFromBucket = (
 });
 
 /**
+ * The list header's count for one account under `category` (design doc §5):
+ * unread for New / All, saved for Saved, total for Sent / Spam. Reads the
+ * account's row out of the bucket the category draws from — New and Saved are
+ * filtered views of `received`, so they share its bucket. Returns `null`
+ * when the accounts payload (or the account in it) has not loaded yet, so the
+ * header renders the category name alone instead of a stale zero.
+ */
+export const accountCountForCategory = (
+  data: AccountsGetResponse | undefined,
+  category: Category,
+  key: string
+): { count: number; noun: "unread" | "saved" | "emails" } | null => {
+  if (!data) return null;
+  const bucket = wholeBucketForCategory(category) ?? "received";
+  const account = data[bucket]?.find((a) => a.key === key);
+  if (!account) return null;
+  switch (category) {
+    case Category.NewMails:
+    case Category.AllMails:
+      return { count: account.unread_doc_count, noun: "unread" };
+    case Category.SavedMails:
+      return { count: account.saved_doc_count, noun: "saved" };
+    default:
+      return { count: account.doc_count, noun: "emails" };
+  }
+};
+
+/**
  * Drops the account from the bucket `category` lists, or hands `data` back
  * untouched when the category only shows a filtered view of one — the emptied
  * list there is a counter reaching zero, not the account leaving the bucket.
