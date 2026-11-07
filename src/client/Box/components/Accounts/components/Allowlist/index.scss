@@ -1,6 +1,3 @@
-@use "sass:color";
-@use "../../../../../variables" as *;
-
 .allowlist-overlay {
   position: fixed;
   inset: 0;
@@ -16,8 +13,8 @@
     max-width: 420px;
     max-height: 80vh;
     overflow-y: auto;
-    background-color: color.adjust($color-dark, $lightness: 3%);
-    color: $color-light;
+    background-color: var(--panel);
+    color: var(--textBright);
     border-radius: 12px;
     padding: 1.25rem;
     box-shadow: rgb(0 0 0 / 30%) 0 12px 40px;
@@ -37,7 +34,7 @@
     .allowlist-hint {
       margin: 0 0 1rem;
       font-size: 0.85rem;
-      color: $color-midium;
+      color: var(--textDim);
     }
 
     .allowlist-add {
@@ -48,9 +45,9 @@
         flex: 1;
         min-width: 0;
         padding: 0.5rem 0.6rem;
-        border: 1px solid color.adjust($color-dark, $lightness: 10%);
+        border: 1px solid var(--surface);
         border-radius: 8px;
-        background-color: color.adjust($color-dark, $lightness: -3%);
+        background-color: var(--bg);
         color: inherit;
         font-size: 0.9rem;
       }
@@ -59,13 +56,13 @@
     .allowlist-error {
       margin-top: 0.6rem;
       font-size: 0.8rem;
-      color: $color-point;
+      color: var(--orange);
     }
 
     .allowlist-status {
       margin-top: 1rem;
       font-size: 0.9rem;
-      color: $color-midium;
+      color: var(--textDim);
     }
 
     .allowlist-entries {
@@ -79,7 +76,7 @@
         justify-content: space-between;
         gap: 0.5rem;
         padding: 0.5rem 0;
-        border-top: 1px solid color.adjust($color-dark, $lightness: 10%);
+        border-top: 1px solid var(--surface);
 
         .pattern {
           font-size: 0.9rem;
@@ -96,7 +93,7 @@
 
     .text-button {
       background: none;
-      border: 1px solid color.adjust($color-dark, $lightness: 10%);
+      border: 1px solid var(--surface);
       border-radius: 8px;
       padding: 0.4rem 0.75rem;
       cursor: pointer;
@@ -109,8 +106,8 @@
       }
 
       &.danger {
-        color: $color-point;
-        border-color: $color-point;
+        color: var(--orange);
+        border-color: var(--orange);
       }
 
       &:focus-visible {

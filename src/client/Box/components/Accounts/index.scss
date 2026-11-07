@@ -1,34 +1,31 @@
-@use "sass:color";
-@use "../../../variables" as *;
-
 .tab-holder {
   .categories {
-    background-color: color.adjust($color-dark, $lightness: -6%);
+    background-color: var(--bg);
 
     div.clicked {
-      background-color: color.adjust($color-dark, $lightness: -2%);
+      background-color: var(--panel);
     }
   }
 
   .accounts {
-    background-color: color.adjust($color-dark, $lightness: -2%);
+    background-color: var(--panel);
 
     .sort_icon {
       > div > svg {
-        color: color.adjust($color-light, $alpha: -0.75);
+        color: color-mix(in srgb, var(--textBright) 25%, transparent);
       }
     }
 
     .sort_box {
-      background-color: color.adjust($color-dark, $lightness: 2%);
+      background-color: var(--panel);
     }
 
     .sort_select {
-      background-color: color.adjust($color-dark, $lightness: 0%);
+      background-color: var(--bg);
     }
 
     .sort_option:hover {
-      background-color: color.adjust($color-dark, $lightness: 3%);
+      background-color: var(--panel);
     }
   }
 }
@@ -251,7 +248,7 @@
       text-align: center;
       line-height: 19px;
       border-radius: 10px;
-      background-color: rgb(200, 60, 70);
+      background-color: var(--red);
       color: white;
     }
   }
@@ -265,6 +262,6 @@
   right: -8px;
   display: inline-block;
   border-radius: 4px;
-  background-color: rgb(200, 60, 70);
+  background-color: var(--red);
   color: white;
 }
