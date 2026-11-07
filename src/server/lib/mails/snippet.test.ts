@@ -30,6 +30,14 @@ describe("buildSnippet", () => {
     ).toBe("See below.");
   });
 
+  it("drops a French 'a écrit :' attribution line", () => {
+    expect(
+      buildSnippet(
+        "See below.\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n> old text"
+      )
+    ).toBe("See below.");
+  });
+
   it("stops at an Original Message separator", () => {
     expect(
       buildSnippet(
@@ -44,6 +52,22 @@ describe("buildSnippet", () => {
         "Forwarding this along.\nBegin forwarded message:\nFrom: old@x.com"
       )
     ).toBe("Forwarding this along.");
+  });
+
+  it("stops at a Gmail forwarded-message separator", () => {
+    expect(
+      buildSnippet(
+        "See below.\n---------- Forwarded message ---------\nFrom: old@x.com\nOld body"
+      )
+    ).toBe("See below.");
+  });
+
+  it("returns undefined for a forward with no added text", () => {
+    expect(
+      buildSnippet(
+        "---------- Forwarded message ---------\nFrom: old@x.com\nOld body"
+      )
+    ).toBeUndefined();
   });
 
   it("truncates long text at a word boundary with an ellipsis", () => {

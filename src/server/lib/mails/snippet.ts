@@ -10,8 +10,11 @@ export const SNIPPET_MAX_LENGTH = 160;
 
 const QUOTED_LINE = /^\s*>/;
 const WROTE_LINE = /^\s*On\b.+wrote:\s*$/;
+// French attribution line ("Le 5 janv. 2021 à 15:00, Jean <jean@x.com>
+// a écrit :") — same role as the English "On ... wrote:" line.
+const WROTE_LINE_FR = /^\s*Le\b.+a écrit\s*:\s*$/;
 const FORWARD_SEPARATOR =
-  /^(-{2,}\s*Original Message|_{2,}|Begin forwarded message)/i;
+  /^(-{2,}\s*(Original Message|Forwarded message)|_{2,}|Begin forwarded message)/i;
 
 export const buildSnippet = (
   text: string | null | undefined
@@ -22,6 +25,7 @@ export const buildSnippet = (
     if (FORWARD_SEPARATOR.test(line)) break;
     if (QUOTED_LINE.test(line)) continue;
     if (WROTE_LINE.test(line)) continue;
+    if (WROTE_LINE_FR.test(line)) continue;
     lines.push(line);
   }
   const collapsed = lines.join(" ").replace(/\s+/g, " ").trim();
