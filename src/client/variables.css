@@ -55,6 +55,7 @@
   --grayAlpha: #3334; /* semi-transparent gray */
 
   --headerHeight: 50px;
+  --bottomBarHeight: 72px;
   --navigatorHeight: 80px;
   --edgeSpace: 10px;
   --maxWidth: 950px;

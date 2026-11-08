@@ -116,11 +116,11 @@
      * dock the writer above it too so the bar (and its Compose toggle)
      * stays visible while composing. */
     .center-col {
-      padding-bottom: calc(0.5rem + 56px);
+      padding-bottom: calc(0.5rem + var(--bottomBarHeight));
     }
 
     .writer-pane {
-      bottom: 56px;
+      bottom: var(--bottomBarHeight);
     }
   }
 }

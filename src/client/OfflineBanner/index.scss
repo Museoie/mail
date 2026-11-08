@@ -3,7 +3,7 @@
  * and the shell grid fills the rest below it. A normal-flow banner would sit
  * underneath them, so the banner is itself fixed — pinned to the bottom edge,
  * above the shell (z-index 30) — which keeps it visible without reflowing
- * the pinned header/content. Below 750px the rail becomes a 56px bottom bar
+ * the pinned header/content. Below 750px the rail becomes a 72px bottom bar
  * (z-index 40), so the banner is lifted above it instead (see below).
  */
 .offline-banner {
@@ -24,13 +24,13 @@
   text-align: center;
 }
 
-/* Below 750px the rail becomes a fixed 56px bottom bar (z-index 40) that
+/* Below 750px the rail becomes a fixed 72px bottom bar (z-index 40) that
  * would paint over the banner at the bottom edge, hiding it and its Retry
  * button. Lift the banner above the bar so it stays visible and tappable
  * without covering the bar's Compose toggle. */
 @media (max-width: 750px) {
   .offline-banner {
-    bottom: 56px;
+    bottom: var(--bottomBarHeight);
     z-index: 41;
   }
 }
