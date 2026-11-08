@@ -44,7 +44,7 @@ const mountWriter = async () => {
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { QueryClient, QueryClientProvider } = await import("react-query");
-  const { Context } = await import("client");
+  const { Context, Category } = await import("client");
   const Writer = (await import("./index")).default;
 
   const queryClient = new QueryClient({
@@ -59,6 +59,12 @@ const mountWriter = async () => {
     setIsWriterOpen: () => {},
     replyData: {},
     setReplyData: () => {},
+    selectedAccount: "",
+    setSelectedAccount: () => {},
+    selectedCategory: Category.AllMails,
+    setSelectedCategory: () => {},
+    hasDraft: false,
+    setHasDraft: () => {}
   };
 
   const container = document.createElement("div");

@@ -4,6 +4,7 @@ import { schema } from "./schema";
 import { applyTransaction, createState, type EditorState, type Selection } from "./state";
 import {
   deleteBackward,
+  formatActive,
   insertHardBreak,
   insertText,
   joinBackward,
@@ -115,6 +116,35 @@ describe("marks", () => {
     expect(shape(s.doc)).toEqual({
       doc: [{ paragraph: [{ t: "a", m: ["bold"] }] }, { paragraph: [{ t: "b", m: ["bold"] }] }]
     });
+  });
+});
+
+describe("formatActive", () => {
+  const state = (d: Node, sel: Selection) => createState(schema, d, sel);
+
+  test("reports no formatting in a plain paragraph", () => {
+    expect(formatActive(state(doc(p("ab")), at(2)))).toEqual({
+      bold: false,
+      italic: false,
+      bulletList: false,
+      blockquote: false
+    });
+  });
+
+  test("reports bold and italic over a marked selection", () => {
+    const s = exec(doc(p("abcd")), { anchor: 2, head: 4 }, toggleMark("bold"));
+    expect(formatActive(s).bold).toBe(true);
+    expect(formatActive(s).italic).toBe(false);
+    const i = exec(doc(p("abcd")), { anchor: 2, head: 4 }, toggleMark("italic"));
+    expect(formatActive(i).italic).toBe(true);
+  });
+
+  test("reports list and quote from the cursor's ancestors", () => {
+    const listed = exec(doc(p("ab")), at(2), toggleList("bulletList"));
+    expect(formatActive(listed).bulletList).toBe(true);
+    const quoted = exec(doc(p("ab")), at(2), toggleWrap("blockquote"));
+    expect(formatActive(quoted).blockquote).toBe(true);
+    expect(formatActive(quoted).bulletList).toBe(false);
   });
 });
 

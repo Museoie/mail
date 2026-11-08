@@ -72,7 +72,7 @@ afterEach(() => {
   window.confirm = originalConfirm;
 });
 
-const mountAccounts = async (online = true) => {
+const mountAccounts = async (online = true, hasDraft = false) => {
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { QueryClient, QueryClientProvider } = await import("react-query");
@@ -116,7 +116,9 @@ const mountAccounts = async (online = true) => {
     newMailsTotal: 0,
     setNewMailsTotal: () => {},
     density: "comfortable",
-    setDensity: () => {}
+    setDensity: () => {},
+    hasDraft,
+    setHasDraft: () => {}
   };
 
   const container = document.createElement("div");
@@ -213,6 +215,38 @@ describe("Accounts logout placement", () => {
       const button = await waitForLogout();
       expect(button.disabled).toBe(true);
       expect(button.title).toContain("offline");
+    } finally {
+      await teardown();
+    }
+  });
+});
+
+describe("Accounts compose draft dot", () => {
+  const composeItem = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll(".categories .rail-item")).find(
+      (el) => el.textContent?.includes("Compose")
+    ) as HTMLElement;
+
+  it("shows a dot on Compose while a draft exists", async () => {
+    const { container, waitForLogout, teardown } = await mountAccounts(
+      true,
+      true
+    );
+    try {
+      await waitForLogout();
+      expect(
+        composeItem(container).querySelector(".numberBall")
+      ).not.toBeNull();
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("shows no dot without a draft", async () => {
+    const { container, waitForLogout, teardown } = await mountAccounts();
+    try {
+      await waitForLogout();
+      expect(composeItem(container).querySelector(".numberBall")).toBeNull();
     } finally {
       await teardown();
     }

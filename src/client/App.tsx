@@ -67,6 +67,9 @@ export interface ContextType {
   setNewMailsTotal: Dispatch<SetStateAction<ContextType["newMailsTotal"]>>;
   density: Density;
   setDensity: Dispatch<SetStateAction<ContextType["density"]>>;
+  /** Whether the compose form currently holds an unsent draft. */
+  hasDraft: boolean;
+  setHasDraft: Dispatch<SetStateAction<ContextType["hasDraft"]>>;
 }
 
 export const Context = createContext<ContextType>({} as ContextType);
@@ -114,6 +117,9 @@ const App = ({ user: session }: Props) => {
     "comfortable",
     (v) => (v === "compact" ? "compact" : "comfortable")
   );
+  // Draft signal for the rail Compose dot (design doc §7): owned by the
+  // Writer, which is the only component that sees the draft fields.
+  const [hasDraft, setHasDraft] = useState(false);
 
   const lastRefresh = useRef(Date.now());
   const lastFocusCheck = useRef(0);
@@ -211,7 +217,9 @@ const App = ({ user: session }: Props) => {
     newMailsTotal,
     setNewMailsTotal,
     density,
-    setDensity
+    setDensity,
+    hasDraft,
+    setHasDraft
   };
 
   return (

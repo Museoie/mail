@@ -121,7 +121,8 @@ const Accounts = ({
     isWriterOpen,
     setIsWriterOpen,
     newMailsTotal,
-    setNewMailsTotal
+    setNewMailsTotal,
+    hasDraft
   } = useContext(Context);
 
   const { isOnline } = useIsOnline();
@@ -501,6 +502,7 @@ const Accounts = ({
             >
               <WriteIcon />
               <span className="rail-label">Compose</span>
+              {hasDraft ? <div className="numberBall" /> : null}
             </div>
           </div>
           <div>

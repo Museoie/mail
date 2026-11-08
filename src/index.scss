@@ -236,25 +236,28 @@ body,
 
 .writer-content {
   &.open {
-    box-shadow:
-      2px 2px 2px var(--textBright) inset,
-      -1px -1px 2px var(--textWhite) inset;
-
+    // Dark chrome (design doc §7): the open editor used to flip the whole
+    // content area — and every descendant — to white with black text. On the
+    // dark shell that read as a white box; the editor now stays on the dark
+    // background with bright text, matching the closed state above. The
+    // quoted original keeps a surface panel so it stays distinct from the
+    // typed text. Plain-text mail reads fine here; mail HTML carrying its
+    // own inline colors keeps them (same caveat as the reading view).
     &,
     * {
-      background-color: white;
-      color: black;
+      background-color: var(--bg);
+      color: var(--textBright);
     }
     .original_message {
       &,
       * {
-        background-color: color.adjust(rgba(216, 216, 216, 1), $lightness: 12%);
+        background-color: var(--surface);
       }
 
       &:hover {
         &,
         * {
-          background-color: color.adjust(rgba(216, 216, 216, 1), $lightness: 10%);
+          background-color: var(--surfaceRaised);
         }
       }
     }

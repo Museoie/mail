@@ -511,6 +511,17 @@ export const toggleMark =
       ? unsetMark(type)(state, dispatch)
       : setMark(state.schema.mark(type))(state, dispatch);
 
+/** Which formatting controls apply at the selection, for toolbar state. */
+export const formatActive = (state: EditorState) => {
+  const $from = $(state.doc, selFrom(state.selection), state.schema);
+  return {
+    bold: markActive(state, "bold"),
+    italic: markActive(state, "italic"),
+    bulletList: $from.findDepth((n) => n.type === "bulletList") > 0,
+    blockquote: $from.findDepth((n) => n.type === "blockquote") > 0
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Block types and wrapping
 // ---------------------------------------------------------------------------
