@@ -261,6 +261,9 @@ const Accounts = ({
         // switch category as well as the account).
         if (selectedCategory === Category.Search) {
           setPage(1);
+          // Jumping to the account's folder is navigation: close the
+          // writer, like onClickCategory does.
+          setIsWriterOpen(false);
           setSelectedCategory(
             categoryForAccount(accountName, { received, sent, spam })
           );
@@ -362,9 +365,10 @@ const Accounts = ({
           // Entering search: remember the current account to restore on exit,
           // and start from an empty term so the side-tab (found accounts) and
           // the mails list stay empty until the user types a keyword.
-          // On narrow screens the accounts panel is an overlay that starts
-          // closed — open it so the search input is reachable at all.
-          if (viewSize.width <= 1050) setIsAccountsOpen(true);
+          // The panel can be closed at any width (the hamburger toggles it
+          // unconditionally), and the search input lives only in the accounts
+          // column — open the panel when closed so the input is reachable.
+          if (!isAccountsOpen) setIsAccountsOpen(true);
           preSearchAccount.current = selectedAccount;
           setSelectedCategory(e);
           setSelectedAccount("");

@@ -45,9 +45,15 @@ let originalGet: typeof call.get;
 beforeEach(() => {
   window.localStorage.clear();
   originalGet = call.get;
-  call.get = (async () => ({
+  // The search side-tab is fed by /api/mails/search-accounts/<term>, which
+  // answers an Account array — not the accounts-payload object the main
+  // accounts query answers. Route the mock by URL so a Search mount lists
+  // the found account.
+  call.get = (async (url: string) => ({
     status: "success",
-    body: accountsPayload
+    body: url.includes("/api/mails/search-accounts/")
+      ? accountsPayload.received
+      : accountsPayload
   })) as typeof call.get;
 });
 
@@ -60,6 +66,7 @@ type MountOptions = {
   writerOpen?: boolean;
   accountsOpen?: boolean;
   category?: Category;
+  selectedAccount?: string;
 };
 
 const mountAccounts = async (options: MountOptions = {}) => {
@@ -67,7 +74,8 @@ const mountAccounts = async (options: MountOptions = {}) => {
     width = 1920,
     writerOpen = false,
     accountsOpen = true,
-    category = Category.AllMails
+    category = Category.AllMails,
+    selectedAccount = ""
   } = options;
 
   const { createElement, act } = await import("react");
@@ -85,6 +93,7 @@ const mountAccounts = async (options: MountOptions = {}) => {
   const writerOpenCalls: boolean[] = [];
   const accountsOpenCalls: boolean[] = [];
   const categoryCalls: Category[] = [];
+  const selectedAccountCalls: string[] = [];
 
   // Minimum context `Accounts` reads.
   const contextValue = {
@@ -102,8 +111,10 @@ const mountAccounts = async (options: MountOptions = {}) => {
     },
     replyData: {},
     setReplyData: () => {},
-    selectedAccount: "",
-    setSelectedAccount: () => {},
+    selectedAccount: selectedAccount,
+    setSelectedAccount: (value: string) => {
+      selectedAccountCalls.push(value);
+    },
     selectedCategory: category,
     setSelectedCategory: (value: Category) => {
       categoryCalls.push(value);
@@ -167,12 +178,41 @@ const mountAccounts = async (options: MountOptions = {}) => {
     }
   };
 
+  // The side-tab account rows render once the search query resolves; poll
+  // until the row is there (or fail loudly — a missing row is the finding).
+  const clickAccountRow = async (name: string) => {
+    for (let i = 0; i < 100; i++) {
+      const row = Array.from(
+        container.querySelectorAll(".accounts .tag")
+      ).find((el) => el.textContent?.includes(name)) as
+        | HTMLElement
+        | undefined;
+      if (row) {
+        await act(async () => {
+          row.click();
+        });
+        for (let j = 0; j < 5; j++) {
+          await act(async () => {
+            await new Promise((r) => setTimeout(r, 0));
+          });
+        }
+        return;
+      }
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    throw new Error(`Account row ${name} never rendered`);
+  };
+
   return {
     container,
     writerOpenCalls,
     accountsOpenCalls,
     categoryCalls,
+    selectedAccountCalls,
     clickRailItem,
+    clickAccountRow,
     teardown: async () => {
       await act(async () => root.unmount());
       container.remove();
@@ -207,7 +247,7 @@ describe("Writer closes on navigation", () => {
   });
 });
 
-describe("Search opens the accounts panel on narrow screens", () => {
+describe("Search opens the accounts panel when closed", () => {
   it("tapping Search at 390px opens the panel and closes the writer", async () => {
     const { writerOpenCalls, accountsOpenCalls, clickRailItem, teardown } =
       await mountAccounts({
@@ -224,7 +264,7 @@ describe("Search opens the accounts panel on narrow screens", () => {
     }
   });
 
-  it("tapping Search at 1920px does not force the panel open", async () => {
+  it("tapping Search at 1920px with the panel closed opens the panel", async () => {
     const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts(
       {
         width: 1920,
@@ -234,7 +274,49 @@ describe("Search opens the accounts panel on narrow screens", () => {
     );
     try {
       await clickRailItem("Search");
+      expect(accountsOpenCalls).toContain(true);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("tapping Search at 1920px with the panel open does not call for it again", async () => {
+    const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts(
+      {
+        width: 1920,
+        writerOpen: false,
+        accountsOpen: true
+      }
+    );
+    try {
+      await clickRailItem("Search");
       expect(accountsOpenCalls).toEqual([]);
+    } finally {
+      await teardown();
+    }
+  });
+});
+
+describe("Writer closes when tapping a found account in Search", () => {
+  it("tapping a found account with the writer open closes the writer and jumps to its folder", async () => {
+    const {
+      writerOpenCalls,
+      categoryCalls,
+      selectedAccountCalls,
+      clickAccountRow,
+      teardown
+    } = await mountAccounts({
+      width: 1920,
+      writerOpen: true,
+      accountsOpen: true,
+      category: Category.Search,
+      selectedAccount: "maple"
+    });
+    try {
+      await clickAccountRow("maple");
+      expect(writerOpenCalls).toContain(false);
+      expect(categoryCalls).toContain(Category.AllMails);
+      expect(selectedAccountCalls).toContain("maple@example.com");
     } finally {
       await teardown();
     }

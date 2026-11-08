@@ -81,9 +81,8 @@
   /* Compose docks inside the grid: right: 0, width min(600px, 100%),
    * fully on-screen when open. Closed it fades out and drops out of the
    * hit-test tree (visibility: hidden) — there is no negative offset and
-   * no teaser strip to click, and no slide: the slide came from the #1112
-   * rewrite, not the old UI, and a closed pane must never cover the right
-   * 600px and block clicks. */
+   * no teaser strip to click, and no slide: a closed pane must never cover
+   * the right 600px and block clicks. */
   .writer-pane {
     position: fixed;
     top: var(--headerHeight);
