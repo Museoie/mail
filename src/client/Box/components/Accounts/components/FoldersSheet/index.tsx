@@ -68,6 +68,7 @@ const FoldersSheet = ({
             type="button"
             className="folders-sheet-close"
             aria-label="Close folders"
+            autoFocus
             onClick={onClose}
             onKeyDown={onKeyboardActivate(onClose)}
           >

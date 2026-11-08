@@ -293,7 +293,7 @@ describe("Folders entry opens the sheet", () => {
 });
 
 describe("Sheet opens above the writer", () => {
-  it("renders while the writer is open, on the dialog layer", async () => {
+  it("renders in the body portal while the writer is open", async () => {
     const { clickRailItem, waitForSheetRows, teardown } = await mountAccounts(
       { width: 390, writerOpen: true }
     );
@@ -328,8 +328,25 @@ describe("Sheet opens above the writer", () => {
   });
 });
 
+describe("Sheet takes focus on open", () => {
+  it("focus lands inside the dialog when the sheet opens", async () => {
+    const { clickRailItem, teardown } = await mountAccounts({ width: 390 });
+    try {
+      await clickRailItem("Folders");
+      // The close button autoFocuses on open, so a keyboard user tabs
+      // from inside the sheet — not through the bar behind the overlay.
+      const active = document.activeElement as HTMLElement | null;
+      expect(active).not.toBeNull();
+      expect(active?.closest(".folders-sheet")).not.toBeNull();
+      expect(active?.classList.contains("folders-sheet-close")).toBe(true);
+    } finally {
+      await teardown();
+    }
+  });
+});
+
 describe("Narrow bar shows five labeled items", () => {
-  it("the wide rail keeps its folder items and hides the Folders entry", async () => {
+  it("the wide rail renders all ten items with their labels", async () => {
     const { waitForRail, teardown } = await mountAccounts({ width: 1920 });
     try {
       const items = await waitForRail();
@@ -362,15 +379,23 @@ describe("Narrow bar shows five labeled items", () => {
     const scss = await Bun.file(
       path.join(import.meta.dir, "index.scss")
     ).text();
-    // The rules are nested in the SCSS (`&.folder-rail-item` inside
-    // `.rail-item`), so the pins match the nested form.
-    expect(scss).toMatch(
-      /&\.folder-rail-item\s*\{\s*display:\s*none;/
-    );
-    expect(scss).toMatch(
+    // Anchor the pins to the media-query block: the base (wide) rules live
+    // before `@media (max-width: 750px)`, the breakpoint rules inside it.
+    // Unanchored regexes match the rule text anywhere, so swapping the two
+    // `display` values — a complete inversion of the feature — stayed green.
+    const mediaStart = scss.indexOf("@media (max-width: 750px)");
+    expect(mediaStart).toBeGreaterThan(-1);
+    const base = scss.slice(0, mediaStart);
+    const breakpoint = scss.slice(mediaStart);
+    // Wide: the Folders entry hides; the folder items are not hidden here.
+    expect(base).toMatch(/&\.folders-rail-item\s*\{\s*display:\s*none;/);
+    expect(base).not.toMatch(/&\.folder-rail-item\s*\{\s*display:\s*none;/);
+    // ≤750px: the folder items hide and the Folders entry shows.
+    expect(breakpoint).toMatch(/&\.folder-rail-item\s*\{\s*display:\s*none;/);
+    expect(breakpoint).toMatch(
       /&\.folders-rail-item\s*\{\s*display:\s*flex;/
     );
-    expect(scss).toMatch(
+    expect(breakpoint).not.toMatch(
       /&\.folders-rail-item\s*\{\s*display:\s*none;/
     );
     expect(scss).not.toMatch(/\.rail-label\s*\{\s*display:\s*none/);
