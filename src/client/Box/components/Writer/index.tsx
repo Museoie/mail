@@ -200,7 +200,9 @@ const Writer = () => {
   ]);
 
   // The rail Compose button's draft dot (design doc §7): a draft is any
-  // filled field, editor text, or an attached quote.
+  // filled field, editor text, or an attached quote — but only user input
+  // counts. The From pre-fill writes the selected mailbox's name/sender,
+  // so those values alone must not light the dot.
   useEffect(() => {
     setHasDraft(
       hasDraftFields({
@@ -211,7 +213,9 @@ const Writer = () => {
         subject,
         sender,
         initialContent,
-        hasQuote: !!originalMessageMeta.id
+        hasQuote: !!originalMessageMeta.id,
+        prefilledName: displayNameFor(selectedAccount),
+        prefilledSender: selectedAccount.split("@")[0] || ""
       })
     );
   }, [
@@ -223,6 +227,7 @@ const Writer = () => {
     sender,
     initialContent,
     originalMessageMeta.id,
+    selectedAccount,
     setHasDraft
   ]);
 
@@ -619,6 +624,13 @@ const Writer = () => {
                       ×
                     </button>
                   </div>
+                  {originalMessage.subject ? (
+                    <blockquote className="quote-subject">
+                      {originalMessage.subject}
+                    </blockquote>
+                  ) : (
+                    <></>
+                  )}
                   <div
                     ref={quoteRef}
                     className="original_message_body"

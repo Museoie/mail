@@ -197,6 +197,15 @@
              * outside the editor document: the editor's schema drops
              * images, links and tables, so round-tripping the quote
              * through it would strip the original. */
+            .quote-subject {
+              border-left: 1px solid #cccccc;
+              padding: 0.5rem 0 0.5rem 0.5rem;
+              margin: 0.5rem 0 0 0.5rem;
+              font-weight: 600;
+              color: var(--textBright);
+              overflow-wrap: break-word;
+            }
+
             .original_message_body {
               padding: 0.5rem 0 0.5rem 0.5rem;
               margin-left: 0.5rem;

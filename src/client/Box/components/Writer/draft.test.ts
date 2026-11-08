@@ -46,4 +46,48 @@ describe("hasDraftFields", () => {
   it("is true when a quote is attached, even with empty fields", () => {
     expect(hasDraftFields({ ...empty, hasQuote: true })).toBe(true);
   });
+
+  it("ignores name/sender that still equal the pre-filled values", () => {
+    expect(
+      hasDraftFields({
+        ...empty,
+        name: "maple",
+        sender: "maple",
+        prefilledName: "maple",
+        prefilledSender: "maple"
+      })
+    ).toBe(false);
+  });
+
+  it("counts a name/sender the user changed away from the pre-fill", () => {
+    expect(
+      hasDraftFields({
+        ...empty,
+        name: "Fern",
+        prefilledName: "maple",
+        prefilledSender: "maple"
+      })
+    ).toBe(true);
+    expect(
+      hasDraftFields({
+        ...empty,
+        sender: "fern",
+        prefilledName: "maple",
+        prefilledSender: "maple"
+      })
+    ).toBe(true);
+  });
+
+  it("counts other typed fields alongside the pre-fill", () => {
+    expect(
+      hasDraftFields({
+        ...empty,
+        name: "maple",
+        sender: "maple",
+        to: "bob@example.com",
+        prefilledName: "maple",
+        prefilledSender: "maple"
+      })
+    ).toBe(true);
+  });
 });

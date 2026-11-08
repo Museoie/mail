@@ -1,5 +1,5 @@
 import { ReplyData } from "common";
-import { getDateForMailHeader } from "client";
+import { getDateForMailHeader } from "client/lib/formatters";
 
 export interface OriginalMessage {
   id: string;
