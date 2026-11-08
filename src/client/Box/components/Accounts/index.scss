@@ -131,6 +131,8 @@
 
   .accounts {
     position: relative;
+    display: flex;
+    flex-direction: column;
     height: 100%;
     width: 320px;
     overflow-y: auto;
@@ -191,12 +193,16 @@
     /* Sticky accounts footer (design doc §4): Logout lives here, at the
      * bottom of the panel, instead of in the rail — it can't be tapped by
      * accident from the bottom bar. Mirrors the sticky header above: it
-     * stays visible at the panel's bottom edge while the list scrolls. */
+     * stays visible at the panel's bottom edge while the list scrolls.
+     * `margin-top: auto` in the flex-column panel also pins it to the
+     * panel bottom when the list is too short to scroll — sticky alone
+     * leaves it in flow directly under the last account. */
     .accounts_footer {
       position: sticky;
       bottom: 0;
       z-index: 10;
       margin: 0;
+      margin-top: auto;
       background-color: var(--panel);
       border-top: 1px solid var(--divider);
 
