@@ -89,7 +89,7 @@ afterEach(() => {
   call.get = originalGet;
 });
 
-const mountMails = async () => {
+const mountMails = async (options?: { isWriterOpen?: boolean }) => {
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { QueryClient, QueryClientProvider } = await import("react-query");
@@ -108,7 +108,7 @@ const mountMails = async () => {
     setUserInfo: () => {},
     isAccountsOpen: true,
     setIsAccountsOpen: () => {},
-    isWriterOpen: false,
+    isWriterOpen: options?.isWriterOpen ?? false,
     setIsWriterOpen: () => {},
     replyData: {},
     setReplyData: () => {},
@@ -241,6 +241,86 @@ describe("reading view — close control", () => {
       const closed = mailCard(mount.container, "mail-1") as Element;
       expect(closed.querySelector(".actionRow")).toBeNull();
     } finally {
+      mount.root.unmount();
+      mount.container.remove();
+    }
+  });
+
+  it("keeps the message open on Escape while the writer is open", async () => {
+    const mount = await mountMails({ isWriterOpen: true });
+    try {
+      await openMailOne(mount);
+      await mount.act(async () => {
+        window.dispatchEvent(
+          new window.KeyboardEvent("keydown", {
+            key: "Escape",
+            bubbles: true
+          })
+        );
+      });
+      const stillOpen = mailCard(mount.container, "mail-1") as Element;
+      expect(stillOpen.querySelector(".actionRow")).not.toBeNull();
+    } finally {
+      mount.root.unmount();
+      mount.container.remove();
+    }
+  });
+
+  it("keeps the message open on Escape while typing in a field", async () => {
+    const mount = await mountMails();
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    try {
+      await openMailOne(mount);
+      input.focus();
+      await mount.act(async () => {
+        input.dispatchEvent(
+          new window.KeyboardEvent("keydown", {
+            key: "Escape",
+            bubbles: true
+          })
+        );
+      });
+      const stillOpen = mailCard(mount.container, "mail-1") as Element;
+      expect(stillOpen.querySelector(".actionRow")).not.toBeNull();
+    } finally {
+      input.remove();
+      mount.root.unmount();
+      mount.container.remove();
+    }
+  });
+
+  it("keeps the message open on Escape while a dialog overlay is open", async () => {
+    const mount = await mountMails();
+    // Stand-in for the allowlist dialog / Folders sheet: a role="dialog"
+    // overlay with its own unconditional window-level Escape handler,
+    // like the real dialogs register. The dialog opens after the message,
+    // so its handler registers after the message's — one press must close
+    // the dialog only.
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const onDialogKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dialog.remove();
+    };
+    try {
+      await openMailOne(mount);
+      document.body.appendChild(dialog);
+      window.addEventListener("keydown", onDialogKeyDown);
+      await mount.act(async () => {
+        window.dispatchEvent(
+          new window.KeyboardEvent("keydown", {
+            key: "Escape",
+            bubbles: true
+          })
+        );
+      });
+      // One press closes the dialog only; the message stays open.
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      const stillOpen = mailCard(mount.container, "mail-1") as Element;
+      expect(stillOpen.querySelector(".actionRow")).not.toBeNull();
+    } finally {
+      window.removeEventListener("keydown", onDialogKeyDown);
+      dialog.remove();
       mount.root.unmount();
       mount.container.remove();
     }

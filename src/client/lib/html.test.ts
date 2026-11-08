@@ -299,6 +299,15 @@ describe("processHtmlForViewer — output shape", () => {
     expect(out).not.toContain("rgb(70,70,70)");
   });
 
+  test("lets an author body color inherit through to descendants", () => {
+    const doc = viewerDoc(
+      `<style>body { color: red }</style><p>author red</p>`
+    );
+    const p = doc.querySelector("p") as HTMLElement;
+    // happy-dom returns the specified value, not the rgb() form.
+    expect(window.getComputedStyle(p).color).toBe("red");
+  });
+
   test("preserves benign structural content", () => {
     const doc = viewerDoc(`<h1>Title</h1><p>Para <strong>bold</strong></p><ul><li>item</li></ul>`);
     expect(doc.querySelector("h1")?.textContent).toBe("Title");

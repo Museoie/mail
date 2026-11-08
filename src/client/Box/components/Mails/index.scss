@@ -165,8 +165,6 @@
         margin-left: 8px;
       }
 
-      // Body loading skeleton (design doc §6): bars on the list's shimmer
-      // pattern, mirroring `.mailcard.skeleton div` below.
       .body-skeleton {
         margin: 8px 0;
 
@@ -210,13 +208,11 @@
       }
     }
 
-    // The open row carries the close (×) button at its top-right; clear it.
     &.active .header {
       padding-right: 36px;
       box-sizing: border-box;
     }
 
-    // Close (×) button (design doc §6): top-right of the opened message.
     .mail-close {
       position: absolute;
       top: 12px;
@@ -244,9 +240,6 @@
       }
     }
 
-    // Labeled action row (design doc §6): visible on the open message only,
-    // replacing the kebab icon row there. Budget 24px button primitive, icon
-    // + text label, wrapping on narrow screens.
     .actionRow {
       display: flex;
       flex-wrap: wrap;

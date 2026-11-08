@@ -196,13 +196,20 @@ const RenderedMail = ({
   }, [mail.id, setActiveMailId]);
 
   // Esc collapses the open message (design doc §6). The writer owns Esc
-  // while it is open, and typing in a field keeps its own Esc, so both skip
-  // this handler.
+  // while it is open, typing in a field keeps its own Esc, and an open
+  // dialog overlay (allowlist, Folders sheet) owns Esc too, so all three
+  // skip this handler.
   useEffect(() => {
     if (!isActive) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (isWriterOpen) return;
+      // A dialog overlay owns Esc while it is open — the allowlist dialog
+      // and the Folders sheet each register their own window-level Escape
+      // handler. Without this, one press closes the dialog and collapses
+      // the message behind it. Dialogs are only mounted while open, so
+      // presence in the document means one is open.
+      if (document.querySelector('[role="dialog"]')) return;
       const target = e.target as HTMLElement | null;
       if (
         target &&
