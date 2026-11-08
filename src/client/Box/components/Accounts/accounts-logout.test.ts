@@ -10,6 +10,7 @@ import {
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { Account } from "common";
 import { Category, call } from "client";
+import path from "path";
 
 // Logout lives at the bottom of the accounts panel (design doc §4), not in
 // the rail — and the move keeps the existing window.confirm gate, so an
@@ -216,6 +217,28 @@ describe("Accounts logout placement", () => {
     } finally {
       await teardown();
     }
+  });
+});
+
+describe("Accounts footer pinning", () => {
+  it("pins Logout to the panel bottom for short lists and while scrolling", async () => {
+    // happy-dom has no layout engine, so the pinning rules themselves are
+    // pinned here in the stylesheet: the panel is a flex column, the footer
+    // takes the free space with margin-top: auto (short list), and keeps
+    // position: sticky + bottom: 0 for the scrolling case. The sandbox
+    // screenshots verify the rendered result at both widths.
+    const scss = await Bun.file(
+      path.join(import.meta.dir, "index.scss")
+    ).text();
+    expect(scss).toMatch(
+      /\.accounts\s*\{[^}]*?display:\s*flex;\s*flex-direction:\s*column;/s
+    );
+    expect(scss).toMatch(
+      /\.accounts_footer\s*\{[^}]*?margin-top:\s*auto;/s
+    );
+    expect(scss).toMatch(
+      /\.accounts_footer\s*\{[^}]*?position:\s*sticky;\s*bottom:\s*0;/s
+    );
   });
 });
 
