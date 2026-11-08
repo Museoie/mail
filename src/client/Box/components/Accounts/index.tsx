@@ -261,6 +261,9 @@ const Accounts = ({
         // switch category as well as the account).
         if (selectedCategory === Category.Search) {
           setPage(1);
+          // Jumping to the account's folder is navigation: close the
+          // writer, like onClickCategory does.
+          setIsWriterOpen(false);
           setSelectedCategory(
             categoryForAccount(accountName, { received, sent, spam })
           );
@@ -352,10 +355,20 @@ const Accounts = ({
 
     const categoryComponents = Object.values(Category).map((e, i) => {
       const onClickCategory = () => {
+        // Navigating closes the writer: the writer docks over the list,
+        // so leaving it open would hide the view the tap just switched to.
+        // The draft is safe — fields persist in localStorage and the
+        // writer stays mounted when closed.
+        setIsWriterOpen(false);
+
         if (e === Category.Search) {
           // Entering search: remember the current account to restore on exit,
           // and start from an empty term so the side-tab (found accounts) and
           // the mails list stay empty until the user types a keyword.
+          // The panel can be closed at any width (the hamburger toggles it
+          // unconditionally), and the search input lives only in the accounts
+          // column — open the panel when closed so the input is reachable.
+          if (!isAccountsOpen) setIsAccountsOpen(true);
           preSearchAccount.current = selectedAccount;
           setSelectedCategory(e);
           setSelectedAccount("");
