@@ -352,10 +352,19 @@ const Accounts = ({
 
     const categoryComponents = Object.values(Category).map((e, i) => {
       const onClickCategory = () => {
+        // Navigating closes the writer: the writer docks over the list,
+        // so leaving it open would hide the view the tap just switched to.
+        // The draft is safe — fields persist in localStorage and the
+        // writer stays mounted when closed.
+        setIsWriterOpen(false);
+
         if (e === Category.Search) {
           // Entering search: remember the current account to restore on exit,
           // and start from an empty term so the side-tab (found accounts) and
           // the mails list stay empty until the user types a keyword.
+          // On narrow screens the accounts panel is an overlay that starts
+          // closed — open it so the search input is reachable at all.
+          if (viewSize.width <= 1050) setIsAccountsOpen(true);
           preSearchAccount.current = selectedAccount;
           setSelectedCategory(e);
           setSelectedAccount("");
