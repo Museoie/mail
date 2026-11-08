@@ -1,0 +1,110 @@
+/* The narrow-nav Folders sheet (design doc §4, option A): a bottom sheet
+ * listing the five folders with their unread counts. Rendered through a
+ * portal over everything — z-index 1000, the same layer as the allowlist
+ * dialog — so it opens above the writer pane (z-index 28) and the bottom
+ * bar (z-index 40) while the writer is open. The panel docks above the
+ * 72px bottom bar, like the writer pane does. */
+.folders-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+
+  .folders-sheet {
+    width: 100%;
+    max-width: 420px;
+    max-height: 70vh;
+    overflow-y: auto;
+    margin-bottom: var(--bottomBarHeight);
+    background-color: var(--panel);
+    color: var(--textBright);
+    border-radius: 12px 12px 0 0;
+    box-shadow: rgb(0 0 0 / 30%) 0 -8px 32px;
+
+    .folders-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1rem 0.5rem;
+
+      h2 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .folders-sheet-close {
+        background: none;
+        border: none;
+        padding: 0 0.25rem;
+        cursor: pointer;
+        color: inherit;
+        font-size: 1.3rem;
+        line-height: 1;
+
+        &:focus-visible {
+          outline: 2px solid currentColor;
+          outline-offset: 2px;
+          border-radius: 3px;
+        }
+      }
+    }
+
+    .folders-sheet-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 0.5rem;
+
+      .folders-sheet-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        padding: 0.5rem 1rem;
+        border-top: 1px solid var(--surface);
+        cursor: pointer;
+
+        svg {
+          height: 20px;
+          width: 20px;
+          flex-shrink: 0;
+        }
+
+        .folders-sheet-label {
+          flex: 1;
+          font-size: 16px;
+        }
+
+        /* The unread-count pill — the same red pill as the accounts panel
+         * badges, in flow at the row's right end. Shown only when the
+         * count is nonzero, like the panel badges. */
+        .numberBall {
+          position: static;
+          min-width: 20px;
+          padding: 1px 6px;
+          font-size: 16px;
+          line-height: 19px;
+          text-align: center;
+          border-radius: 10px;
+          background-color: var(--red);
+          color: white;
+        }
+
+        &:hover {
+          background-color: var(--surface);
+        }
+
+        &.clicked {
+          background-color: var(--surfaceRaised);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--blue);
+          outline-offset: -2px;
+        }
+      }
+    }
+  }
+}

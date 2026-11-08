@@ -19,9 +19,11 @@ import {
   SettingsIcon,
   InboxIcon,
   NewMailIcon,
+  FoldersIcon,
   SortDownIcon,
   SortUpIcon,
-  Allowlist
+  Allowlist,
+  FoldersSheet
 } from "./components";
 import { EmptyStarIcon, BanIcon } from "../Mails/components";
 import { SendIcon } from "../Writer/components";
@@ -54,7 +56,8 @@ import {
   accountBadgeCount,
   displayNameFor,
   duplicatedDisplayNames,
-  filterAccounts
+  filterAccounts,
+  folderBadgeCounts
 } from "./accountList";
 import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
 
@@ -105,6 +108,9 @@ const Accounts = ({
   );
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [isAllowlistOpen, setIsAllowlistOpen] = useState(false);
+  // The narrow-nav Folders sheet (design doc §4, option A): open from the
+  // bottom bar's Folders entry, which only the ≤750px bar shows.
+  const [isFoldersSheetOpen, setIsFoldersSheetOpen] = useState(false);
   // Substring filter for the accounts list (design doc §8): local view state
   // only — it never touches the selection or the folder.
   const [accountFilter, setAccountFilter] = useState("");
@@ -353,40 +359,47 @@ const Accounts = ({
       [Category.Search]: SearchIcon
     };
 
+    // Shared by the rail items and the narrow-nav Folders sheet: tapping a
+    // folder is navigation, so it closes the writer (design doc §4; the
+    // draft is safe — fields persist in localStorage and the writer stays
+    // mounted when closed).
+    const onClickCategory = (category: Category) => {
+      // Navigating closes the writer: the writer docks over the list,
+      // so leaving it open would hide the view the tap just switched to.
+      setIsWriterOpen(false);
+
+      if (category === Category.Search) {
+        // Entering search: remember the current account to restore on exit,
+        // and start from an empty term so the side-tab (found accounts) and
+        // the mails list stay empty until the user types a keyword.
+        // The panel can be closed at any width (the hamburger toggles it
+        // unconditionally), and the search input lives only in the accounts
+        // column — open the panel when closed so the input is reachable.
+        if (!isAccountsOpen) setIsAccountsOpen(true);
+        preSearchAccount.current = selectedAccount;
+        setSelectedCategory(category);
+        setSelectedAccount("");
+        return;
+      }
+
+      // Leaving search restores the pre-search account (selectedAccount
+      // currently holds the search term, so we can't read it here).
+      // Otherwise the selection is left alone: changing folders never
+      // changes the selected mailbox (design doc §8). A name no list holds
+      // is cleaned up by the anchor hook, not by re-anchoring here.
+      if (selectedCategory === Category.Search && preSearchAccount.current) {
+        setSelectedAccount(preSearchAccount.current);
+      }
+      setSelectedCategory(category);
+    };
+
     const categoryComponents = Object.values(Category).map((e, i) => {
-      const onClickCategory = () => {
-        // Navigating closes the writer: the writer docks over the list,
-        // so leaving it open would hide the view the tap just switched to.
-        // The draft is safe — fields persist in localStorage and the
-        // writer stays mounted when closed.
-        setIsWriterOpen(false);
-
-        if (e === Category.Search) {
-          // Entering search: remember the current account to restore on exit,
-          // and start from an empty term so the side-tab (found accounts) and
-          // the mails list stay empty until the user types a keyword.
-          // The panel can be closed at any width (the hamburger toggles it
-          // unconditionally), and the search input lives only in the accounts
-          // column — open the panel when closed so the input is reachable.
-          if (!isAccountsOpen) setIsAccountsOpen(true);
-          preSearchAccount.current = selectedAccount;
-          setSelectedCategory(e);
-          setSelectedAccount("");
-          return;
-        }
-
-        // Leaving search restores the pre-search account (selectedAccount
-        // currently holds the search term, so we can't read it here).
-        // Otherwise the selection is left alone: changing folders never
-        // changes the selected mailbox (design doc §8). A name no list holds
-        // is cleaned up by the anchor hook, not by re-anchoring here.
-        if (selectedCategory === Category.Search && preSearchAccount.current) {
-          setSelectedAccount(preSearchAccount.current);
-        }
-        setSelectedCategory(e);
-      };
       const classes = ["rail-item"];
       if (selectedCategory === e) classes.push("clicked");
+      // The five folder items hide on the narrow bar — the Folders entry
+      // opens them as a sheet instead (design doc §4, option A). Search
+      // stays: it is one of the narrow bar's five items.
+      if (e !== Category.Search) classes.push("folder-rail-item");
 
       const Icon = categoryIcons[e];
       const showDot =
@@ -401,8 +414,8 @@ const Accounts = ({
           role="tab"
           tabIndex={0}
           aria-selected={selectedCategory === e}
-          onClick={onClickCategory}
-          onKeyDown={onKeyboardActivate(onClickCategory)}
+          onClick={() => onClickCategory(e)}
+          onKeyDown={onKeyboardActivate(() => onClickCategory(e))}
         >
           <Icon />
           <span className="rail-label">{e.split(" ")[0]}</span>
@@ -500,10 +513,39 @@ const Accounts = ({
       setSelectedAccount("");
     };
 
+    // The Folders sheet rows (design doc §4, option A): the five folders
+    // with their badge totals from the accounts payload already in hand.
+    const sheetFolders = (
+      [
+        Category.NewMails,
+        Category.AllMails,
+        Category.SavedMails,
+        Category.SentMails,
+        Category.SpamMails
+      ] as const
+    ).map((category) => ({
+      category,
+      count: folderBadgeCounts(query.data)[category]
+    }));
+
     return (
       <div className="tab-holder">
         <div className="categories">
           <div>
+            <div
+              className="rail-item folders-rail-item"
+              role="button"
+              tabIndex={0}
+              aria-haspopup="dialog"
+              aria-expanded={isFoldersSheetOpen}
+              onClick={() => setIsFoldersSheetOpen(true)}
+              onKeyDown={onKeyboardActivate(() =>
+                setIsFoldersSheetOpen(true)
+              )}
+            >
+              <FoldersIcon />
+              <span className="rail-label">Folders</span>
+            </div>
             {categoryComponents}
             <div
               className="rail-item"
@@ -546,6 +588,14 @@ const Accounts = ({
         </div>
         {isAllowlistOpen ? (
           <Allowlist onClose={() => setIsAllowlistOpen(false)} />
+        ) : null}
+        {isFoldersSheetOpen ? (
+          <FoldersSheet
+            folders={sheetFolders}
+            selectedCategory={selectedCategory}
+            onSelectFolder={onClickCategory}
+            onClose={() => setIsFoldersSheetOpen(false)}
+          />
         ) : null}
         <div className="accounts">
           <div className="accounts_header">

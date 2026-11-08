@@ -106,6 +106,13 @@
         animation: rail-spin 1s linear infinite;
       }
 
+      /* The narrow-nav Folders entry (design doc §4, option A): only the
+       * ≤750px bottom bar shows it — the wide rail keeps the five folder
+       * items, so it stays hidden here. */
+      &.folders-rail-item {
+        display: none;
+      }
+
       /* Unread dot on the New / Spam rail items — the 8px dot, parked at
        * the icon's top-right corner. */
       .numberBall {
@@ -384,8 +391,10 @@
 }
 
 /* Below 750px the rail becomes a bottom bar (design doc §4) and the
- * accounts overlay spans the full width above it. Labels hide — nine
- * labeled items do not fit a phone width; the icons carry the items. */
+ * accounts overlay spans the full width above it. Five labeled items fit a
+ * phone width, so the labels are back — nine did not fit, which is why they
+ * hid here. The five folder items hide: the Folders entry opens them as a
+ * sheet instead (design doc §4, option A). */
 @media (max-width: 750px) {
   .tab-holder .categories {
     position: fixed;
@@ -410,8 +419,12 @@
       min-height: 0;
       padding: 6px 0;
 
-      .rail-label {
+      &.folder-rail-item {
         display: none;
+      }
+
+      &.folders-rail-item {
+        display: flex;
       }
     }
   }

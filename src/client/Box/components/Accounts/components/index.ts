@@ -6,6 +6,8 @@ export { default as LogoutIcon } from "./LogoutIcon";
 export { default as SettingsIcon } from "./SettingsIcon";
 export { default as InboxIcon } from "./InboxIcon";
 export { default as NewMailIcon } from "./NewMailIcon";
+export { default as FoldersIcon } from "./FoldersIcon";
 export { default as SortDownIcon } from "./SortDownIcon";
 export { default as SortUpIcon } from "./SortUpIcon";
 export { default as Allowlist } from "./Allowlist";
+export { default as FoldersSheet } from "./FoldersSheet";

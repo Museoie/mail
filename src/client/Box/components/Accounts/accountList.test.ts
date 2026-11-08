@@ -5,7 +5,8 @@ import {
   accountBadgeCount,
   displayNameFor,
   duplicatedDisplayNames,
-  filterAccounts
+  filterAccounts,
+  folderBadgeCounts
 } from "./accountList";
 
 const makeAccount = (key: string, unread = 0, saved = 0) =>
@@ -95,5 +96,35 @@ describe("accountBadgeCount", () => {
   it("reads saved for Saved", () => {
     const account = makeAccount("me@x.com", 3, 2);
     expect(accountBadgeCount(account, Category.SavedMails)).toBe(2);
+  });
+});
+
+describe("folderBadgeCounts", () => {
+  it("sums the badge rule over each folder's bucket", () => {
+    const data = {
+      received: [
+        makeAccount("maple@x.com", 2, 1),
+        makeAccount("fern@x.com", 1, 0)
+      ],
+      sent: [makeAccount("maple@x.com", 1, 0)],
+      spam: [makeAccount("spam@x.com", 3, 0)]
+    };
+    expect(folderBadgeCounts(data)).toEqual({
+      [Category.NewMails]: 3,
+      [Category.AllMails]: 3,
+      [Category.SavedMails]: 1,
+      [Category.SentMails]: 1,
+      [Category.SpamMails]: 3
+    });
+  });
+
+  it("returns zeros when the payload has not loaded", () => {
+    expect(folderBadgeCounts(undefined)).toEqual({
+      [Category.NewMails]: 0,
+      [Category.AllMails]: 0,
+      [Category.SavedMails]: 0,
+      [Category.SentMails]: 0,
+      [Category.SpamMails]: 0
+    });
   });
 });

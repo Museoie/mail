@@ -201,10 +201,11 @@ describe("Accounts logout placement", () => {
       expect(
         container.querySelector(".categories [aria-label='Logout']")
       ).toBeNull();
-      // Six folders + Compose + Settings + Refresh; Logout no longer counts.
+      // Six folders + Folders + Compose + Settings + Refresh; Logout no
+      // longer counts.
       expect(
         container.querySelectorAll(".categories .rail-item").length
-      ).toBe(9);
+      ).toBe(10);
     } finally {
       await teardown();
     }
