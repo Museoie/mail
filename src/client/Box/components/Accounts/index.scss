@@ -29,9 +29,11 @@
 }
 
 /* The 80px left rail (design doc §4): folders, Search, Compose on top;
- * Settings, Refresh, Logout at the bottom. Icon plus a text label under
- * each. The rail is a grid item of the shell in Box/index.scss; it never
- * hides when the accounts column collapses. */
+ * Settings, Refresh at the bottom. Icon plus a text label under
+ * each. Logout lives at the bottom of the accounts panel instead
+ * (see .accounts_footer below) so it can't be tapped by accident
+ * from the bottom bar. The rail is a grid item of the shell in
+ * Box/index.scss; it never hides when the accounts column collapses. */
 .tab-holder {
   .categories {
     width: 80px;
@@ -91,7 +93,7 @@
         outline-offset: -2px;
       }
 
-      /* Offline-disabled control (logout): dim it so it doesn't read as
+      /* Offline-disabled control: dim it so it doesn't read as
        * interactive. */
       &:disabled {
         opacity: 0.4;
@@ -184,6 +186,54 @@
       margin: 0 0.5rem 0 0;
       padding-top: 0.5rem;
       background-color: var(--panel);
+    }
+
+    /* Sticky accounts footer (design doc §4): Logout lives here, at the
+     * bottom of the panel, instead of in the rail — it can't be tapped by
+     * accident from the bottom bar. Mirrors the sticky header above: it
+     * stays visible at the panel's bottom edge while the list scrolls. */
+    .accounts_footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      margin: 0;
+      background-color: var(--panel);
+      border-top: 1px solid var(--divider);
+
+      .accounts-logout {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        color: var(--textBright);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: start;
+
+        svg {
+          height: 20px;
+          width: 20px;
+        }
+
+        &:hover {
+          background-color: var(--surface);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--blue);
+          outline-offset: -2px;
+        }
+
+        /* Offline-disabled control: dim it so it doesn't read as
+         * interactive. */
+        &:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+      }
     }
 
     .filter_box {
@@ -328,7 +378,7 @@
 }
 
 /* Below 750px the rail becomes a bottom bar (design doc §4) and the
- * accounts overlay spans the full width above it. Labels hide — ten
+ * accounts overlay spans the full width above it. Labels hide — nine
  * labeled items do not fit a phone width; the icons carry the items. */
 @media (max-width: 750px) {
   .tab-holder .categories {
@@ -338,7 +388,7 @@
     bottom: 0;
     z-index: 40;
     width: auto;
-    height: 56px;
+    height: var(--bottomBarHeight);
     flex-direction: row;
     justify-content: space-around;
     align-items: stretch;
@@ -363,7 +413,7 @@
   .tab-holder .accounts {
     left: 0;
     width: min(320px, 100%);
-    bottom: 56px;
+    bottom: var(--bottomBarHeight);
   }
 }
 

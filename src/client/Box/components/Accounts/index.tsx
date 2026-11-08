@@ -527,20 +527,6 @@ const Accounts = ({
               <RefreshIcon />
               <span className="rail-label">Refresh</span>
             </div>
-            <button
-              className="rail-item"
-              onClick={onClickLogout}
-              aria-label="Logout"
-              disabled={!isOnline}
-              title={
-                isOnline
-                  ? "Logout"
-                  : "You're offline — reconnect to log out"
-              }
-            >
-              <LogoutIcon />
-              <span className="rail-label">Logout</span>
-            </button>
           </div>
         </div>
         {isAllowlistOpen ? (
@@ -634,6 +620,23 @@ const Accounts = ({
                 No accounts match “{accountFilter}”.
               </p>
             ) : null}
+          </div>
+          <div className="accounts_footer">
+            <button
+              type="button"
+              className="accounts-logout"
+              onClick={onClickLogout}
+              aria-label="Logout"
+              disabled={!isOnline}
+              title={
+                isOnline
+                  ? "Logout"
+                  : "You're offline — reconnect to log out"
+              }
+            >
+              <LogoutIcon />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </div>
