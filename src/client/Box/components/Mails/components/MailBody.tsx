@@ -116,12 +116,27 @@ const MailBody = ({ mailId }: Props) => {
     []
   );
 
-  const loadingMessage = "Loading Mail Data...";
+  // Loading state (design doc §6): skeleton bars on the list's shimmer
+  // pattern (`.loading_animation`), not the bare "Loading Mail Data..."
+  // text. Shown both while the body fetch is in flight and while the
+  // iframe is still loading after the fetch resolves.
+  const BodyLoadingSkeleton = () => (
+    <div
+      className="body-skeleton loading_animation"
+      role="status"
+      aria-label="Loading message"
+    >
+      <div />
+      <div />
+      <div />
+      <div />
+    </div>
+  );
 
   if (query.isLoading) {
     return (
       <div className="text">
-        <div className="loading_message">{loadingMessage}</div>
+        <BodyLoadingSkeleton />
       </div>
     );
   }
@@ -264,9 +279,7 @@ const MailBody = ({ mailId }: Props) => {
 
     return (
       <div className="text">
-        <div className="loading_message">
-          {isLoadingIframe ? loadingMessage : null}
-        </div>
+        {isLoadingIframe ? <BodyLoadingSkeleton /> : null}
         {attachments.length ? (
           <div className="attachmentBox">{attachments}</div>
         ) : (

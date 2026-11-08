@@ -220,7 +220,13 @@ export const processHtmlForViewer = (html: string) => {
       font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
       "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
       "Helvetica Neue", sans-serif;
-      color: rgb(70,70,70);
+      /* Design doc §3: the viewer renders on --panel, so the normalized
+      text color is the --textBright value. CSS variables do not cross into
+      the srcdoc document, so the literal is required. Email-authored colors
+      still win: the star selector has zero specificity, so inline styles
+      and the email's own rules beat this, and only default text is
+      recolored. */
+      color: #d1d1d1;
   }
 </style>
 ${sanitized}
