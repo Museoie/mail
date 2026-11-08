@@ -320,6 +320,19 @@ describe("Writer reply quote", () => {
     }
   });
 
+  it("renders no subject blockquote for a subject-less original", async () => {
+    const { container, teardown } = await mountWriter({
+      replyData: { ...replyData, subject: "" }
+    });
+    try {
+      const quote = container.querySelector(".original_message");
+      expect(quote).not.toBeNull();
+      expect(quote!.querySelector(".quote-subject")).toBeNull();
+    } finally {
+      await teardown();
+    }
+  });
+
   it("keeps edited quote text across a re-render", async () => {
     const { act, container, rerender, teardown } = await mountWriter({
       replyData
