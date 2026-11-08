@@ -1,4 +1,5 @@
 import { Account } from "common";
+import { AccountsGetResponse } from "server";
 import { Category } from "client";
 
 /**
@@ -53,4 +54,38 @@ export const accountBadgeCount = (
 ): number => {
   if (category === Category.SavedMails) return account.saved_doc_count;
   return account.unread_doc_count;
+};
+
+/**
+ * The folder-level badge totals for the narrow-nav Folders sheet (design
+ * doc §4, option A): the same per-account rule as `accountBadgeCount` —
+ * saved for Saved, unread everywhere else — summed over the bucket each
+ * folder draws from. Reads the accounts payload already in hand; no extra
+ * fetch. New and All both draw from `received`, so they share its unread
+ * total, matching the list header's "unread" noun for both.
+ */
+export const folderBadgeCounts = (
+  data: AccountsGetResponse | undefined
+): {
+  [Category.NewMails]: number;
+  [Category.AllMails]: number;
+  [Category.SavedMails]: number;
+  [Category.SentMails]: number;
+  [Category.SpamMails]: number;
+} => {
+  const sum = (
+    accounts: Account[],
+    key: "unread_doc_count" | "saved_doc_count"
+  ) => accounts.reduce((acc, a) => acc + a[key], 0);
+  const received = data?.received ?? [];
+  const sent = data?.sent ?? [];
+  const spam = data?.spam ?? [];
+  const unreadReceived = sum(received, "unread_doc_count");
+  return {
+    [Category.NewMails]: unreadReceived,
+    [Category.AllMails]: unreadReceived,
+    [Category.SavedMails]: sum(received, "saved_doc_count"),
+    [Category.SentMails]: sum(sent, "unread_doc_count"),
+    [Category.SpamMails]: sum(spam, "unread_doc_count")
+  };
 };
