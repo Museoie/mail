@@ -102,12 +102,26 @@ const inputByPlaceholder = (container: HTMLElement, placeholder: string) =>
   ) as HTMLInputElement;
 
 const setInputValue = (el: HTMLInputElement, value: string) => {
+  // Drive the field the way real typing does: focus, then the value change
+  // with an input event and a key event. React's change-event polyfill —
+  // the path taken when react-dom was first evaluated before the DOM
+  // globals existed, so the `input` event is treated as unsupported —
+  // only notices a changed value on keyup/keydown of the focused element,
+  // so the key event keeps this working in both modes (in the normal mode
+  // the input event already fired onChange and the keyup is a no-op).
+  el.focus();
   const setter = Object.getOwnPropertyDescriptor(
     window.HTMLInputElement.prototype,
     "value"
   )!.set!;
   setter.call(el, value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(
+    new KeyboardEvent("keyup", {
+      bubbles: true,
+      key: value.slice(-1) || "a"
+    })
+  );
 };
 
 const buttonByLabel = (container: HTMLElement, label: string) =>
@@ -208,6 +222,32 @@ describe("Writer compose (design doc §7)", () => {
     }
   });
 
+  it("draft dot stays off for pre-fill alone, lights on input, clears on Discard", async () => {
+    const setHasDraftCalls: unknown[] = [];
+    const { act, container, teardown } = await mountWriter({
+      selectedAccount: "maple@example.com",
+      setHasDraft: (v: unknown) => {
+        setHasDraftCalls.push(v);
+      }
+    });
+    try {
+      // Fresh compose pre-fills From but the user typed nothing: no draft.
+      expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(false);
+      const to = inputByPlaceholder(container, "to-1@email.com, to-2@email.com");
+      await act(async () => {
+        setInputValue(to, "bob@example.com");
+      });
+      await act(async () => {});
+      expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(true);
+      await act(async () => {
+        buttonByText(container, "Discard").click();
+      });
+      expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(false);
+    } finally {
+      await teardown();
+    }
+  });
+
   it("toolbar bolds the selected text and shows the pressed state", async () => {
     const { act, container, editor, teardown } = await mountWriter();
     try {
@@ -262,6 +302,19 @@ describe("Writer reply quote", () => {
         buttonByLabel(container, "Remove quote").click();
       });
       expect(container.querySelector(".original_message")).toBeNull();
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("renders the original subject line in the quote", async () => {
+    const { container, teardown } = await mountWriter({ replyData });
+    try {
+      const quote = container.querySelector(".original_message");
+      expect(quote).not.toBeNull();
+      const subject = quote!.querySelector(".quote-subject");
+      expect(subject).not.toBeNull();
+      expect(subject!.textContent).toBe("Hello");
     } finally {
       await teardown();
     }

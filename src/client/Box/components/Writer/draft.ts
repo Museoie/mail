@@ -14,6 +14,13 @@ export interface DraftFields {
   initialContent: string;
   /** Whether a quoted original is attached to the draft. */
   hasQuote: boolean;
+  /**
+   * Values the program pre-filled for From (the selected mailbox).
+   * A name/sender that still equals its pre-filled value is not user
+   * input, so opening a fresh compose leaves the draft dot off.
+   */
+  prefilledName?: string;
+  prefilledSender?: string;
 }
 
 /** Whether editor HTML holds visible text — an empty document is `<p></p>`. */
@@ -25,14 +32,15 @@ export const editorHtmlHasText = (html: string): boolean => {
   return text.length > 0;
 };
 
+/** Whether a field holds user input — non-blank, and not just the pre-fill. */
+const hasUserInput = (value: string, prefilled?: string): boolean =>
+  value.trim().length > 0 && value !== prefilled;
+
 export const hasDraftFields = (fields: DraftFields): boolean =>
   fields.hasQuote ||
-  [
-    fields.name,
-    fields.to,
-    fields.cc,
-    fields.bcc,
-    fields.subject,
-    fields.sender
-  ].some((v) => v.trim().length > 0) ||
+  hasUserInput(fields.name, fields.prefilledName) ||
+  hasUserInput(fields.sender, fields.prefilledSender) ||
+  [fields.to, fields.cc, fields.bcc, fields.subject].some(
+    (v) => v.trim().length > 0
+  ) ||
   editorHtmlHasText(fields.initialContent);
