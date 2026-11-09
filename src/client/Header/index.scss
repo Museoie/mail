@@ -19,9 +19,28 @@
     font-size: min(max(4vw, 25px), 30px);
     text-align: center;
     margin: 0;
-    max-width: calc(100vw - 165px);
+    /* The menus are absolutely positioned, so the title must leave room
+     * for them: 72px left menu + two 72px right buttons (search, compose)
+     * + margins. */
+    max-width: calc(100vw - 240px);
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Total unread count (design doc §4/§9): the numeric total next to the
+   * title, so the count is visible without opening the accounts panel. */
+  .header-unread-count {
+    flex-shrink: 0;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    margin-left: 8px;
+    border-radius: 12px;
+    background-color: var(--red);
+    color: white;
+    font-size: 14px;
+    line-height: 24px;
+    text-align: center;
   }
 
   .menu {

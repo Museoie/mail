@@ -113,11 +113,19 @@
         display: none;
       }
 
-      /* Unread dot on the New / Spam rail items — the 8px dot, parked at
-       * the icon's top-right corner. */
+      /* Unread count on the folder rail items (design doc §5/§9) — the
+       * numeric badge, parked at the icon's top-right corner. Sized for
+       * digits: the global .numberBall is an 8px dot, so the font, line
+       * height, and horizontal padding live here. */
       .numberBall {
         top: 4px;
-        right: 20px;
+        right: 14px;
+        min-width: 16px;
+        padding: 0 4px;
+        font-size: 11px;
+        line-height: 16px;
+        text-align: center;
+        border-radius: 8px;
       }
     }
 
@@ -147,14 +155,6 @@
 
     > * {
       margin-left: 0.5rem;
-    }
-
-    .search_container {
-      input {
-        width: calc(100% - 1rem);
-        margin: 0.5rem 0.5rem 1rem 0.5rem;
-        text-align: start;
-      }
     }
 
     .tag {

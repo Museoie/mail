@@ -37,7 +37,8 @@ import {
   RobotIcon,
   BanIcon,
   CircleCheckIcon,
-  CloseIcon
+  CloseIcon,
+  SearchBox
 } from "./components";
 
 import {
@@ -710,16 +711,33 @@ interface ActiveMailMap {
   [k: string]: boolean;
 }
 
-const RenderedMails = ({ page }: { page: number }) => {
+const RenderedMails = ({
+  page,
+  account: accountProp,
+  category: categoryProp
+}: {
+  page: number;
+  /**
+   * The account and folder to list, defaulting to the selected ones. The
+   * search pre-search state passes the parked account and folder here so
+   * the list — not the landing page — shows while the search term is
+   * empty (design doc §9). Every query, cache, and handler below uses
+   * these two, never the context values directly.
+   */
+  account?: string;
+  category?: Category;
+}) => {
   const {
     isWriterOpen,
     setReplyData,
-    selectedAccount,
-    selectedCategory,
+    selectedAccount: contextAccount,
+    selectedCategory: contextCategory,
     domainName,
     density,
     setDensity
   } = useContext(Context);
+  const selectedAccount = accountProp ?? contextAccount;
+  const selectedCategory = categoryProp ?? contextCategory;
 
   const [activeMailId, setActiveMailId] = useState<ActiveMailMap>({});
   const [openedKebab, setOpenedKebab] = useState("");
@@ -1005,9 +1023,37 @@ const RenderedMails = ({ page }: { page: number }) => {
 };
 
 const Mails = ({ page }: { page: number }) => {
-  const { selectedAccount } = useContext(Context);
-  if (!selectedAccount) return <GettingStarted />;
-  else return <RenderedMails page={page} />;
+  const { selectedAccount, selectedCategory, preSearchAccount, preSearchCategory } =
+    useContext(Context);
+  const inSearch = selectedCategory === Category.Search;
+  if (!selectedAccount) {
+    // In search with no term yet, the list is the pre-search state — the
+    // parked account's folder shows under the search box (design doc §9),
+    // not the "Welcome to Inbox!" landing page. Outside search, no account
+    // still means the landing page.
+    if (inSearch && preSearchAccount.current) {
+      return (
+        <div className="mails_container">
+          <SearchBox />
+          <RenderedMails
+            page={page}
+            account={preSearchAccount.current}
+            category={preSearchCategory.current}
+          />
+        </div>
+      );
+    }
+    return <GettingStarted />;
+  }
+  if (inSearch) {
+    return (
+      <div className="mails_container">
+        <SearchBox />
+        <RenderedMails page={page} />
+      </div>
+    );
+  }
+  return <RenderedMails page={page} />;
 };
 
 export default Mails;
