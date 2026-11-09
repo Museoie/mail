@@ -19,7 +19,6 @@ import {
   FoldersIcon,
   SortDownIcon,
   SortUpIcon,
-  Allowlist,
   FoldersSheet
 } from "./components";
 import { EmptyStarIcon, BanIcon } from "../Mails/components";
@@ -98,7 +97,6 @@ const Accounts = ({
     true
   );
   const [showSortOptions, setShowSortOptions] = useState(false);
-  const [isAllowlistOpen, setIsAllowlistOpen] = useState(false);
   // The narrow-nav Folders sheet (design doc §4, option A): open from the
   // bottom bar's Folders entry, which only the ≤750px bar shows.
   const [isFoldersSheetOpen, setIsFoldersSheetOpen] = useState(false);
@@ -117,6 +115,8 @@ const Accounts = ({
     setIsAccountsOpen,
     isWriterOpen,
     setIsWriterOpen,
+    isSettingsOpen,
+    setIsSettingsOpen,
     setNewMailsTotal,
     preSearchAccount,
     enterSearch,
@@ -255,6 +255,7 @@ const Accounts = ({
           // Jumping to the account's folder is navigation: close the
           // writer, like onClickCategory does.
           setIsWriterOpen(false);
+          setIsSettingsOpen(false);
           setSelectedCategory(
             categoryForAccount(accountName, { received, sent, spam })
           );
@@ -262,6 +263,7 @@ const Accounts = ({
           if (viewSize.width <= 1050) setIsAccountsOpen(false);
           return;
         }
+        setIsSettingsOpen(false);
         if (selectedAccount !== accountName) {
           setPage(1);
           setSelectedAccount(accountName);
@@ -362,6 +364,7 @@ const Accounts = ({
       // Navigating closes the writer: the writer docks over the list,
       // so leaving it open would hide the view the tap just switched to.
       setIsWriterOpen(false);
+      setIsSettingsOpen(false);
 
       // Leaving search restores the pre-search account (selectedAccount
       // currently holds the search term, so we can't read it here).
@@ -374,9 +377,12 @@ const Accounts = ({
       setSelectedCategory(category);
     };
 
+    // While Settings is open no folder is the current view.
+    const currentFolder = isSettingsOpen ? undefined : selectedCategory;
+
     const categoryComponents = Object.values(Category).map((e, i) => {
       const classes = ["rail-item"];
-      if (selectedCategory === e) classes.push("clicked");
+      if (currentFolder === e) classes.push("clicked");
       // The five folder items hide on the narrow bar — the Folders entry
       // opens them as a sheet instead (design doc §4, option A). Search
       // stays: it is one of the narrow bar's five items.
@@ -384,12 +390,12 @@ const Accounts = ({
 
       const Icon = categoryIcons[e];
       // Numeric unread count per folder tab (design doc §5/§9) — the
-      // folder-level totals from the accounts payload. The selected tab
-      // shows no badge; it is already highlighted.
+      // folder-level totals from the accounts payload. The highlighted tab
+      // shows no badge.
       type FolderCategory = Exclude<Category, Category.Search>;
       const badgeCount =
         e === Category.Search ? 0 : folderCounts[e as FolderCategory];
-      const showBadge = e !== selectedCategory && badgeCount > 0;
+      const showBadge = e !== currentFolder && badgeCount > 0;
 
       return (
         <div
@@ -397,7 +403,7 @@ const Accounts = ({
           className={classes.join(" ")}
           role="tab"
           tabIndex={0}
-          aria-selected={selectedCategory === e}
+          aria-selected={currentFolder === e}
           onClick={() => onClickCategory(e)}
           onKeyDown={onKeyboardActivate(() => onClickCategory(e))}
         >
@@ -438,6 +444,16 @@ const Accounts = ({
       if (!isWriterOpen && isAccountsOpen && viewSize.width <= 1050)
         setIsAccountsOpen(false);
       setIsWriterOpen(!isWriterOpen);
+    };
+
+    // Opening Settings is navigation: the writer and, on narrow screens, the
+    // accounts overlay both cover the center column the page opens in.
+    const onClickSettings = () => {
+      if (!isSettingsOpen) {
+        setIsWriterOpen(false);
+        if (isAccountsOpen && viewSize.width <= 1050) setIsAccountsOpen(false);
+      }
+      setIsSettingsOpen(!isSettingsOpen);
     };
 
     // Refresh re-fetches without moving the selection: the account, folder,
@@ -531,12 +547,13 @@ const Accounts = ({
           </div>
           <div>
             <div
-              className="rail-item"
+              className={"rail-item" + (isSettingsOpen ? " clicked" : "")}
               role="button"
               tabIndex={0}
               aria-label="Settings"
-              onClick={() => setIsAllowlistOpen(true)}
-              onKeyDown={onKeyboardActivate(() => setIsAllowlistOpen(true))}
+              aria-pressed={isSettingsOpen}
+              onClick={onClickSettings}
+              onKeyDown={onKeyboardActivate(onClickSettings)}
             >
               <SettingsIcon />
               <span className="rail-label">Settings</span>
@@ -555,13 +572,10 @@ const Accounts = ({
             </div>
           </div>
         </div>
-        {isAllowlistOpen ? (
-          <Allowlist onClose={() => setIsAllowlistOpen(false)} />
-        ) : null}
         {isFoldersSheetOpen ? (
           <FoldersSheet
             folders={sheetFolders}
-            selectedCategory={selectedCategory}
+            selectedCategory={currentFolder}
             onSelectFolder={onClickCategory}
             onClose={() => setIsFoldersSheetOpen(false)}
           />

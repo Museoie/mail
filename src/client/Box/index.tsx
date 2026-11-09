@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useContext, useRef, useState } from "react";
-import { Writer, Accounts, Mails } from "./components";
+import { Writer, Accounts, Mails, Settings } from "./components";
 import { Context } from "client";
 import "./index.scss";
 
@@ -16,7 +16,8 @@ const Box = () => {
     isAccountsOpen,
     setIsAccountsOpen,
     isWriterOpen,
-    setIsWriterOpen
+    setIsWriterOpen,
+    isSettingsOpen
   } = useContext(Context);
 
   const [page, setPage] = useState(1);
@@ -41,7 +42,9 @@ const Box = () => {
       </Suspense>
       <div
         className={
-          "center-col" + (isAccountsOpen ? " lock-scroll" : "")
+          "center-col" +
+          (isAccountsOpen ? " lock-scroll" : "") +
+          (isSettingsOpen ? " behind-settings" : "")
         }
         onScroll={loadMoreNearBottom}
         ref={centerColRef}
@@ -61,6 +64,15 @@ const Box = () => {
           </Suspense>
         </div>
       </div>
+      {isSettingsOpen ? (
+        <div className="center-col settings-col">
+          <div className="center-inner">
+            <Suspense fallback={<></>}>
+              <Settings />
+            </Suspense>
+          </div>
+        </div>
+      ) : null}
       <div className={"writer-pane" + (isWriterOpen ? " open" : "")}>
         <Suspense fallback={<></>}>
           <Writer />
