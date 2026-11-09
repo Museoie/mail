@@ -3,9 +3,11 @@ import {
   createContext,
   useEffect,
   useRef,
+  useCallback,
   StrictMode,
   Dispatch,
-  SetStateAction
+  SetStateAction,
+  MutableRefObject
 } from "react";
 import { QueryClientProvider } from "react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -65,6 +67,27 @@ export interface ContextType {
   >;
   newMailsTotal: number;
   setNewMailsTotal: Dispatch<SetStateAction<ContextType["newMailsTotal"]>>;
+  /**
+   * The account and folder in effect before the current search (design doc
+   * §9): entering search parks them here so clearing the search — or leaving
+   * it for a folder — can restore them. Refs, not state: no component
+   * renders from them, they are only read at event time (clear / folder
+   * tap) and in the search pre-search branch. They do not survive a reload,
+   * by design — Category.Search is sanitized to AllMails on load.
+   */
+  preSearchAccount: MutableRefObject<string>;
+  preSearchCategory: MutableRefObject<Category>;
+  /**
+   * Enter search mode: park the current account and folder, close the
+   * writer, and start from an empty term. Shared by the rail Search tab
+   * and the header search trigger so both take the same path.
+   */
+  enterSearch: () => void;
+  /**
+   * Leave search mode via the search box's clear control: drop the term
+   * and restore the parked account and folder.
+   */
+  exitSearch: () => void;
   density: Density;
   setDensity: Dispatch<SetStateAction<ContextType["density"]>>;
   /** Whether the compose form currently holds an unsent draft. */
@@ -120,6 +143,35 @@ const App = ({ user: session }: Props) => {
   // Draft signal for the rail Compose dot (design doc §7): owned by the
   // Writer, which is the only component that sees the draft fields.
   const [hasDraft, setHasDraft] = useState(false);
+
+  // Search park (design doc §9): the account and folder in effect before
+  // the current search. Entering search stores them; clearing the search
+  // restores them. Refs — no component renders from them.
+  const preSearchAccount = useRef("");
+  const preSearchCategory = useRef(Category.AllMails);
+
+  // Shared by the rail Search tab and the header search trigger.
+  const enterSearch = useCallback(() => {
+    // Navigating closes the writer: the writer docks over the list, so
+    // leaving it open would hide the view the tap just switched to.
+    setIsWriterOpen(false);
+    preSearchAccount.current = selectedAccount;
+    preSearchCategory.current = selectedCategory;
+    setSelectedCategory(Category.Search);
+    // The term lives in selectedAccount while searching, so it starts
+    // empty — the list shows the pre-search account's mail until the user
+    // types (design doc §9: the list, not the landing page, is the
+    // pre-search state).
+    setSelectedAccount("");
+  }, [selectedAccount, selectedCategory]);
+
+  const exitSearch = useCallback(() => {
+    // Restore the parked account and folder. An empty parked account (no
+    // account was selected when search opened) stays empty — the anchor
+    // hook re-anchors it to the folder's first account on the next pass.
+    setSelectedAccount(preSearchAccount.current);
+    setSelectedCategory(preSearchCategory.current);
+  }, []);
 
   const lastRefresh = useRef(Date.now());
   const lastFocusCheck = useRef(0);
@@ -216,6 +268,10 @@ const App = ({ user: session }: Props) => {
     setSelectedCategory,
     newMailsTotal,
     setNewMailsTotal,
+    preSearchAccount,
+    preSearchCategory,
+    enterSearch,
+    exitSearch,
     density,
     setDensity,
     hasDraft,

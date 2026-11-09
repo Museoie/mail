@@ -1,4 +1,5 @@
 export { default as CloseIcon } from "./CloseIcon";
+export { default as SearchBox } from "./SearchBox";
 export { default as MailBody } from "./MailBody";
 export { default as MailHeader } from "./MailHeader";
 export { default as SkeletonMail } from "./SkeletonMail";

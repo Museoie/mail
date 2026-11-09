@@ -1,12 +1,9 @@
 import {
   useState,
-  useRef,
   useContext,
   useEffect,
   Dispatch,
-  SetStateAction,
-  ChangeEventHandler,
-  KeyboardEventHandler
+  SetStateAction
 } from "react";
 import { useQuery } from "react-query";
 
@@ -90,17 +87,11 @@ enum SortBy {
   Name = "Sort by Name"
 }
 
-let searchDelay: NodeJS.Timeout;
-
 const Accounts = ({
   setPage
 }: {
   setPage: Dispatch<SetStateAction<number>>;
 }) => {
-  const [searchInputDom, setSearchInputDom] = useState<HTMLInputElement | null>(
-    null
-  );
-  const preSearchAccount = useRef<string>("");
   const [sortBy, setSortBy] = useLocalStorage<SortBy>("sortBy", SortBy.Name);
   const [sortAscending, setSortAscending] = useLocalStorage(
     "sortAscending",
@@ -126,8 +117,9 @@ const Accounts = ({
     setIsAccountsOpen,
     isWriterOpen,
     setIsWriterOpen,
-    newMailsTotal,
     setNewMailsTotal,
+    preSearchAccount,
+    enterSearch,
     hasDraft
   } = useContext(Context);
 
@@ -183,18 +175,13 @@ const Accounts = ({
     { enabled: !!searchValue, cacheTime: 0, retry: false }
   );
 
-  // Spam is grouped per account (like received/sent); the category-tab badge
-  // sums unread across the spam accounts, mirroring how newMailsTotal sums the
-  // received accounts. Both ride the accounts payload — no extra fetch.
-  const spamUnread = (query.data?.spam ?? []).reduce(
-    (acc, e) => acc + e.unread_doc_count,
-    0
-  );
+  // The folder-level badge totals (design doc §5/§9): the same per-folder
+  // rule as the Folders sheet — saved for Saved, unread everywhere else —
+  // summed over the accounts payload already in hand. Shared by the rail
+  // folder tabs below and the narrow-nav sheet.
+  const folderCounts = folderBadgeCounts(query.data);
 
-  useEffect(() => {
-    if (searchInputDom && isAccountsOpen && !isWriterOpen)
-      searchInputDom.focus();
-  }, [searchInputDom, isAccountsOpen, isWriterOpen]);
+  const touchStartHandler = () => setShowSortOptions(false);
 
   useAnchoredSelectedAccount(
     selectedAccount,
@@ -202,8 +189,6 @@ const Accounts = ({
     query.isSuccess ? query.data : undefined,
     setSelectedAccount
   );
-
-  const touchStartHandler = () => setShowSortOptions(false);
 
   useEffect(() => {
     window.addEventListener("touchstart", touchStartHandler);
@@ -364,23 +349,19 @@ const Accounts = ({
     // draft is safe — fields persist in localStorage and the writer stays
     // mounted when closed).
     const onClickCategory = (category: Category) => {
+      if (category === Category.Search) {
+        // Entering search parks the current account and folder and starts
+        // from an empty term (design doc §9). The search box now lives in
+        // the center column, so the accounts panel no longer needs to open
+        // for the input to be reachable — opening it would cover the box
+        // at ≤1050px, where the panel is an overlay.
+        enterSearch();
+        return;
+      }
+
       // Navigating closes the writer: the writer docks over the list,
       // so leaving it open would hide the view the tap just switched to.
       setIsWriterOpen(false);
-
-      if (category === Category.Search) {
-        // Entering search: remember the current account to restore on exit,
-        // and start from an empty term so the side-tab (found accounts) and
-        // the mails list stay empty until the user types a keyword.
-        // The panel can be closed at any width (the hamburger toggles it
-        // unconditionally), and the search input lives only in the accounts
-        // column — open the panel when closed so the input is reachable.
-        if (!isAccountsOpen) setIsAccountsOpen(true);
-        preSearchAccount.current = selectedAccount;
-        setSelectedCategory(category);
-        setSelectedAccount("");
-        return;
-      }
 
       // Leaving search restores the pre-search account (selectedAccount
       // currently holds the search term, so we can't read it here).
@@ -402,10 +383,13 @@ const Accounts = ({
       if (e !== Category.Search) classes.push("folder-rail-item");
 
       const Icon = categoryIcons[e];
-      const showDot =
-        e !== selectedCategory &&
-        ((e === Category.NewMails && newMailsTotal) ||
-          (e === Category.SpamMails && spamUnread));
+      // Numeric unread count per folder tab (design doc §5/§9) — the
+      // folder-level totals from the accounts payload. The selected tab
+      // shows no badge; it is already highlighted.
+      type FolderCategory = Exclude<Category, Category.Search>;
+      const badgeCount =
+        e === Category.Search ? 0 : folderCounts[e as FolderCategory];
+      const showBadge = e !== selectedCategory && badgeCount > 0;
 
       return (
         <div
@@ -419,7 +403,9 @@ const Accounts = ({
         >
           <Icon />
           <span className="rail-label">{e.split(" ")[0]}</span>
-          {showDot ? <div className="numberBall" /> : null}
+          {showBadge ? (
+            <div className="numberBall">{badgeCount}</div>
+          ) : null}
         </div>
       );
     });
@@ -445,23 +431,6 @@ const Accounts = ({
         </div>
       );
     });
-
-    const onChangeSearch: ChangeEventHandler<HTMLInputElement> = (e) => {
-      clearTimeout(searchDelay);
-      searchDelay = setTimeout(() => {
-        setSelectedAccount(e.target.value);
-      }, 500);
-    };
-
-    const onKeyDownSearch: KeyboardEventHandler<HTMLInputElement> = (e) => {
-      if (e.key === "Enter") {
-        const target = e.target as HTMLInputElement;
-        // Search immediately instead of waiting out the debounce.
-        clearTimeout(searchDelay);
-        setSelectedAccount(target.value);
-        if (viewSize.width <= 1050) setIsAccountsOpen(false);
-      }
-    };
 
     const onClickCompose = () => {
       // One overlay at a time on narrow screens: the writer docks over the
@@ -525,7 +494,7 @@ const Accounts = ({
       ] as const
     ).map((category) => ({
       category,
-      count: folderBadgeCounts(query.data)[category]
+      count: folderCounts[category]
     }));
 
     return (
@@ -661,23 +630,6 @@ const Accounts = ({
           </div>
           </div>
           <div className="tags_container">
-            {!showSortOptions && selectedCategory === Category.Search ? (
-              <div className="search_container">
-                <div className="fieldName">
-                  <span>Search This:</span>
-                </div>
-                <input
-                  type="search"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
-                  onChange={onChangeSearch}
-                  onKeyDown={onKeyDownSearch}
-                  ref={(e) => e && setSearchInputDom(e)}
-                />
-              </div>
-            ) : null}
             {accountComponents.length ? (
               accountComponents
             ) : accountFilter ? (

@@ -31,13 +31,36 @@ const accountsPayload = {
     new Account({
       key: "maple@example.com",
       updated: new Date("2026-01-01"),
-      doc_count: 1,
-      unread_doc_count: 0,
+      doc_count: 5,
+      unread_doc_count: 3,
+      saved_doc_count: 1
+    }),
+    new Account({
+      key: "fern@example.com",
+      updated: new Date("2026-01-02"),
+      doc_count: 2,
+      unread_doc_count: 1,
       saved_doc_count: 0
     })
   ],
-  sent: [],
-  spam: []
+  sent: [
+    new Account({
+      key: "sent@example.com",
+      updated: new Date("2026-01-01"),
+      doc_count: 4,
+      unread_doc_count: 2,
+      saved_doc_count: 0
+    })
+  ],
+  spam: [
+    new Account({
+      key: "spam@example.com",
+      updated: new Date("2026-01-01"),
+      doc_count: 3,
+      unread_doc_count: 2,
+      saved_doc_count: 0
+    })
+  ]
 };
 
 let originalGet: typeof call.get;
@@ -94,6 +117,7 @@ const mountAccounts = async (options: MountOptions = {}) => {
   const accountsOpenCalls: boolean[] = [];
   const categoryCalls: Category[] = [];
   const selectedAccountCalls: string[] = [];
+  const enterSearchCalls: number[] = [];
 
   // Minimum context `Accounts` reads.
   const contextValue = {
@@ -121,6 +145,15 @@ const mountAccounts = async (options: MountOptions = {}) => {
     },
     newMailsTotal: 0,
     setNewMailsTotal: () => {},
+    preSearchAccount: { current: "" },
+    preSearchCategory: { current: Category.AllMails },
+    enterSearch: () => {
+      enterSearchCalls.push(1);
+      // The real enterSearch (App) closes the writer when entering search;
+      // the double mirrors that so the writer-close assertion is meaningful.
+      writerOpenCalls.push(false);
+    },
+    exitSearch: () => {},
     density: "comfortable",
     setDensity: () => {},
     hasDraft: false,
@@ -211,6 +244,7 @@ const mountAccounts = async (options: MountOptions = {}) => {
     accountsOpenCalls,
     categoryCalls,
     selectedAccountCalls,
+    enterSearchCalls,
     clickRailItem,
     clickAccountRow,
     teardown: async () => {
@@ -247,53 +281,92 @@ describe("Writer closes on navigation", () => {
   });
 });
 
-describe("Search opens the accounts panel when closed", () => {
-  it("tapping Search at 390px opens the panel and closes the writer", async () => {
-    const { writerOpenCalls, accountsOpenCalls, clickRailItem, teardown } =
-      await mountAccounts({
-        width: 390,
-        writerOpen: true,
-        accountsOpen: false
-      });
+describe("Search no longer opens the accounts panel", () => {
+  it("tapping Search at 390px closes the writer without opening the panel", async () => {
+    const {
+      writerOpenCalls,
+      accountsOpenCalls,
+      enterSearchCalls,
+      clickRailItem,
+      teardown
+    } = await mountAccounts({
+      width: 390,
+      writerOpen: true,
+      accountsOpen: false
+    });
     try {
       await clickRailItem("Search");
-      expect(accountsOpenCalls).toContain(true);
+      // The search box moved to the center column (design doc §9), so the
+      // input is reachable without the panel — opening the overlay would
+      // cover the box at ≤1050px. Entering search still closes the writer.
+      expect(enterSearchCalls.length).toBe(1);
+      expect(accountsOpenCalls).toEqual([]);
       expect(writerOpenCalls).toContain(false);
     } finally {
       await teardown();
     }
   });
 
-  it("tapping Search at 1920px with the panel closed opens the panel", async () => {
-    const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts(
-      {
+  it("tapping Search at 1920px with the panel closed leaves it closed", async () => {
+    const { accountsOpenCalls, enterSearchCalls, clickRailItem, teardown } =
+      await mountAccounts({
         width: 1920,
         writerOpen: false,
         accountsOpen: false
-      }
-    );
+      });
     try {
       await clickRailItem("Search");
-      expect(accountsOpenCalls).toContain(true);
-    } finally {
-      await teardown();
-    }
-  });
-
-  it("tapping Search at 1920px with the panel open does not call for it again", async () => {
-    const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts(
-      {
-        width: 1920,
-        writerOpen: false,
-        accountsOpen: true
-      }
-    );
-    try {
-      await clickRailItem("Search");
+      expect(enterSearchCalls.length).toBe(1);
       expect(accountsOpenCalls).toEqual([]);
     } finally {
       await teardown();
     }
+  });
+});
+
+describe("Folder tabs show numeric unread counts", () => {
+  const badgeFor = async (label: string, category = Category.SavedMails) => {
+    const { container, teardown } = await mountAccounts({ category });
+    try {
+      const items = await (async () => {
+        for (let i = 0; i < 100; i++) {
+          const found = container.querySelectorAll(".categories .rail-item");
+          if (found.length > 0) return found;
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        throw new Error("Rail items never rendered");
+      })();
+      const item = Array.from(items).find((el) =>
+        el.textContent?.includes(label)
+      ) as HTMLElement;
+      expect(item).not.toBeUndefined();
+      return item.querySelector(".numberBall")?.textContent ?? null;
+    } finally {
+      await teardown();
+    }
+  };
+
+  it("New and All share the received unread total", async () => {
+    // Received unread: maple 3 + fern 1 = 4.
+    expect(await badgeFor("New")).toBe("4");
+    expect(await badgeFor("All")).toBe("4");
+  });
+
+  it("Sent and Spam show their own unread totals", async () => {
+    expect(await badgeFor("Sent")).toBe("2");
+    expect(await badgeFor("Spam")).toBe("2");
+  });
+
+  it("Saved shows the saved total", async () => {
+    // Saved is the selected category in badgeFor's default mount, so it
+    // shows no badge there — mount with All selected instead.
+    expect(await badgeFor("Saved", Category.AllMails)).toBe("1");
+  });
+
+  it("the selected tab and Search show no badge", async () => {
+    // SavedMails is the selected category in badgeFor's mount.
+    expect(await badgeFor("Saved")).toBeNull();
+    expect(await badgeFor("Search")).toBeNull();
   });
 });
 

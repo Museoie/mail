@@ -365,11 +365,13 @@ svg {
     }
   }
 
-  &:hover > .iconBox svg {
+  &:hover > .iconBox svg,
+  .cursor:hover > .iconBox svg {
     height: 34px;
   }
 
-  &:active > .iconBox svg {
+  &:active > .iconBox svg,
+  .cursor:active > .iconBox svg {
     height: 32px;
   }
 }
