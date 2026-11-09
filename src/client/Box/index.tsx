@@ -1,4 +1,4 @@
-import { Suspense, UIEventHandler, useContext, useState } from "react";
+import { Suspense, useCallback, useContext, useRef, useState } from "react";
 import { Writer, Accounts, Mails } from "./components";
 import { Context } from "client";
 import "./index.scss";
@@ -20,11 +20,14 @@ const Box = () => {
   } = useContext(Context);
 
   const [page, setPage] = useState(1);
+  const centerColRef = useRef<HTMLDivElement>(null);
 
-  const onCenterScroll: UIEventHandler<HTMLDivElement> = (e) => {
-    const { scrollHeight, offsetHeight, scrollTop } = e.currentTarget;
-    if (scrollHeight - 100 <= offsetHeight + scrollTop) setPage(page + 1);
-  };
+  const loadMoreNearBottom = useCallback(() => {
+    const centerCol = centerColRef.current;
+    if (!centerCol) return;
+    const { scrollHeight, offsetHeight, scrollTop } = centerCol;
+    if (scrollHeight - 100 <= offsetHeight + scrollTop) setPage((p) => p + 1);
+  }, []);
 
   const onClickCenterCurtain = () => {
     if (!isWriterOpen) setIsAccountsOpen(false);
@@ -40,7 +43,8 @@ const Box = () => {
         className={
           "center-col" + (isAccountsOpen ? " lock-scroll" : "")
         }
-        onScroll={onCenterScroll}
+        onScroll={loadMoreNearBottom}
+        ref={centerColRef}
       >
         <div
           className={
@@ -53,7 +57,7 @@ const Box = () => {
         />
         <div className="center-inner">
           <Suspense fallback={<></>}>
-            <Mails page={page} />
+            <Mails page={page} loadMoreIfShort={loadMoreNearBottom} />
           </Suspense>
         </div>
       </div>
