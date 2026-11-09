@@ -3,23 +3,81 @@
 // Two responsibilities:
 //   1. Push notifications (badge + system notification + server-side refresh
 //      ping). Pre-existing; logic unchanged.
-//   2. Cache-first for hashed assets (`/assets/*`). After every deploy,
-//      Vite rewrites the content-hashed chunk filenames in `index.html`,
-//      so users with stale tabs holding old chunk URLs were getting
-//      `'text/html' is not a valid JavaScript MIME type.` because the SPA
-//      catch-all served `index.html` for missing chunks (#501). With the
-//      cache-first /assets/* tier here, the old chunks are served from
-//      cache and the app keeps working until the user reloads. Mirrors
-//      `budget/src/client/sw.ts` lines 63–79 (Hoie 2026-05-19).
+//   2. Cache-first for hashed assets (`/assets/*`). A deploy deletes the
+//      previous build's content-hashed files, and the SPA catch-all answers
+//      a request for one with `index.html`. The worker caches the current
+//      and the previous build, so a tab still running the previous build
+//      keeps working through one deploy.
 
 const CACHE_NAME = "mail-v1";
+const ASSET_MANIFEST = "/asset-manifest.json";
+
+const asPaths = (value) =>
+  Array.isArray(value) ? value.filter((a) => typeof a === "string") : undefined;
+
+const isCacheableAsset = (response) =>
+  response.ok && !(response.headers.get("Content-Type") || "").includes("text/html");
+
+const readJson = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
+  }
+};
+
+// The first page load bypasses this worker and unvisited route chunks are never
+// fetched, so the fetch handler alone never holds a whole build.
+const precacheBuild = async () => {
+  const response = await fetch(ASSET_MANIFEST, { cache: "no-store" });
+  if (!response.ok) return;
+  const current = asPaths(await readJson(response));
+  if (!current) return;
+
+  const cache = await caches.open(CACHE_NAME);
+  const storedResponse = await cache.match(ASSET_MANIFEST);
+  const stored = (storedResponse && (await readJson(storedResponse))) || {};
+  const storedCurrent = asPaths(stored.current) || [];
+  const isNewBuild = current.join() !== storedCurrent.join();
+  const previous = isNewBuild ? storedCurrent : asPaths(stored.previous) || [];
+  const keep = new Set([...current, ...previous]);
+
+  const requests = await cache.keys();
+  const cachedPaths = new Set(requests.map((r) => new URL(r.url).pathname));
+  await Promise.all([
+    ...current
+      .filter((a) => !cachedPaths.has(a))
+      .map((a) =>
+        fetch(a)
+          .then((r) => isCacheableAsset(r) && cache.put(a, r))
+          .catch(() => {}),
+      ),
+    ...requests
+      .filter((r) => {
+        const { pathname } = new URL(r.url);
+        return pathname.startsWith("/assets/") && !keep.has(pathname);
+      })
+      .map((r) => cache.delete(r)),
+  ]);
+
+  if (isNewBuild) {
+    await cache.put(
+      ASSET_MANIFEST,
+      new Response(JSON.stringify({ current, previous }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+};
 
 self.addEventListener("install", (event) => {
-  // Precache the SPA shell so it's available offline.
+  // Precache the SPA shell so it's available offline, and the build here
+  // rather than in activate: WebKit holds every fetch while a worker activates.
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.add("/"))
+      .then(() => precacheBuild().catch(() => {}))
       .then(() => self.skipWaiting()),
   );
 });
@@ -48,16 +106,13 @@ self.addEventListener("fetch", (event) => {
   // Cache-first for hashed assets (JS, CSS under /assets/).
   // Vite embeds a content hash in every filename, so the URL itself
   // changes when the content changes — no stale data is ever served.
-  // The cache holds whatever URLs were valid the last time the user
-  // loaded; if a deploy invalidates them, the cached copies keep the
-  // open tab working until the user reloads onto fresh HTML.
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) =>
         cache.match(request).then((cached) => {
           if (cached) return cached;
           return fetch(request).then((response) => {
-            if (response.ok) cache.put(request, response.clone());
+            if (isCacheableAsset(response)) cache.put(request, response.clone());
             return response;
           });
         }),
@@ -76,9 +131,12 @@ self.addEventListener("fetch", (event) => {
       responsePromise
         .then((response) => {
           if (response.ok) {
+            // Clone before respondWith starts reading the body, or the clone throws.
+            const shell = response.clone();
             return caches
               .open(CACHE_NAME)
-              .then((cache) => cache.put("/", response.clone()));
+              .then((cache) => cache.put("/", shell))
+              .then(() => precacheBuild().catch(() => {}));
           }
         })
         .catch(() => {}),
