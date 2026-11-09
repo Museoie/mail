@@ -165,14 +165,117 @@
         margin-left: 8px;
       }
 
+      .body-skeleton {
+        margin: 8px 0;
+
+        div {
+          height: 14px;
+          border-radius: 9px;
+          background-color: rgba(100, 100, 100, 0.2);
+          margin-bottom: 8px;
+
+          &:nth-child(1) {
+            width: 85%;
+          }
+
+          &:nth-child(2) {
+            width: 95%;
+          }
+
+          &:nth-child(3) {
+            width: 70%;
+          }
+
+          &:nth-child(4) {
+            width: 55%;
+            margin-bottom: 0;
+          }
+        }
+      }
+
       iframe {
         padding-left: 8px;
         padding-right: 8px;
-        background-color: white;
+        // Design doc §3: the body renders on --panel, not a white box. The
+        // email keeps its own colors inside the iframe; the viewer-normalized
+        // text color moves to --textBright in processHtmlForViewer, so
+        // default text stays readable on the dark panel.
+        background-color: var(--panel);
         width: 100%;
         height: 0;
         border: none;
         overflow-x: hidden;
+      }
+    }
+
+    &.active .header {
+      padding-right: 36px;
+      box-sizing: border-box;
+    }
+
+    .mail-close {
+      position: absolute;
+      top: 12px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: none;
+      border-radius: 3px;
+      background: transparent;
+      color: var(--textDim);
+      cursor: pointer;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover {
+        background-color: var(--surfaceRaised);
+        color: var(--textBright);
+      }
+    }
+
+    .actionRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0 0;
+
+      .actionButton {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        padding: 0 8px;
+        border: none;
+        border-radius: 3px;
+        background-color: var(--surface);
+        color: var(--textBright);
+        font-size: 13px;
+        cursor: pointer;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+
+        &:hover {
+          background-color: var(--surfaceRaised);
+        }
+
+        &.disabled {
+          cursor: not-allowed;
+          opacity: 0.4;
+        }
+
+        .star {
+          color: var(--orange);
+        }
       }
     }
 
@@ -223,6 +326,30 @@
         transition: 100ms;
         height: 24px;
         overflow: hidden;
+      }
+
+      // Address lines wrap instead of clipping (design doc §6): a long
+      // To/Cc list must keep its "show all" toggle visible.
+      .mailcard-small.address-list {
+        height: auto;
+        min-height: 24px;
+        overflow: visible;
+      }
+
+      .address-toggle {
+        margin-left: 6px;
+        padding: 0 6px;
+        height: 20px;
+        border: none;
+        border-radius: 3px;
+        background-color: var(--surface);
+        color: var(--blue);
+        font-size: 13px;
+        cursor: pointer;
+
+        &:hover {
+          background-color: var(--surfaceRaised);
+        }
       }
 
       .mailcard-subject {

@@ -290,6 +290,24 @@ describe("processHtmlForViewer — output shape", () => {
     expect(out).toContain("body text");
   });
 
+  // Design doc §3: the viewer renders on --panel, so the normalized default
+  // text color is the --textBright value (#d1d1d1), not the old dark grey
+  // that was only readable on the white iframe background.
+  test("normalizes default text to the dark-panel text color", () => {
+    const out = processHtmlForViewer(`<p>body text</p>`);
+    expect(out).toContain("color: #d1d1d1");
+    expect(out).not.toContain("rgb(70,70,70)");
+  });
+
+  test("lets an author body color inherit through to descendants", () => {
+    const doc = viewerDoc(
+      `<style>body { color: red }</style><p>author red</p>`
+    );
+    const p = doc.querySelector("p") as HTMLElement;
+    // happy-dom returns the specified value, not the rgb() form.
+    expect(window.getComputedStyle(p).color).toBe("red");
+  });
+
   test("preserves benign structural content", () => {
     const doc = viewerDoc(`<h1>Title</h1><p>Para <strong>bold</strong></p><ul><li>item</li></ul>`);
     expect(doc.querySelector("h1")?.textContent).toBe("Title");

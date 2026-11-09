@@ -214,13 +214,21 @@ export const processHtmlForViewer = (html: string) => {
       margin: 0;
       overflow: hidden;
       width: 100%;
-      height: 100%
+      height: 100%;
+      /* Design doc §3: the viewer renders on --panel, so the normalized
+      text color is the --textBright value. CSS variables do not cross into
+      the srcdoc document, so the literal is required. The color lives on
+      body, not the star selector: a directly-applied rule beats an
+      inherited value, so the star selector would defeat container-set
+      author colors (e.g. body { color: red }). On body, author colors
+      inherit through and only default text is recolored — inline styles
+      and the email's own directly-targeted rules still win. */
+      color: #d1d1d1;
   }
   * {
       font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
       "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
       "Helvetica Neue", sans-serif;
-      color: rgb(70,70,70);
   }
 </style>
 ${sanitized}

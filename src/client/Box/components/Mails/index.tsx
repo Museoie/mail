@@ -2,6 +2,7 @@ import {
   useState,
   useContext,
   useEffect,
+  useCallback,
   Dispatch,
   SetStateAction
 } from "react";
@@ -35,7 +36,8 @@ import {
   SolidStarIcon,
   RobotIcon,
   BanIcon,
-  CircleCheckIcon
+  CircleCheckIcon,
+  CloseIcon
 } from "./components";
 
 import {
@@ -185,6 +187,44 @@ const RenderedMail = ({
 
   const queryClient = useQueryClient();
 
+  const onClickClose = useCallback(() => {
+    setActiveMailId((current) => {
+      const next = { ...current };
+      delete next[mail.id];
+      return next;
+    });
+  }, [mail.id, setActiveMailId]);
+
+  // Esc collapses the open message (design doc §6). The writer owns Esc
+  // while it is open, typing in a field keeps its own Esc, and an open
+  // dialog overlay (allowlist, Folders sheet) owns Esc too, so all three
+  // skip this handler.
+  useEffect(() => {
+    if (!isActive) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (isWriterOpen) return;
+      // A dialog overlay owns Esc while it is open — the allowlist dialog
+      // and the Folders sheet each register their own window-level Escape
+      // handler. Without this, one press closes the dialog and collapses
+      // the message behind it. Dialogs are only mounted while open, so
+      // presence in the document means one is open.
+      if (document.querySelector('[role="dialog"]')) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      )
+        return;
+      onClickClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isActive, isWriterOpen, onClickClose]);
+
   const onClickOpenInNewTab = async () => {
     const queryUrl = `/api/mails/body/${mail.id}`;
     const getMail = () =>
@@ -229,9 +269,7 @@ const RenderedMail = ({
 
   const onClickMailcard = () => {
     if (isActive) {
-      const clonedActiveMailId = { ...activeMailId };
-      delete clonedActiveMailId[mail.id];
-      setActiveMailId(clonedActiveMailId);
+      onClickClose();
     } else {
       // Auto-mark-read is a side effect of opening, not a user-clicked
       // control — so gate the request itself when offline rather than
@@ -443,6 +481,17 @@ const RenderedMail = ({
         onClick={onClickMailcard}
         onMouseLeave={() => setOpenedKebab("")}
       />
+      {isActive && (
+        <button
+          type="button"
+          className="mail-close"
+          title="Close"
+          aria-label="Close message"
+          onClick={onClickClose}
+        >
+          <CloseIcon />
+        </button>
+      )}
       {isSummaryOpen && (
         <div className="insight">
           {!!summary?.length && (
@@ -458,10 +507,89 @@ const RenderedMail = ({
         </div>
       )}
       {isActive ? (
+        <div className="actionRow" role="toolbar" aria-label="Message actions">
+          {summary?.length || actionItems?.length ? (
+            <button
+              type="button"
+              className="actionButton cursor"
+              title={isSummaryOpen ? "Hide summary" : "Show summary"}
+              aria-expanded={isSummaryOpen}
+              onClick={onClickRobot}
+            >
+              <RobotIcon />
+              <span>Summary</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="actionButton cursor"
+            title="Reply"
+            onClick={onClickReply}
+          >
+            <ReplyIcon />
+            <span>Reply</span>
+          </button>
+          <button
+            type="button"
+            className="actionButton cursor"
+            title="Forward"
+            onClick={onClickShare}
+          >
+            <ShareIcon />
+            <span>Forward</span>
+          </button>
+          <button
+            type="button"
+            className={"actionButton cursor" + offlineClass}
+            title={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
+            onClick={onClickStar}
+          >
+            {mail.saved ? (
+              <SolidStarIcon className="star" />
+            ) : (
+              <EmptyStarIcon />
+            )}
+            <span>{mail.saved ? "Unsave" : "Save"}</span>
+          </button>
+          <button
+            type="button"
+            className="actionButton cursor"
+            title="Open this email body in a new tab"
+            onClick={onClickOpenInNewTab}
+          >
+            <NewTabIcon />
+            <span>Open in new tab</span>
+          </button>
+          {canToggleSpam ? (
+            <button
+              type="button"
+              className={"actionButton cursor" + offlineClass}
+              title={
+                offlineTitle ?? (isSpamView ? "Not spam" : "Mark as spam")
+              }
+              onClick={onClickSpam}
+            >
+              {isSpamView ? <CircleCheckIcon /> : <BanIcon />}
+              <span>{isSpamView ? "Not spam" : "Mark spam"}</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={"actionButton cursor" + offlineClass}
+            title={offlineTitle ?? "Delete"}
+            onClick={onClickTrash}
+          >
+            <TrashIcon />
+            <span>Delete</span>
+          </button>
+        </div>
+      ) : null}
+      {isActive ? (
         <MailBody mailId={mail.id} />
       ) : searchHighlight ? (
         <div className="search_highlight">{searchHighlight}</div>
       ) : null}
+      {!isActive && (
       <div
         className={
           "actionBox" +
@@ -474,7 +602,7 @@ const RenderedMail = ({
             <div
               key="star"
               className={"iconBox cursor" + offlineClass}
-              title={offlineTitle}
+              title={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
               onClick={onClickStar}
               onTouchStart={(e) => e.stopPropagation()}
               onMouseEnter={() => setOpenedKebab(mail.id)}
@@ -498,6 +626,7 @@ const RenderedMail = ({
             <div
               key="reply"
               className="iconBox cursor"
+              title="Reply"
               onClick={onClickReply}
               onTouchStart={(e) => e.stopPropagation()}
               onMouseEnter={() => setOpenedKebab(mail.id)}
@@ -507,6 +636,7 @@ const RenderedMail = ({
             <div
               key="share"
               className="iconBox cursor"
+              title="Forward"
               onClick={onClickShare}
               onTouchStart={(e) => e.stopPropagation()}
               onMouseEnter={() => setOpenedKebab(mail.id)}
@@ -530,7 +660,7 @@ const RenderedMail = ({
             <div
               key="trash"
               className={"iconBox cursor" + offlineClass}
-              title={offlineTitle}
+              title={offlineTitle ?? "Delete"}
               onClick={onClickTrash}
               onTouchStart={(e) => e.stopPropagation()}
               onMouseEnter={() => setOpenedKebab(mail.id)}
@@ -544,6 +674,7 @@ const RenderedMail = ({
               <div
                 key="robot"
                 className="iconBox cursor"
+                title={isSummaryOpen ? "Hide summary" : "Show summary"}
                 onClick={onClickRobot}
               >
                 <RobotIcon />
@@ -553,7 +684,7 @@ const RenderedMail = ({
               <div
                 key="star"
                 className={"iconBox cursor" + offlineClass}
-                title={offlineTitle}
+                title={offlineTitle ?? "Unsave"}
                 onClick={onClickStar}
               >
                 <SolidStarIcon className="star" />
@@ -562,6 +693,7 @@ const RenderedMail = ({
             <div
               key="kebab"
               className="iconBox cursor"
+              title="More actions"
               onClick={() => setOpenedKebab(mail.id)}
             >
               <KebabIcon />
@@ -569,6 +701,7 @@ const RenderedMail = ({
           </>
         )}
       </div>
+      )}
     </blockquote>
   );
 };

@@ -1,6 +1,9 @@
-import { ComponentProps } from "react";
+import { ComponentProps, useState } from "react";
 import { getDateForMailHeader, onKeyboardActivate, Density } from "client";
-import { MailAddressValueType, MailHeaderData } from "common";
+import {
+  MailAddressType,
+  MailHeaderData
+} from "common";
 
 export interface MailHeaderProps extends Omit<
   ComponentProps<"div">,
@@ -12,6 +15,47 @@ export interface MailHeaderProps extends Omit<
   isSent: boolean;
   onClick?: () => void;
 }
+
+// Long address lists collapse after the first two (design doc §6), with a
+// "show all" toggle. The toggle lives inside the header's clickable row, so
+// it stops propagation on click AND keydown: without the keydown stop, Enter
+// or Space on the button would bubble to the header's onKeyboardActivate and
+// collapse the message instead of expanding the list.
+const AddressList = ({
+  label,
+  address
+}: {
+  label: string;
+  address?: MailAddressType;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const raw = address?.value;
+  const values = (Array.isArray(raw) ? raw : raw ? [raw] : [])
+    .map((e) => e?.name || e?.address)
+    .filter((e): e is string => !!e);
+  if (!values.length) return <></>;
+  const shown =
+    expanded || values.length <= 2 ? values : values.slice(0, 2);
+  return (
+    <div className="mailcard-small content address-list">
+      {label + ": " + shown.join(", ")}
+      {values.length > 2 && (
+        <button
+          type="button"
+          className="address-toggle"
+          aria-expanded={expanded}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {expanded ? "show fewer" : `show all ${values.length}`}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const MailHeader = (props: MailHeaderProps) => {
   const { mail, isActive, density, isSent, onClick, onMouseLeave } = props;
@@ -75,30 +119,11 @@ const MailHeader = (props: MailHeaderProps) => {
       <div className="mailcard-small content">
         {date}, {time}
       </div>
-      <div className="mailcard-small content">
-        {"from: " +
-          mail?.from?.value?.map((e) => e?.name || e?.address).join(", ")}
-      </div>
-      <div className="mailcard-small content">
-        {"to: " + mail?.to?.value?.map((e) => e?.name || e?.address).join(", ")}
-      </div>
-      {cc && cc.value ? (
-        <div className="mailcard-small content">
-          {"cc: " +
-            (cc.value as MailAddressValueType[])
-              .map((e) => e?.name || e?.address)
-              .join(", ")}
-        </div>
-      ) : (
-        <></>
-      )}
+      <AddressList label="from" address={mail.from} />
+      <AddressList label="to" address={mail.to} />
+      {cc && cc.value ? <AddressList label="cc" address={cc} /> : <></>}
       {bcc && bcc.value ? (
-        <div className="mailcard-small content">
-          {"bcc: " +
-            (bcc.value as MailAddressValueType[])
-              .map((e) => e?.name || e?.address)
-              .join(", ")}
-        </div>
+        <AddressList label="bcc" address={bcc} />
       ) : (
         <></>
       )}
