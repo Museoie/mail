@@ -399,7 +399,6 @@ const RenderedMail = ({
 
   if (!mail.read) classes.push("unread");
   if (isActive) classes.push("active");
-  if (!isWriterOpen) classes.push("shadow");
   if (mail.saved) classes.push("star");
 
   let searchHighlight;

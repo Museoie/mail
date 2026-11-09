@@ -102,10 +102,6 @@ export interface ContextType {
 
 export const Context = createContext<ContextType>({} as ContextType);
 
-export interface UserInfoType {
-  username: string;
-}
-
 interface Props {
   user?: SignedUser;
 }
