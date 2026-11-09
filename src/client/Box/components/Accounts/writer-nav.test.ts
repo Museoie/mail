@@ -149,9 +149,6 @@ const mountAccounts = async (options: MountOptions = {}) => {
     preSearchCategory: { current: Category.AllMails },
     enterSearch: () => {
       enterSearchCalls.push(1);
-      // The real enterSearch (App) closes the writer when entering search;
-      // the double mirrors that so the writer-close assertion is meaningful.
-      writerOpenCalls.push(false);
     },
     exitSearch: () => {},
     density: "comfortable",
@@ -281,27 +278,25 @@ describe("Writer closes on navigation", () => {
   });
 });
 
+// The writer-close on search entry is covered by the real App test in
+// `src/client/search-reentry.test.ts` ("entering search closes the writer"),
+// not here: this file's `enterSearch` is a stub, so an assertion on it
+// would only test the double itself.
 describe("Search no longer opens the accounts panel", () => {
-  it("tapping Search at 390px closes the writer without opening the panel", async () => {
-    const {
-      writerOpenCalls,
-      accountsOpenCalls,
-      enterSearchCalls,
-      clickRailItem,
-      teardown
-    } = await mountAccounts({
-      width: 390,
-      writerOpen: true,
-      accountsOpen: false
-    });
+  it("tapping Search at 390px does not open the panel", async () => {
+    const { accountsOpenCalls, enterSearchCalls, clickRailItem, teardown } =
+      await mountAccounts({
+        width: 390,
+        writerOpen: false,
+        accountsOpen: false
+      });
     try {
       await clickRailItem("Search");
       // The search box moved to the center column (design doc §9), so the
       // input is reachable without the panel — opening the overlay would
-      // cover the box at ≤1050px. Entering search still closes the writer.
+      // cover the box at ≤1050px.
       expect(enterSearchCalls.length).toBe(1);
       expect(accountsOpenCalls).toEqual([]);
-      expect(writerOpenCalls).toContain(false);
     } finally {
       await teardown();
     }

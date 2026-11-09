@@ -80,7 +80,9 @@ export interface ContextType {
   /**
    * Enter search mode: park the current account and folder, close the
    * writer, and start from an empty term. Shared by the rail Search tab
-   * and the header search trigger so both take the same path.
+   * and the header search trigger so both take the same path. Re-entering
+   * while already in search leaves the parked account, folder, and term
+   * alone — only the writer still closes.
    */
   enterSearch: () => void;
   /**
@@ -155,6 +157,10 @@ const App = ({ user: session }: Props) => {
     // Navigating closes the writer: the writer docks over the list, so
     // leaving it open would hide the view the tap just switched to.
     setIsWriterOpen(false);
+    // Re-entering while already searching must not re-park: the live term
+    // sits in selectedAccount, so parking again would store the term as
+    // the pre-search account and clear would restore search itself.
+    if (selectedCategory === Category.Search) return;
     preSearchAccount.current = selectedAccount;
     preSearchCategory.current = selectedCategory;
     setSelectedCategory(Category.Search);
