@@ -23,6 +23,7 @@ import {
 import { verifyPassword } from "./verify-password";
 import { addressToUsername, getUserDomain, isLocalAddress } from "./util";
 import { sendAlarm } from "./alarm";
+import { isPeerCertRejection } from "./peer-cert-rejection";
 import { logger } from "./logger";
 import { getTlsCredentials } from "./tls";
 import { registerSmtpServer, unregisterSmtpServer } from "./smtp-registry";
@@ -52,23 +53,6 @@ const isTlsLayerError = (err: Error): boolean => {
   return library === "SSL routines" || (typeof code === "string" && code.startsWith("ERR_SSL_"));
 };
 
-// A peer rejecting our certificate (expired, wrong hostname, unknown CA) is a
-// server-side defect even though it surfaces as a TLS-layer error, so it pages.
-const PEER_CERT_REJECTION_ALERTS = [
-  "ALERT_BAD_CERTIFICATE",
-  "ALERT_UNSUPPORTED_CERTIFICATE",
-  "ALERT_CERTIFICATE_REVOKED",
-  "ALERT_CERTIFICATE_EXPIRED",
-  "ALERT_CERTIFICATE_UNKNOWN",
-  "ALERT_UNKNOWN_CA"
-];
-
-const isPeerCertRejection = (err: Error): boolean => {
-  const { reason } = err as Error & { reason?: string };
-  const text = `${reason ?? ""} ${err.message ?? ""}`.toUpperCase().replace(/ /g, "_");
-  return PEER_CERT_REJECTION_ALERTS.some((alert) => text.includes(alert));
-};
-
 // A remote client dropping or stalling its connection. Matched by syscall and
 // errno code because the message differs by runtime ("read ETIMEDOUT" on Node,
 // "ETIMEDOUT: connection timed out, read" on Bun).
@@ -82,6 +66,15 @@ const PEER_DROP_SYSCALL_ERRORS = new Set([
 const isPeerDropError = (err: Error): boolean => {
   const { syscall, code } = err as Error & { syscall?: string; code?: string };
   return PEER_DROP_SYSCALL_ERRORS.has(`${syscall} ${code}`);
+};
+
+// Handshake failures carry the peer in meta; session errors set it on the error.
+const peerAddress = (err: Error): string | undefined => {
+  const { meta, remoteAddress } = err as Error & {
+    meta?: { remoteAddress?: string };
+    remoteAddress?: string;
+  };
+  return meta?.remoteAddress ?? remoteAddress;
 };
 
 const registerListeners = (
@@ -143,10 +136,12 @@ const registerListeners = (
       logger.warn(`SMTP Server(${port}) Error`, {}, err);
       return;
     }
-    logger.error(`SMTP Server(${port}) Error`, {}, err);
+    const remoteAddress = peerAddress(err);
+    const remoteLine = remoteAddress ? `**Remote:** ${remoteAddress}\n` : "";
+    logger.error(`SMTP Server(${port}) Error`, { remoteAddress }, err);
     sendAlarm(
       "SMTP Server Error",
-      `**Port:** ${port}\n**Error:** ${String(err)}`
+      `**Port:** ${port}\n${remoteLine}**Error:** ${String(err)}`
     ).catch(() => undefined);
   });
 
