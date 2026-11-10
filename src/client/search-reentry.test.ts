@@ -394,11 +394,12 @@ describe("Settings page (real App behavior)", () => {
     }
   });
 
-  it("signing out and back in lands on the list, not on Settings", async () => {
+  it("signing out and back in lands on the list, with each user's own compose settings", async () => {
     const originalConfirm = window.confirm;
     const originalDelete = call.delete;
     const originalPost = call.post;
     const originalFetch = globalThis.fetch;
+    let signInAs = "user-1";
     window.confirm = () => true;
     // Signing back in shows the getting-started page until an account is
     // selected, and that page fetches its text directly.
@@ -408,15 +409,19 @@ describe("Settings page (real App behavior)", () => {
       url === "/api/users/login"
         ? {
             status: "success",
-            body: { id: "user-1", email: "maple@example.com", username: "maple" }
+            body: { id: signInAs, email: "maple@example.com", username: "maple" }
           }
         : { status: "success" }) as typeof call.post;
+    window.localStorage.setItem(
+      "composeSettings",
+      JSON.stringify({
+        "user-1": { signature: "Maple", defaultFrom: "maple@example.com" }
+      })
+    );
     const mount = await mountApp();
-    try {
-      await mount.waitFor(() => mount.mailCards()[0] ?? null);
-      await mount.click(await settingsItem(mount));
-      await mount.waitFor(() => mount.container.querySelector(".settings"));
 
+    const signOutAndIn = async (userId: string) => {
+      signInAs = userId;
       await mount.click(
         await mount.waitFor(() =>
           mount.container.querySelector(".accounts-logout")
@@ -438,15 +443,46 @@ describe("Settings page (real App behavior)", () => {
           new Event("submit", { bubbles: true, cancelable: true })
         );
       });
-
       // Sign-in hands the user back after a short delay.
       for (let i = 0; i < 40 && !mount.mailCards().length; i++) {
         await mount.act(async () => {
           await new Promise((r) => setTimeout(r, 50));
         });
       }
+    };
+    const composeFields = async () => {
+      await mount.click(await settingsItem(mount));
+      await mount.waitFor(() => mount.container.querySelector(".settings"));
+      const fields = {
+        signature: (
+          mount.container.querySelector("#settings-signature") as HTMLTextAreaElement
+        ).value,
+        defaultFrom: (
+          mount.container.querySelector("#settings-default-from") as HTMLSelectElement
+        ).value
+      };
+      return fields;
+    };
+
+    try {
+      await mount.waitFor(() => mount.mailCards()[0] ?? null);
+      expect(await composeFields()).toEqual({
+        signature: "Maple",
+        defaultFrom: "maple@example.com"
+      });
+
+      // Another user on this browser lands on the list and starts blank.
+      await signOutAndIn("user-2");
       expect(mount.mailCards().length).toBeGreaterThan(0);
       expect(mount.container.querySelector(".settings")).toBeNull();
+      expect(await composeFields()).toEqual({ signature: "", defaultFrom: "" });
+
+      // The first user gets theirs back.
+      await signOutAndIn("user-1");
+      expect(await composeFields()).toEqual({
+        signature: "Maple",
+        defaultFrom: "maple@example.com"
+      });
     } finally {
       window.confirm = originalConfirm;
       globalThis.fetch = originalFetch;

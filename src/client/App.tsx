@@ -95,6 +95,17 @@ export interface ContextType {
   exitSearch: () => void;
   density: Density;
   setDensity: Dispatch<SetStateAction<ContextType["density"]>>;
+  /** Plain text added below every sent message; empty for none. */
+  signature: string;
+  setSignature: Dispatch<SetStateAction<ContextType["signature"]>>;
+  /** Whether a new reply quotes the message it answers. */
+  includeOriginal: boolean;
+  setIncludeOriginal: Dispatch<
+    SetStateAction<ContextType["includeOriginal"]>
+  >;
+  /** The address From is filled with on a new message when no mailbox is selected. */
+  defaultFrom: string;
+  setDefaultFrom: Dispatch<SetStateAction<ContextType["defaultFrom"]>>;
   /** Whether the compose form currently holds an unsent draft. */
   hasDraft: boolean;
   setHasDraft: Dispatch<SetStateAction<ContextType["hasDraft"]>>;
@@ -141,6 +152,37 @@ const App = ({ user: session }: Props) => {
     "density",
     "comfortable",
     (v) => (v === "compact" ? "compact" : "comfortable")
+  );
+  const [includeOriginal, setIncludeOriginal] = useLocalStorage(
+    "includeOriginal",
+    true
+  );
+  // The signature and default From belong to whoever set them, so they are
+  // kept per user id: another user signing in on this browser starts blank,
+  // and the owner gets them back after signing out or a session expiry.
+  const [composeSettings, setComposeSettings] = useLocalStorage<
+    Record<string, { signature?: string; defaultFrom?: string }>
+  >("composeSettings", {});
+  const userKey = userInfo?.id ?? "";
+  const signature = composeSettings[userKey]?.signature ?? "";
+  const defaultFrom = composeSettings[userKey]?.defaultFrom ?? "";
+  const setUserComposeSetting = useCallback(
+    (field: "signature" | "defaultFrom", value: SetStateAction<string>) =>
+      setComposeSettings((all) => {
+        const mine = all[userKey] ?? {};
+        const next = value instanceof Function ? value(mine[field] ?? "") : value;
+        return { ...all, [userKey]: { ...mine, [field]: next } };
+      }),
+    [userKey, setComposeSettings]
+  );
+  const setSignature = useCallback(
+    (value: SetStateAction<string>) => setUserComposeSetting("signature", value),
+    [setUserComposeSetting]
+  );
+  const setDefaultFrom = useCallback(
+    (value: SetStateAction<string>) =>
+      setUserComposeSetting("defaultFrom", value),
+    [setUserComposeSetting]
   );
   // Draft signal for the rail Compose dot (design doc §7): owned by the
   // Writer, which is the only component that sees the draft fields.
@@ -284,6 +326,12 @@ const App = ({ user: session }: Props) => {
     exitSearch,
     density,
     setDensity,
+    signature,
+    setSignature,
+    includeOriginal,
+    setIncludeOriginal,
+    defaultFrom,
+    setDefaultFrom,
     hasDraft,
     setHasDraft
   };
