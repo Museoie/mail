@@ -103,6 +103,11 @@ export interface ContextType {
   setIncludeOriginal: Dispatch<
     SetStateAction<ContextType["includeOriginal"]>
   >;
+  /** Whether this browser subscribes to push notifications for new mail. */
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: Dispatch<
+    SetStateAction<ContextType["notificationsEnabled"]>
+  >;
   /** The address From is filled with on a new message when no mailbox is selected. */
   defaultFrom: string;
   setDefaultFrom: Dispatch<SetStateAction<ContextType["defaultFrom"]>>;
@@ -184,6 +189,22 @@ const App = ({ user: session }: Props) => {
       setUserComposeSetting("defaultFrom", value),
     [setUserComposeSetting]
   );
+  const [notificationsEnabled, setNotificationsEnabled] = useLocalStorage(
+    "notificationsEnabled",
+    true
+  );
+  // Read by the sign-in and refocus subscribes, which run outside render.
+  const notificationsEnabledRef = useRef(notificationsEnabled);
+  notificationsEnabledRef.current = notificationsEnabled;
+  // The switch covers the whole browser, so follow a change made in another tab.
+  useEffect(() => {
+    const followOtherTabs = (event: StorageEvent) => {
+      if (event.key !== "notificationsEnabled") return;
+      setNotificationsEnabled(event.newValue !== "false");
+    };
+    window.addEventListener("storage", followOtherTabs);
+    return () => window.removeEventListener("storage", followOtherTabs);
+  }, [setNotificationsEnabled]);
   // Draft signal for the rail Compose dot (design doc §7): owned by the
   // Writer, which is the only component that sees the draft fields.
   const [hasDraft, setHasDraft] = useState(false);
@@ -246,7 +267,7 @@ const App = ({ user: session }: Props) => {
       const duration = now - lastRefresh.current;
       const oneDay = 1000 * 60 * 60 * 24;
       if (duration < oneDay) return;
-      new Notifier().subscribe();
+      if (notificationsEnabledRef.current) new Notifier().subscribe();
       lastRefresh.current = now;
     };
 
@@ -288,7 +309,7 @@ const App = ({ user: session }: Props) => {
       setNewMailsTotal(0);
     } else {
       registerServiceWorker();
-      new Notifier().subscribe();
+      if (notificationsEnabledRef.current) new Notifier().subscribe();
     }
   }, [
     userInfo,
@@ -332,6 +353,8 @@ const App = ({ user: session }: Props) => {
     setIncludeOriginal,
     defaultFrom,
     setDefaultFrom,
+    notificationsEnabled,
+    setNotificationsEnabled,
     hasDraft,
     setHasDraft
   };
