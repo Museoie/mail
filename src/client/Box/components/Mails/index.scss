@@ -184,8 +184,10 @@
           background-color: var(--red);
         }
 
+        /* Shrinks to its text so a conversation's count sits right after
+         * the names; the date takes the remaining space's far end. */
         .sender {
-          flex: 1;
+          flex: 0 1 auto;
           min-width: 0;
           white-space: nowrap;
           overflow: hidden;
@@ -193,8 +195,23 @@
           color: var(--textBright);
         }
 
+        /* How many messages a conversation row stands for. */
+        .thread-count-badge {
+          flex-shrink: 0;
+          min-width: 18px;
+          padding: 0 6px;
+          border-radius: 9px;
+          background-color: var(--surfaceRaised);
+          color: var(--textSoft);
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 18px;
+          text-align: center;
+        }
+
         .mailcard-date {
           flex-shrink: 0;
+          margin-left: auto;
           font-size: 14px;
           color: var(--textDim);
         }

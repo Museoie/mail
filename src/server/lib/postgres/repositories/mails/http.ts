@@ -40,6 +40,10 @@ export interface MailHeaderResult {
   // Bounded prefix of the plain-text body the list snippet is built from
   // (design doc §5) — not the full body.
   text_prefix: string | null;
+  // Threading ids for grouping the list into conversations.
+  message_id?: string;
+  in_reply_to?: string | null;
+  reference_ids?: string[] | null;
 }
 
 export const getMailHeaders = async (

@@ -129,6 +129,32 @@ describe("getMailHeaders", () => {
     expect(results[0].snippet).toBe("The new part is here.");
   });
 
+  it("carries the threading ids the list groups conversations by", async () => {
+    mockGetMailHeaders.mockResolvedValue([
+      {
+        mail_id: "m-2", user_id: "user-1", subject: "Re: x", date: "2026-01-01T00:00:00Z",
+        from_address: null, from_text: null, to_address: null, to_text: null,
+        cc_address: null, cc_text: null, bcc_address: null, bcc_text: null,
+        read: true, saved: false, sent: false, is_spam: false, insight: null, text_prefix: null,
+        message_id: "<b@x>", in_reply_to: "<a@x>", reference_ids: ["<a@x>"],
+      },
+      {
+        mail_id: "m-1", user_id: "user-1", subject: "x", date: "2026-01-01T00:00:00Z",
+        from_address: null, from_text: null, to_address: null, to_text: null,
+        cc_address: null, cc_text: null, bcc_address: null, bcc_text: null,
+        read: true, saved: false, sent: false, is_spam: false, insight: null, text_prefix: null,
+        message_id: "<a@x>", in_reply_to: null, reference_ids: null,
+      },
+    ] as never);
+    const [reply, original] = await getMailHeaders(makeUser(), "me@x.com", defaultOptions);
+    expect(reply.messageId).toBe("<b@x>");
+    expect(reply.inReplyTo).toBe("<a@x>");
+    expect(reply.references).toEqual(["<a@x>"]);
+    expect(original.messageId).toBe("<a@x>");
+    expect("inReplyTo" in original).toBe(false);
+    expect("references" in original).toBe(false);
+  });
+
   it("should handle null from/to addresses", async () => {
     const mailModel = {
       mail_id: "mail-null",

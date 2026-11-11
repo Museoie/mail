@@ -56,6 +56,9 @@ export const toMailHeaderData = (m: MailHeaderResult): MailHeaderData =>
     sent: m.sent,
     insight: m.insight as Insight | undefined,
     snippet: buildSnippet(m.text_prefix),
+    ...(m.message_id ? { messageId: m.message_id } : {}),
+    ...(m.in_reply_to ? { inReplyTo: m.in_reply_to } : {}),
+    ...(m.reference_ids?.length ? { references: m.reference_ids } : {}),
   });
 
 export const getMailHeaders = async (

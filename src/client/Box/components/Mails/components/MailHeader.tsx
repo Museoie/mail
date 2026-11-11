@@ -12,6 +12,12 @@ export interface MailHeaderProps extends Omit<
   mail: MailHeaderData;
   density: Density;
   isSent: boolean;
+  /** A conversation row's sender line ("Alice, me"); the mail's own otherwise. */
+  senders?: string;
+  /** How many messages the row stands for; shown when more than one. */
+  count?: number;
+  /** Whether any message in the row is unread; the mail's own state otherwise. */
+  unread?: boolean;
   onClick?: () => void;
 }
 
@@ -63,16 +69,20 @@ export const AddressList = ({
 };
 
 const MailHeader = (props: MailHeaderProps) => {
-  const { mail, density, isSent, onClick, onMouseLeave } = props;
+  const { mail, density, isSent, senders, count = 1, onClick, onMouseLeave } =
+    props;
+  const unread = props.unread ?? !mail.read;
   const { duration } = getDateForMailHeader(new Date(mail.date));
 
   // List row (design doc §5): sender + relative date on the first line,
   // subject on the second, snippet on the third. The snippet stays out of
   // search results (the highlight is shown instead). Opening a mail goes to
   // its own page (see Thread).
-  const sender = isSent
-    ? "me"
-    : mail?.from?.value?.map((e) => e?.name || e?.address).join(", ");
+  const sender =
+    senders ||
+    (isSent
+      ? "me"
+      : mail?.from?.value?.map((e) => e?.name || e?.address).join(", "));
   const hasHighlight =
     !!mail.highlight &&
     (mail.highlight.subject?.length ?? 0) +
@@ -90,8 +100,13 @@ const MailHeader = (props: MailHeaderProps) => {
       onMouseLeave={onMouseLeave}
     >
       <div className="mailcard-line1 content">
-        {!mail.read && <span className="unread-dot" aria-hidden="true" />}
+        {unread && <span className="unread-dot" aria-hidden="true" />}
         <span className="sender">{sender}</span>
+        {count > 1 ? (
+          <span className="thread-count-badge" aria-label={`${count} messages`}>
+            {count}
+          </span>
+        ) : null}
         <span className="mailcard-date">{duration}</span>
       </div>
       <div className="mailcard-subject content">

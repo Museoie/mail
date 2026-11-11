@@ -2,6 +2,7 @@ import {
   useState,
   useContext,
   useEffect,
+  useMemo,
   Dispatch,
   ReactNode,
   SetStateAction
@@ -62,6 +63,12 @@ import {
 } from "client/Box/components/Accounts";
 import { getMailsQueryUrl } from "./mailsQuery";
 import { emptyFolderState } from "./emptyState";
+import {
+  Conversation,
+  conversationSenders,
+  groupConversations,
+  ownAddressesFor
+} from "./conversations";
 import { openMailInNewTab, useStartReply } from "./mailActions";
 import { FROM_LIST_STATE, mailPagePath } from "./mailPage";
 import {
@@ -148,8 +155,10 @@ const RowAction = ({
 );
 
 interface RenderedMailProps {
-  mail: MailHeaderData;
-  i: number;
+  /** The row's conversation; `mail` is its newest message. */
+  conversation: Conversation;
+  /** The row's sender line, e.g. "Alice, me". */
+  senders: string;
   requestMarkRead: (
     mail: MailHeaderData
   ) => Promise<ApiResponse<MarkMailPostResponse>>;
@@ -174,8 +183,8 @@ interface RenderedMailProps {
 }
 
 const RenderedMail = ({
-  mail,
-  i,
+  conversation,
+  senders,
   requestMarkRead,
   markReadInQueryData,
   requestDeleteMail,
@@ -191,6 +200,8 @@ const RenderedMail = ({
   density,
   isSent
 }: RenderedMailProps) => {
+  const mail = conversation.latest;
+  const mails = conversation.mails;
   const { theme = "system" } = useContext(Context);
   const resolvedTheme = useResolvedTheme(theme);
 
@@ -206,15 +217,19 @@ const RenderedMail = ({
   const onClickOpenInNewTab = () =>
     openMailInNewTab(queryClient, mail.id, resolvedTheme).catch(console.error);
 
-  // A mail opens on its own page, with the rest of its conversation.
+  // A row opens its newest message's page, with the whole conversation.
   const onClickMailcard = () => {
     // Auto-mark-read is a side effect of opening, not a user-clicked
     // control — so gate the request itself when offline rather than
     // disabling a button. The page still opens and renders cached data.
-    if (!mail.read && isOnline) {
-      requestMarkRead(mail);
-      markReadInQueryData(mail);
-      mail.read = true;
+    if (isOnline) {
+      mails
+        .filter((m) => !m.read)
+        .forEach((m) => {
+          requestMarkRead(m);
+          markReadInQueryData(m);
+          m.read = true;
+        });
     }
     navigate(mailPagePath(mail.id), { state: FROM_LIST_STATE });
   };
@@ -227,55 +242,68 @@ const RenderedMail = ({
     startReply(mail, "forward").catch(console.error);
   };
 
+  // Takes the row's messages out of the cached list and their counts out of
+  // the accounts payload.
+  const removeFromList = (removed: MailHeaderData[]) => {
+    const ids = new Set(removed.map((m) => m.id));
+    accountsCache.set((oldData) => {
+      if (!oldData) return oldData;
+      return removed.reduce(
+        (oldData, mail) =>
+          updateAccountInBuckets(
+            oldData,
+            bucketsForMail(selectedCategory, mail, selectedAccount),
+            selectedAccount,
+            ({ doc_count, unread_doc_count }) => ({
+              doc_count: doc_count - 1,
+              unread_doc_count:
+                !mail.read && unread_doc_count
+                  ? unread_doc_count - 1
+                  : unread_doc_count
+            })
+          ),
+        oldData
+      );
+    });
+    new MailsCache(selectedAccount, selectedCategory).set((oldData) => {
+      if (!oldData) return oldData;
+      const newData = oldData.filter((m) => !ids.has(m.id));
+      if (!newData.length) removeAccountFromQueryData();
+      return newData;
+    });
+  };
+
+  // Deletes every message of the conversation in this list.
   const onClickTrash = () => {
     if (!isOnline) return;
 
-    // Snapshot the caches so Undo can put the mail back exactly where it was.
-    const mailsCache = new MailsCache(selectedAccount, selectedCategory);
+    // Snapshot the caches so Undo can put the row back exactly where it was.
     const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory);
     const listBefore = queryClient.getQueryData<MailHeaderData[]>(listUrl);
     const accountsBefore = queryClient.getQueryData<AccountsGetResponse>(
       accountsCache.key
     );
 
-    accountsCache.set((oldData) => {
-      if (!oldData) return oldData;
-      return updateAccountInBuckets(
-        oldData,
-        bucketsForMail(selectedCategory, mail, selectedAccount),
-        selectedAccount,
-        ({ doc_count, unread_doc_count }) => ({
-          doc_count: doc_count - 1,
-          unread_doc_count:
-            !mail.read && unread_doc_count
-              ? unread_doc_count - 1
-              : unread_doc_count
-        })
-      );
-    });
-
-    mailsCache.set((oldData) => {
-      if (!oldData) return oldData;
-      const newData = oldData.filter((m) => m.id !== mail.id);
-      if (!newData.length) removeAccountFromQueryData();
-      return newData;
-    });
+    removeFromList(mails);
 
     // No confirm: the delete waits out the undo window instead, so a slip
     // costs one tap on Undo rather than the mail.
-    scheduleDelete(mail.id, () => {
-      requestDeleteMail(mail).finally(() => {
-        queryClient.invalidateQueries(accountsCache.key);
-      });
-    });
+    mails.forEach((m) =>
+      scheduleDelete(m.id, () => {
+        requestDeleteMail(m).finally(() => {
+          queryClient.invalidateQueries(accountsCache.key);
+        });
+      })
+    );
 
     showToast({
-      message: "Mail deleted.",
+      message: mails.length > 1 ? "Conversation deleted." : "Mail deleted.",
       duration: UNDO_WINDOW_MS,
       action: {
         label: "Undo",
         onClick: () => {
-          if (!cancelDelete(mail.id)) return;
+          const cancelled = mails.map((m) => cancelDelete(m.id));
+          if (!cancelled.some(Boolean)) return;
           if (listBefore) queryClient.setQueryData(listUrl, listBefore);
           if (accountsBefore) {
             queryClient.setQueryData(accountsCache.key, accountsBefore);
@@ -285,14 +313,20 @@ const RenderedMail = ({
     });
   };
 
+  // A saved conversation unsaves every saved message in it; an unsaved one
+  // saves its newest message.
   const onClickStar = () => {
     if (!isOnline) return;
-    requestMarkSaved(mail, !mail.saved);
-    markSavedInQueryData(mail, !mail.saved);
+    const targets = conversation.saved ? mails.filter((m) => m.saved) : [mail];
+    targets.forEach((m) => {
+      requestMarkSaved(m, !conversation.saved);
+      markSavedInQueryData(m, !conversation.saved);
+    });
   };
 
   const isSpamView = selectedCategory === Category.SpamMails;
-  const canToggleSpam = canMarkSpam(mail, selectedCategory);
+  const spamTargets = mails.filter((m) => canMarkSpam(m, selectedCategory));
+  const canToggleSpam = spamTargets.length > 0;
 
   const onClickSpam = () => {
     if (!isOnline) return;
@@ -309,9 +343,10 @@ const RenderedMail = ({
       nextIsSpam ? Category.SpamMails : Category.AllMails
     );
 
-    requestMarkSpam(mail, nextIsSpam)
-      .then(({ status, message }) => {
-        if (status !== "success") throw new Error(message);
+    Promise.all(spamTargets.map((m) => requestMarkSpam(m, nextIsSpam)))
+      .then((responses) => {
+        const failed = responses.find(({ status }) => status !== "success");
+        if (failed) throw new Error(failed.message);
         // The mail moved buckets — refresh the destination list so it shows
         // up fresh instead of relying on whatever was cached there.
         queryClient.invalidateQueries(destUrl);
@@ -332,34 +367,8 @@ const RenderedMail = ({
         queryClient.invalidateQueries(accountsCache.key);
       });
 
-    // Optimistically evict from the current view, mirroring onClickTrash:
-    // decrement the matching account bucket, then splice the row out of this
-    // category's cached list.
-    accountsCache.set((oldData) => {
-      if (!oldData) return oldData;
-      return updateAccountInBuckets(
-        oldData,
-        bucketsForMail(selectedCategory, mail, selectedAccount),
-        selectedAccount,
-        ({ doc_count, unread_doc_count }) => ({
-          doc_count: doc_count - 1,
-          unread_doc_count:
-            !mail.read && unread_doc_count
-              ? unread_doc_count - 1
-              : unread_doc_count
-        })
-      );
-    });
-
-    const mailsCache = new MailsCache(selectedAccount, selectedCategory);
-
-    mailsCache.set((oldData) => {
-      if (!oldData) return oldData;
-      const newData = [...oldData];
-      newData.splice(i, 1);
-      if (!newData.length) removeAccountFromQueryData();
-      return newData;
-    });
+    // Optimistically evict from the current view, mirroring onClickTrash.
+    removeFromList(spamTargets);
   };
 
   const onClickRobot = () => {
@@ -368,8 +377,8 @@ const RenderedMail = ({
 
   const classes = ["mailcard"];
 
-  if (!mail.read) classes.push("unread");
-  if (mail.saved) classes.push("star");
+  if (conversation.unread) classes.push("unread");
+  if (conversation.saved) classes.push("star");
 
   let searchHighlight;
 
@@ -421,6 +430,9 @@ const RenderedMail = ({
         mail={mail}
         density={density}
         isSent={isSent}
+        senders={senders}
+        count={mails.length}
+        unread={conversation.unread}
         onClick={onClickMailcard}
         onMouseLeave={() => setOpenedKebab("")}
       />
@@ -445,7 +457,7 @@ const RenderedMail = ({
         className={
           "actionBox" +
           (isKebabOpen ? " open" : "") +
-          (mail.saved ? " saved" : "")
+          (conversation.saved ? " saved" : "")
         }
       >
         {isKebabOpen ? (
@@ -461,12 +473,12 @@ const RenderedMail = ({
             }}
           >
             <RowAction
-              label={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
+              label={offlineTitle ?? (conversation.saved ? "Unsave" : "Save")}
               disabled={!isOnline}
               onClick={onClickStar}
               autoFocus
             >
-              {mail.saved ? (
+              {conversation.saved ? (
                 <SolidStarIcon className="star" />
               ) : (
                 <EmptyStarIcon />
@@ -519,7 +531,7 @@ const RenderedMail = ({
                 <RobotIcon />
               </RowAction>
             ) : null}
-            {mail.saved ? (
+            {conversation.saved ? (
               <RowAction
                 label={offlineTitle ?? "Unsave"}
                 disabled={!isOnline}
@@ -566,7 +578,8 @@ const RenderedMails = ({
     selectedAccount: contextAccount,
     selectedCategory: contextCategory,
     domainName,
-    density
+    density,
+    userInfo
   } = useContext(Context);
   const selectedAccount = accountProp ?? contextAccount;
   const selectedCategory = categoryProp ?? contextCategory;
@@ -612,9 +625,24 @@ const RenderedMails = ({
     refetchOnMount: revalidateOnMountPolicy(queryUrl)
   });
 
-  const mailCount = Array.isArray(query.data) ? query.data.length : 0;
+  // A folder lists conversations, one row each; search lists the matching
+  // messages themselves, each with its own highlight.
+  const username = userInfo?.username;
+  const rows = useMemo(() => {
+    const mails = Array.isArray(query.data) ? query.data : [];
+    if (selectedCategory === Category.Search) {
+      return mails.map((mail) => ({
+        latest: mail,
+        mails: [mail],
+        unread: !mail.read,
+        saved: mail.saved
+      }));
+    }
+    return groupConversations(mails, ownAddressesFor(username, domainName));
+  }, [query.data, selectedCategory, username, domainName]);
+
   const pageSize = 4 + 8 * page;
-  const hasMore = mailCount > pageSize;
+  const hasMore = rows.length > pageSize;
   // A list shorter than the column never scrolls, so the scroll handler alone
   // would never show the rest on a tall screen. Compact rows shrink the list
   // without changing how many rows it shows, so density re-runs the check too.
@@ -770,7 +798,8 @@ const RenderedMails = ({
         </div>
       ) : null;
     const mails = Array.isArray(query.data) ? query.data : [];
-    const pagedMails = mails.slice(0, pageSize);
+    const pagedRows = rows.slice(0, pageSize);
+    const isSent = (m: MailHeaderData) => isSentMail(m, domainName);
 
     // Search shows the loaded result count; every folder shows the selected
     // account's count from the accounts buckets (null until they load, in
@@ -791,12 +820,12 @@ const RenderedMails = ({
           : selectedCategory;
     const listHeader = <ListHeader countLabel={countLabel} />;
 
-    const result = pagedMails.map((mail, i) => {
+    const result = pagedRows.map((conversation) => {
       return (
         <RenderedMail
-          key={mail.id}
-          mail={mail}
-          i={i}
+          key={conversation.latest.id}
+          conversation={conversation}
+          senders={conversationSenders(conversation, isSent)}
           requestMarkRead={requestMarkRead}
           markReadInQueryData={markReadInQueryData}
           requestDeleteMail={requestDeleteMail}
@@ -810,7 +839,7 @@ const RenderedMails = ({
           openedKebab={openedKebab}
           setOpenedKebab={setOpenedKebab}
           density={density}
-          isSent={isSentMail(mail, domainName)}
+          isSent={isSent(conversation.latest)}
         />
       );
     });

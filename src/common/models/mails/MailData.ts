@@ -30,6 +30,11 @@ export interface MailHeaderDataType {
   // Set on search results only: search spans the spam folder, so a spam
   // match is labelled in the result list rather than passing as inbox mail.
   spam?: boolean;
+  // Threading ids, for grouping a folder's rows into conversations.
+  // `references` may be trimmed to its root and last entries.
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
 }
 
 export class MailHeaderData
@@ -53,6 +58,9 @@ export class MailHeaderData
   };
   declare snippet?: string;
   declare spam?: boolean;
+  declare messageId?: string;
+  declare inReplyTo?: string;
+  declare references?: string[];
 
   constructor(data?: Partial<MailHeaderData>) {
     super(data);

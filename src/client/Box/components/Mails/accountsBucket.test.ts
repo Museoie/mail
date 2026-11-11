@@ -419,6 +419,8 @@ describe("the optimistic account edits in Mails", () => {
       sites.push(stripped.slice(at, at + expected.length));
     }
 
-    expect(sites).toEqual([expected, expected, expected, expected]);
+    // Removing a row (delete and spam share one helper), marking read, and
+    // marking saved.
+    expect(sites).toEqual([expected, expected, expected]);
   });
 });
