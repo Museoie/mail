@@ -1,6 +1,6 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, afterAll } from "bun:test";
 import { SignedUser } from "common";
-import { getThread, ThreadRepository } from "./thread";
+import { getThread, ownAddressesOf, ThreadRepository } from "./thread";
 import type { ThreadRow } from "../postgres/repositories/mails/thread";
 
 const USER = new SignedUser({
@@ -44,7 +44,7 @@ const normalized = (subject: string) =>
 /** A repository over a fixed set of rows that answers like the SQL does. */
 const repositoryOver = (rows: ThreadRow[]) => {
   const calls: { ids: string[]; spam: boolean }[] = [];
-  const subjectCalls: { subject: string; spam: boolean }[] = [];
+  const subjectCalls: { seed: string; spam: boolean }[] = [];
   const repository: ThreadRepository = {
     getThreadSeed: async (_user, mailId) =>
       rows.find((r) => r.mail_id === mailId) ?? null,
@@ -58,14 +58,17 @@ const repositoryOver = (rows: ThreadRow[]) => {
             (r.reference_ids ?? []).some((id) => ids.includes(id)))
       );
     },
-    getThreadSubjectCandidates: async (_user, subject, includeSpam) => {
-      subjectCalls.push({ subject, spam: includeSpam });
+    getThreadSubjectCandidates: async (_user, seedId, includeSpam) => {
+      subjectCalls.push({ seed: seedId, spam: includeSpam });
+      const seed = rows.find((r) => r.mail_id === seedId);
+      if (!seed) return [];
       return rows.filter(
         (r) =>
           (includeSpam || !r.is_spam) &&
           r.in_reply_to === null &&
           r.reference_ids === null &&
-          normalized(r.subject) === subject
+          !r.message_id.endsWith(".copy@server") &&
+          normalized(r.subject) === normalized(seed.subject)
       );
     }
   };
@@ -178,9 +181,7 @@ describe("getThread", () => {
 
     const legacy = repositoryOver([row("a", { subject: "Re: Project Plan" })]);
     await getThread(USER, "a", legacy.repository, isOwn);
-    expect(legacy.subjectCalls).toEqual([
-      { subject: "project plan", spam: false }
-    ]);
+    expect(legacy.subjectCalls).toEqual([{ seed: "a", spam: false }]);
   });
 
   it("includes spam and flags it when the opened mail is spam", async () => {
@@ -190,7 +191,70 @@ describe("getThread", () => {
     expect(result[0].spam).toBe(true);
   });
 
+  // A COPY/MOVE files the same message in another folder under a derived id
+  // and without thread headers; it must not show as a second copy.
+  it("leaves an IMAP copy of a message out of its conversation", async () => {
+    const root = row("t1", { subject: "Budget" });
+    const reply = row("t3", {
+      subject: "Re: Budget",
+      date: "2026-01-03T00:00:00.000Z",
+      in_reply_to: "<t1@x>",
+      reference_ids: ["<t1@x>"]
+    });
+    const copy = row("c", {
+      message_id: "0123456789abcdef.copy@server",
+      subject: "Re: Budget",
+      date: "2026-01-03T00:00:00.000Z"
+    });
+    expect((await thread("t3", [root, reply, copy])).map((m) => m.id)).toEqual([
+      "t1",
+      "t3"
+    ]);
+  });
+
   it("is empty for a mail that isn't found", async () => {
     expect(await thread("missing", [])).toEqual([]);
+  });
+});
+
+describe("ownAddressesOf", () => {
+  const originalDomain = process.env.EMAIL_DOMAIN;
+  afterAll(() => {
+    if (originalDomain === undefined) delete process.env.EMAIL_DOMAIN;
+    else process.env.EMAIL_DOMAIN = originalDomain;
+  });
+
+  it("is the user's own domain only, not other users' on the server", () => {
+    process.env.EMAIL_DOMAIN = "inbox.test";
+    const bobs = ownAddressesOf("bob");
+    expect(bobs("x@bob.inbox.test")).toBe(true);
+    expect(bobs("work@inbox.test")).toBe(false);
+    expect(bobs("carol@carol.inbox.test")).toBe(false);
+    const admins = ownAddressesOf("admin");
+    expect(admins("work@inbox.test")).toBe(true);
+    expect(admins("x@bob.inbox.test")).toBe(false);
+  });
+
+  it("joins a header-less exchange between two users on the server", async () => {
+    process.env.EMAIL_DOMAIN = "inbox.test";
+    const dinner = row("a", {
+      subject: "Dinner",
+      from_address: [{ address: "x@bob.inbox.test" }],
+      to_address: [{ address: "work@inbox.test" }]
+    });
+    const reply = row("b", {
+      subject: "Re: Dinner",
+      date: "2026-01-02T00:00:00.000Z",
+      from_address: [{ address: "work@inbox.test" }],
+      to_address: [{ address: "x@bob.inbox.test" }]
+    });
+    const { repository } = repositoryOver([dinner, reply]);
+    const result = await getThread(
+      USER,
+      "a",
+      repository,
+      ownAddressesOf("admin")
+    );
+    expect(result.map((m) => m.id)).toEqual(["a", "b"]);
   });
 });

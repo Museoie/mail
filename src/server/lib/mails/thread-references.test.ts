@@ -1,10 +1,27 @@
 import { describe, it, expect } from "bun:test";
-import { threadReferences } from "./send";
+import { bracketedMessageId, threadReferences } from "./send";
 
 describe("threadReferences", () => {
   it("appends the answered id to the answered mail's References", async () => {
     const refs = await threadReferences("u", "<b@x>", async () => ["<a@x>"]);
     expect(refs).toEqual(["<a@x>", "<b@x>"]);
+  });
+
+  it("looks the answered mail up under both stored spellings", async () => {
+    let asked: string[] = [];
+    await threadReferences("u", "<b@x>", async (_user, ids) => {
+      asked = ids;
+      return null;
+    });
+    expect([...asked].sort()).toEqual(["<b@x>", "b@x"]);
+  });
+
+  // Mail appended over IMAP stores a bare Message-ID; a header needs `<id>`.
+  it("brackets a bare id, and bare ids in the stored References", async () => {
+    expect(await threadReferences("u", "b@x", async () => ["a@x"])).toEqual([
+      "<a@x>",
+      "<b@x>"
+    ]);
   });
 
   it("is just the answered id when that mail has no References", async () => {
@@ -32,5 +49,12 @@ describe("threadReferences", () => {
     const refs = await threadReferences("u", "<b@x>", async () => earlier);
     expect(refs.length).toBe(50);
     expect(refs[refs.length - 1]).toBe("<b@x>");
+  });
+});
+
+describe("bracketedMessageId", () => {
+  it("gives either spelling the header form", () => {
+    expect(bracketedMessageId("a@x")).toBe("<a@x>");
+    expect(bracketedMessageId("<a@x>")).toBe("<a@x>");
   });
 });

@@ -96,7 +96,7 @@ const mountThread = async ({
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { QueryClient, QueryClientProvider } = await import("react-query");
-  const { MemoryRouter, Routes, Route, useLocation } = await import(
+  const { MemoryRouter, Routes, Route, useLocation, useParams } = await import(
     "react-router-dom"
   );
   const { Context, IsOnlineProvider } = await import("client");
@@ -118,6 +118,15 @@ const mountThread = async ({
     setReplyData: (v: unknown) => calls.replyData.push(v),
     setIsWriterOpen: (v: unknown) => calls.writer.push(v),
     ...context
+  };
+
+  // As in the app: the page is keyed by, and reads, the route's mail id.
+  const ThreadRoute = () => {
+    const params = useParams<{ mailId: string }>();
+    return createElement(Thread, {
+      key: params.mailId,
+      mailId: params.mailId as string
+    });
   };
 
   let pathname = "";
@@ -154,7 +163,7 @@ const mountThread = async ({
                 createElement(Route, { path: "/", element: null }),
                 createElement(Route, {
                   path: "/mail/:mailId",
-                  element: createElement(Thread, { mailId })
+                  element: createElement(ThreadRoute)
                 })
               )
             )
@@ -420,6 +429,19 @@ describe("mail page — removing the opened mail", () => {
       await mount.click(del);
       // Addressed by a mail that still exists, so a refetch finds the rest.
       expect(mount.path()).toBe("/mail/m3");
+      // The server still holds m1 until the undo window ends (the stub
+      // returns it), but the page doesn't show it.
+      await mount.flush();
+      expect(mount.container.querySelector(".thread-count")?.textContent).toBe(
+        "2 messages"
+      );
+      expect(mount.container.querySelector('[data-mail-id="m1"]')).toBeNull();
+      await mount.act(async () => {
+        await mount.queryClient.refetchQueries("/api/mails/thread/m3");
+      });
+      expect(mount.container.querySelector(".thread-count")?.textContent).toBe(
+        "2 messages"
+      );
     } finally {
       flushDeletes();
       await mount.teardown();

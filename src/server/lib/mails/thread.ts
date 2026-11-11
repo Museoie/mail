@@ -5,7 +5,7 @@ import {
   getThreadSubjectCandidates,
   ThreadRow
 } from "../postgres/repositories/mails/thread";
-import { getDomain, isLocalAddress } from "../util";
+import { getUserDomain } from "../util";
 import { toMailHeaderData } from "./headers";
 import {
   collectThread,
@@ -34,9 +34,15 @@ const defaultRepository: ThreadRepository = {
   getThreadSubjectCandidates
 };
 
-/** Addresses on this server's domain or a user subdomain of it. */
-const isOwnAddressOnServer: IsOwnAddress = (address) =>
-  isLocalAddress(address, getDomain());
+/**
+ * The user's own addresses: those on the domain their mail arrives at
+ * (`*@user.domain`, or `*@domain` for admin). Another user's address on this
+ * server is a correspondent like any other.
+ */
+export const ownAddressesOf = (username: string): IsOwnAddress => {
+  const domain = getUserDomain(username).toLowerCase();
+  return (address) => address.toLowerCase().split("@").pop() === domain;
+};
 
 /**
  * Every message in the conversation `mailId` belongs to, oldest first, the
@@ -50,7 +56,7 @@ export const getThread = async (
   user: MaskedUser | SignedUser,
   mailId: string,
   repository: ThreadRepository = defaultRepository,
-  isOwnAddress: IsOwnAddress = isOwnAddressOnServer
+  isOwnAddress: IsOwnAddress = ownAddressesOf(user.username ?? "")
 ): Promise<MailHeaderData[]> => {
   const userId = resolveUserId(user);
   if (!userId) return [];
@@ -85,7 +91,11 @@ export const getThread = async (
     if (wantsSubject) {
       searchedSubject = true;
       add(
-        await repository.getThreadSubjectCandidates(userId, subject, includeSpam)
+        await repository.getThreadSubjectCandidates(
+          userId,
+          seed.mail_id,
+          includeSpam
+        )
       );
       thread = collectThread(seed, [...candidates.values()], isOwnAddress);
     }

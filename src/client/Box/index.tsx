@@ -6,7 +6,8 @@ import {
   useRef,
   useState
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { openedFromList } from "./components/Mails/mailPage";
 import { Writer, Accounts, Mails, Settings, Thread } from "./components";
 import { Context } from "client";
 import "./index.scss";
@@ -34,6 +35,7 @@ const Box = () => {
   // stays mounted underneath so Back returns to the same scroll position.
   const { mailId } = useParams<{ mailId?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Switching account or folder while reading is navigation to that list.
   const listKey = `${selectedCategory}|${selectedAccount}`;
@@ -41,8 +43,12 @@ const Box = () => {
   useEffect(() => {
     if (lastListKey.current === listKey) return;
     lastListKey.current = listKey;
-    if (mailId) navigate("/", { replace: true });
-  }, [listKey, mailId, navigate]);
+    if (!mailId) return;
+    // Opened from the list: step back to it, so history doesn't gain a
+    // second list entry. Opened directly: replace the page with the list.
+    if (openedFromList(location.state)) navigate(-1);
+    else navigate("/", { replace: true });
+  }, [listKey, mailId, navigate, location.state]);
 
   const [page, setPage] = useState(1);
   const centerColRef = useRef<HTMLElement>(null);

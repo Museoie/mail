@@ -656,9 +656,10 @@ export class Store {
         user_id: this.user.id,
         message_id: mail.messageId,
         // Set by APPEND from the message's own headers. A COPY/MOVE leaves
-        // them unset on purpose: the copy has a derived Message-ID, and
-        // carrying the headers would show it as a second copy of the same
-        // message in the conversation.
+        // them unset: the copy is the same message filed elsewhere, under a
+        // derived `….copy@server` id that the conversation lookup excludes
+        // (COPY_MESSAGE_ID_SUFFIX in repositories/mails/thread.ts), so it
+        // never shows as a second copy in a conversation.
         in_reply_to: mail.inReplyTo ?? null,
         reference_ids: mail.references?.length ? mail.references : null,
         subject: mail.subject,

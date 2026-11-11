@@ -19,6 +19,7 @@ import {
 import { sendMailgunMail } from "./mailgun";
 import { getReferenceIdsByMessageId } from "../postgres/repositories/mails/thread";
 import { MAX_REFERENCE_IDS } from "../mime/header";
+import { bareMessageId, storedIdForms } from "./threading";
 import { validateMailData, MailValidationError } from "./validation";
 import { sendAlarm } from "../alarm";
 import { logger } from "../logger";
@@ -56,11 +57,13 @@ export const sendMail = async (
 
   const { persistToSentMailbox = true } = options ?? {};
   const { id: userId, username } = user;
-  if (mailToSend.inReplyTo && !mailToSend.references) {
-    mailToSend.references = await threadReferences(
-      userId,
-      mailToSend.inReplyTo
-    );
+  if (mailToSend.inReplyTo) {
+    // Mail appended over IMAP stores its Message-ID without brackets, and a
+    // bare id isn't a valid msg-id in a header: recipients' parsers drop it.
+    mailToSend.inReplyTo = bracketedMessageId(mailToSend.inReplyTo);
+    mailToSend.references = mailToSend.references?.length
+      ? mailToSend.references.map(bracketedMessageId)
+      : await threadReferences(userId, mailToSend.inReplyTo);
   }
   try {
     const response = await sendMailgunMail(username, mailToSend, files);
@@ -162,16 +165,21 @@ export const threadReferences = async (
   inReplyTo: string,
   lookup: typeof getReferenceIdsByMessageId = getReferenceIdsByMessageId
 ): Promise<string[]> => {
+  const answered = bracketedMessageId(inReplyTo);
   let earlier: string[] = [];
   try {
-    earlier = (await lookup(userId, inReplyTo)) ?? [];
+    earlier = (await lookup(userId, storedIdForms([answered]))) ?? [];
   } catch (error) {
     logger.warn("Couldn't read the answered mail's References", {}, error);
   }
-  return [...earlier.filter((id) => id !== inReplyTo), inReplyTo].slice(
-    -MAX_REFERENCE_IDS
-  );
+  return [
+    ...earlier.map(bracketedMessageId).filter((id) => id !== answered),
+    answered
+  ].slice(-MAX_REFERENCE_IDS);
 };
+
+/** A Message-ID in the `<id>` form headers require. */
+export const bracketedMessageId = (id: string) => `<${bareMessageId(id)}>`;
 
 const getSentMail = async (
   user: SignedUser,

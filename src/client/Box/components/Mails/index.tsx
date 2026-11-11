@@ -67,7 +67,8 @@ import { FROM_LIST_STATE, mailPagePath } from "./mailPage";
 import {
   UNDO_WINDOW_MS,
   cancelDelete,
-  scheduleDelete
+  scheduleDelete,
+  withoutPendingDeletes
 } from "./pendingDeletes";
 import {
   accountCountForCategory,
@@ -602,7 +603,9 @@ const RenderedMails = ({
       HeadersGetResponse | SearchGetResponse
     >(queryUrl);
     if (status === "success") {
-      return body?.map((d) => new MailHeaderData(d)) || [];
+      return withoutPendingDeletes(
+        body?.map((d) => new MailHeaderData(d)) || []
+      );
     } else throw new Error(message);
   };
   const query = useQuery<MailHeaderData[]>(queryUrl, getMails, {

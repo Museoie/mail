@@ -3,12 +3,15 @@ import {
   buildThreadCandidatesQuery,
   buildThreadSeedQuery,
   buildThreadSubjectQuery,
+  COPY_MESSAGE_ID_SUFFIX,
   HEADERLESS_SQL,
   NORMALIZED_SUBJECT_SQL,
+  SUBJECT_KEY_SQL,
   THREAD_CANDIDATE_LIMIT,
   THREAD_SUBJECT_LIMIT
 } from "./thread";
 import { indexSpecs } from "../../initialize";
+import { deriveCopyMessageId } from "../../../imap/util";
 
 describe("buildThreadSeedQuery", () => {
   it("scopes the seed to the user and leaves out expunged mail", () => {
@@ -40,19 +43,35 @@ describe("buildThreadCandidatesQuery", () => {
 });
 
 describe("buildThreadSubjectQuery", () => {
-  it("looks up header-less mail by normalized subject", () => {
-    const { sql, values } = buildThreadSubjectQuery("u1", "plan", false);
-    expect(values).toEqual(["u1", "plan"]);
+  it("looks up header-less mail by the seed's normalized subject, computed in SQL", () => {
+    const { sql, values } = buildThreadSubjectQuery("u1", "seed-1", false);
+    expect(values).toEqual(["u1", "seed-1"]);
     expect(sql).toContain(HEADERLESS_SQL);
-    expect(sql).toContain(`${NORMALIZED_SUBJECT_SQL} = $2`);
+    expect(sql).toContain("WHERE user_id = $1 AND mail_id = $2");
+    expect(sql).toContain(`${SUBJECT_KEY_SQL} = md5((SELECT subject FROM seed))`);
+    expect(sql).toContain(`${NORMALIZED_SUBJECT_SQL} = (SELECT subject FROM seed)`);
     expect(sql).toContain(`LIMIT ${THREAD_SUBJECT_LIMIT}`);
   });
 
+  it("leaves IMAP copies out of both lookups", () => {
+    const like = `message_id NOT LIKE '%${COPY_MESSAGE_ID_SUFFIX}'`;
+    expect(buildThreadSubjectQuery("u1", "s", false).sql).toContain(like);
+    expect(buildThreadCandidatesQuery("u1", ["<a@x>"], false).sql).toContain(like);
+  });
+
+  it("matches the suffix IMAP COPY gives a copy", () => {
+    expect(deriveCopyMessageId("<a@x>", "Archive").endsWith(COPY_MESSAGE_ID_SUFFIX)).toBe(
+      true
+    );
+  });
+
   // The planner only uses the expression index when the query repeats its
-  // expression and predicate exactly.
-  it("repeats the expression and predicate of its index", () => {
-    const spec = indexSpecs().find((s) => s.name === "idx_mails_thread_subject");
-    expect(spec?.sql).toContain(`(user_id, (${NORMALIZED_SUBJECT_SQL}))`);
+  // expression and predicate exactly. The key is a digest, so a subject of
+  // any length fits a btree entry.
+  it("repeats the digest key and predicate of its index", () => {
+    const spec = indexSpecs().find((s) => s.name === "idx_mails_thread_subject_key");
+    expect(SUBJECT_KEY_SQL).toBe(`md5(${NORMALIZED_SUBJECT_SQL})`);
+    expect(spec?.sql).toContain(`(user_id, (${SUBJECT_KEY_SQL}))`);
     expect(spec?.sql).toContain(`WHERE ${HEADERLESS_SQL}`);
     expect(spec?.sql).toContain("CONCURRENTLY");
   });

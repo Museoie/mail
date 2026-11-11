@@ -43,7 +43,8 @@ import {
   UNDO_WINDOW_MS,
   cancelDelete,
   scheduleDelete,
-  sendDelete
+  sendDelete,
+  withoutPendingDeletes
 } from "../Mails/pendingDeletes";
 import {
   initialExpanded,
@@ -60,7 +61,9 @@ import "./index.scss";
 
 const fetchThread = async (url: string) => {
   const { status, body, message } = await call.get<ThreadGetResponse>(url);
-  if (status === "success" && body) return body.map((m) => new MailHeaderData(m));
+  if (status === "success" && body) {
+    return withoutPendingDeletes(body.map((m) => new MailHeaderData(m)));
+  }
   throw new Error(message || "Couldn't load this conversation.");
 };
 
@@ -356,10 +359,11 @@ const Thread = ({ mailId }: { mailId: string }) => {
       return "left";
     }
     if (id !== mailId) return "stayed";
-    navigate(mailPagePath(remaining[remaining.length - 1].id), {
-      replace: true,
-      state: location.state
-    });
+    // The page moving to is already known: show it from what's on screen
+    // rather than wait for a fetch.
+    const next = remaining[remaining.length - 1].id;
+    queryClient.setQueryData(threadQueryUrl(next), remaining);
+    navigate(mailPagePath(next), { replace: true, state: location.state });
     return "moved";
   };
 

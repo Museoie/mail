@@ -3,7 +3,8 @@ import {
   cancelDelete,
   flushDeletes,
   pendingDeleteCount,
-  scheduleDelete
+  scheduleDelete,
+  withoutPendingDeletes
 } from "./pendingDeletes";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -46,5 +47,16 @@ describe("pending deletes", () => {
     scheduleDelete("a", () => runs.push("second"), 10);
     await wait(30);
     expect(runs).toEqual(["second"]);
+  });
+});
+
+describe("withoutPendingDeletes", () => {
+  it("drops mail inside its undo window and keeps the rest", () => {
+    scheduleDelete("a", () => {}, 1000);
+    expect(
+      withoutPendingDeletes([{ id: "a" }, { id: "b" }]).map((m) => m.id)
+    ).toEqual(["b"]);
+    cancelDelete("a");
+    expect(withoutPendingDeletes([{ id: "a" }]).map((m) => m.id)).toEqual(["a"]);
   });
 });
