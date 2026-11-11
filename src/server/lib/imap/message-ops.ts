@@ -1166,6 +1166,10 @@ const parseAppendedMessage = async (path: string): Promise<Mail> => {
       // Bare, like the ids appended rows already carry: a re-append meets them on
       // `(user_id, message_id)`.
       messageId: incoming.messageId?.replace(/[<>]/g, ""),
+      // Threading compares ids without brackets, so these match the bare
+      // message_id above as well as bracketed ones.
+      inReplyTo: incoming.inReplyTo,
+      references: incoming.references,
       subject: incoming.subject,
       date: incoming.date,
       from: convertMailAddress(incoming.from),

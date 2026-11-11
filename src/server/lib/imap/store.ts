@@ -655,6 +655,12 @@ export class Store {
       const input: SaveMailInput = {
         user_id: this.user.id,
         message_id: mail.messageId,
+        // Set by APPEND from the message's own headers. A COPY/MOVE leaves
+        // them unset on purpose: the copy has a derived Message-ID, and
+        // carrying the headers would show it as a second copy of the same
+        // message in the conversation.
+        in_reply_to: mail.inReplyTo ?? null,
+        reference_ids: mail.references?.length ? mail.references : null,
         subject: mail.subject,
         date: mail.date,
         html: mail.html,

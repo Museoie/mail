@@ -18,7 +18,6 @@ import {
 } from "server";
 import {
   Context,
-  Category,
   call,
   getDateForMailHeader,
   isSentMail,
@@ -96,7 +95,8 @@ interface MessageProps {
   canCollapse: boolean;
   onToggle: () => void;
   isSent: boolean;
-  isSpamView: boolean;
+  /** Whether this message is in the spam folder. */
+  isSpam: boolean;
   onReply: () => void;
   onForward: () => void;
   onToggleSaved: () => void;
@@ -112,7 +112,7 @@ const ThreadMessage = ({
   canCollapse,
   onToggle,
   isSent,
-  isSpamView,
+  isSpam,
   onReply,
   onForward,
   onToggleSaved,
@@ -221,8 +221,8 @@ const ThreadMessage = ({
             title={offlineTitle}
             onClick={onSpam}
           >
-            {isSpamView ? <CircleCheckIcon /> : <BanIcon />}
-            <span>{isSpamView ? "Not spam" : "Mark spam"}</span>
+            {isSpam ? <CircleCheckIcon /> : <BanIcon />}
+            <span>{isSpam ? "Not spam" : "Mark spam"}</span>
           </button>
         ) : null}
         <button
@@ -241,9 +241,9 @@ const ThreadMessage = ({
 };
 
 /**
- * A mail on its own page with the rest of its conversation, oldest first,
- * like Gmail and iOS Mail: the opened message, the newest one and any unread
- * ones open; the rest one line each, a long run of them folded into "N more".
+ * A mail on its own page with the rest of its conversation, oldest first:
+ * the opened message, the newest one and any unread ones open; the rest one
+ * line each, a long run of them folded into "N more".
  */
 const Thread = ({ mailId }: { mailId: string }) => {
   const navigate = useNavigate();
@@ -254,7 +254,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
     theme = "system",
     isWriterOpen,
     isSettingsOpen,
-    selectedCategory
+    isAccountsOpen
   } = useContext(Context);
   const resolvedTheme = useResolvedTheme(theme);
   const { isOnline } = useIsOnline();
@@ -310,7 +310,9 @@ const Thread = ({ mailId }: { mailId: string }) => {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (isWriterOpen || isSettingsOpen) return;
+      // The writer, Settings and the accounts menu each close on Escape
+      // themselves; the page stays.
+      if (isWriterOpen || isSettingsOpen || isAccountsOpen) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       const target = e.target as HTMLElement | null;
       if (
@@ -326,7 +328,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goBack, isWriterOpen, isSettingsOpen]);
+  }, [goBack, isWriterOpen, isSettingsOpen, isAccountsOpen]);
 
   const toggle = (id: string) =>
     setExpanded((current) => {
@@ -339,10 +341,26 @@ const Thread = ({ mailId }: { mailId: string }) => {
   const expandAll = (ids: string[]) =>
     setExpanded((current) => new Set([...(current ?? []), ...ids]));
 
-  /** What's left of the thread after `id` leaves it; leaves the page if nothing. */
-  const afterRemoval = (id: string) => {
+  /**
+   * Where the page goes once `id` leaves the conversation. The page is
+   * addressed by the mail it was opened from, so when that mail is the one
+   * leaving, the page moves to the newest message still in the conversation
+   * — refetching by the removed mail would find nothing, or (after Mark spam)
+   * find it again as a spam conversation. With nothing left, back to the
+   * list. Returns where it went, for Undo.
+   */
+  const afterRemoval = (id: string): "stayed" | "moved" | "left" => {
     const remaining = thread.filter((m) => m.id !== id);
-    if (!remaining.length) goBack();
+    if (!remaining.length) {
+      goBack();
+      return "left";
+    }
+    if (id !== mailId) return "stayed";
+    navigate(mailPagePath(remaining[remaining.length - 1].id), {
+      replace: true,
+      state: location.state
+    });
+    return "moved";
   };
 
   const onToggleSaved = (mail: MailHeaderData) => {
@@ -357,11 +375,10 @@ const Thread = ({ mailId }: { mailId: string }) => {
       .finally(() => refreshMailQueries(queryClient));
   };
 
-  const isSpamView = selectedCategory === Category.SpamMails || !!thread[0]?.spam;
-
   const onSpam = (mail: MailHeaderData) => {
     if (!isOnline) return;
-    const nextIsSpam = !mail.spam && !isSpamView;
+    // Each message says whether it is spam; the button acts on that.
+    const nextIsSpam = !mail.spam;
     updateMailInCaches(queryClient, mail.id, () => null);
     afterRemoval(mail.id);
     const body: SpamMarkPostBody = { mail_id: mail.id, is_spam: nextIsSpam };
@@ -375,8 +392,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
     if (!isOnline) return;
     const snapshot = snapshotCaches(queryClient);
     updateMailInCaches(queryClient, mail.id, () => null);
-    const leaving = thread.length <= 1;
-    afterRemoval(mail.id);
+    const went = afterRemoval(mail.id);
     scheduleDelete(mail.id, () => {
       sendDelete(mail.id).finally(() => refreshMailQueries(queryClient));
     });
@@ -388,8 +404,14 @@ const Thread = ({ mailId }: { mailId: string }) => {
         onClick: () => {
           if (!cancelDelete(mail.id)) return;
           restoreCaches(queryClient, snapshot);
-          // The page was left when its last message went; come back to it.
-          if (leaving) navigate(mailPagePath(mail.id));
+          // Return to the restored mail's page if the delete moved off it.
+          if (went === "left") navigate(mailPagePath(mail.id));
+          if (went === "moved") {
+            navigate(mailPagePath(mail.id), {
+              replace: true,
+              state: location.state
+            });
+          }
         }
       }
     });
@@ -470,7 +492,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
               canCollapse={thread.length > 1}
               onToggle={() => toggle(mail.id)}
               isSent={isSent}
-              isSpamView={isSpamView}
+              isSpam={!!mail.spam}
               onReply={() => startReply(mail, "reply").catch(console.error)}
               onForward={() => startReply(mail, "forward").catch(console.error)}
               onToggleSaved={() => onToggleSaved(mail)}

@@ -35,9 +35,6 @@ export const postSendMailRoute = new Route<SendMailPostResponse>(
     }
 
     try {
-      // Drop any client-supplied References: sendMail derives them from the
-      // mail being answered, so a client can't graft a reply onto another
-      // conversation's thread.
       const { references: _ignored, ...fields } = body as SendMailPostBody & {
         references?: unknown;
       };

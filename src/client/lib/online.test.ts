@@ -83,7 +83,7 @@ describe("invalidateCacheableQueries", () => {
     // string-key cacheable endpoint (mail headers) → invalidate
     expect(pred({ queryKey: "/api/mails/headers/me@hoie.kim" })).toBe(true);
     // array-key form, first element is the URL → invalidate
-    expect(pred({ queryKey: ["/api/mails/headers/me@hoie.kim?new=1"] })).toBe(
+    expect(pred({ queryKey: ["/api/mails/headers/me@hoie.kim?saved=1"] })).toBe(
       true
     );
     // volatile / non-cacheable endpoints → leave alone

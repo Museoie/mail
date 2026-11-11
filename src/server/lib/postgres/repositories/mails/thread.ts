@@ -52,14 +52,22 @@ export interface ThreadRow {
   text_prefix: string | null;
 }
 
-/** Candidates fetched per round; a thread is never this long in practice. */
+/** Rows fetched by header links per round; a thread is never this long. */
 export const THREAD_CANDIDATE_LIMIT = 300;
+
+/** Rows fetched by subject; the newest are the likeliest conversation. */
+export const THREAD_SUBJECT_LIMIT = 100;
 
 /**
  * Postgres twin of `normalizeSubject` in mails/threading.ts: the subject with
  * leading reply/forward markers removed, whitespace collapsed, lower-cased.
+ * The expression index `idx_mails_thread_subject` (postgres/initialize.ts) is
+ * built on exactly this text, so the two must stay identical.
  */
 export const NORMALIZED_SUBJECT_SQL = `lower(btrim(regexp_replace(regexp_replace(subject, '^\\s*((re|fwd?|aw|wg|sv|vs|antw|tr|rv)\\s*(\\[\\d+\\])?\\s*[:：]\\s*)+', '', 'i'), '\\s+', ' ', 'g')))`;
+
+/** Header-less mail, the only rows the subject match applies to. */
+export const HEADERLESS_SQL = "in_reply_to IS NULL AND reference_ids IS NULL";
 
 export const buildThreadSeedQuery = (
   user_id: string,
@@ -71,24 +79,16 @@ export const buildThreadSeedQuery = (
 });
 
 /**
- * Mails that may share a thread with the ids and subject given: anything
- * whose own id, In-Reply-To or References overlaps `ids`, or (when a subject
- * is given) whose normalized subject equals it. Spam stays out unless the
+ * Mails whose own id, In-Reply-To or References overlaps `ids` (pass both the
+ * bracketed and the bare spelling of each id). Spam stays out unless the
  * thread being opened is spam itself.
  */
 export const buildThreadCandidatesQuery = (
   user_id: string,
   ids: string[],
-  normalizedSubject: string | null,
   includeSpam: boolean
-): { sql: string; values: ParamValue[] } => {
-  const values: ParamValue[] = [user_id, ids];
-  let subjectCondition = "";
-  if (normalizedSubject) {
-    values.push(normalizedSubject);
-    subjectCondition = ` OR ${NORMALIZED_SUBJECT_SQL} = $3`;
-  }
-  const sql = `SELECT ${THREAD_COLUMNS} FROM mails
+): { sql: string; values: ParamValue[] } => ({
+  sql: `SELECT ${THREAD_COLUMNS} FROM mails
     WHERE user_id = $1
       AND expunged = FALSE
       AND draft = FALSE
@@ -97,12 +97,33 @@ export const buildThreadCandidatesQuery = (
         message_id = ANY($2::text[])
         OR in_reply_to = ANY($2::text[])
         OR (reference_ids IS NOT NULL AND reference_ids ?| $2::text[])
-        ${subjectCondition}
       )
     ORDER BY date DESC
-    LIMIT ${THREAD_CANDIDATE_LIMIT}`;
-  return { sql, values };
-};
+    LIMIT ${THREAD_CANDIDATE_LIMIT}`,
+  values: [user_id, ids]
+});
+
+/**
+ * Header-less mails with this normalized subject — the candidates for the
+ * subject match. Served by `idx_mails_thread_subject`, whose predicate and
+ * expression this query repeats.
+ */
+export const buildThreadSubjectQuery = (
+  user_id: string,
+  normalizedSubject: string,
+  includeSpam: boolean
+): { sql: string; values: ParamValue[] } => ({
+  sql: `SELECT ${THREAD_COLUMNS} FROM mails
+    WHERE user_id = $1
+      AND ${HEADERLESS_SQL}
+      AND ${NORMALIZED_SUBJECT_SQL} = $2
+      AND expunged = FALSE
+      AND draft = FALSE
+      ${includeSpam ? "" : "AND is_spam = FALSE"}
+    ORDER BY date DESC
+    LIMIT ${THREAD_SUBJECT_LIMIT}`,
+  values: [user_id, normalizedSubject]
+});
 
 /** The References of the user's mail with `message_id`, if it is stored. */
 export const getReferenceIdsByMessageId = async (
@@ -131,12 +152,20 @@ export const getThreadSeed = async (
 export const getThreadCandidates = async (
   user_id: string,
   ids: string[],
-  normalizedSubject: string | null,
   includeSpam: boolean
 ): Promise<ThreadRow[]> => {
-  const { sql, values } = buildThreadCandidatesQuery(
+  const { sql, values } = buildThreadCandidatesQuery(user_id, ids, includeSpam);
+  const result = await pool.query(sql, values);
+  return result.rows as ThreadRow[];
+};
+
+export const getThreadSubjectCandidates = async (
+  user_id: string,
+  normalizedSubject: string,
+  includeSpam: boolean
+): Promise<ThreadRow[]> => {
+  const { sql, values } = buildThreadSubjectQuery(
     user_id,
-    ids,
     normalizedSubject,
     includeSpam
   );

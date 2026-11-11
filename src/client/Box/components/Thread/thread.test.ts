@@ -409,6 +409,71 @@ describe("mail page — delete", () => {
   });
 });
 
+describe("mail page — removing the opened mail", () => {
+  it("moves to the newest remaining message when the opened one is deleted", async () => {
+    const { flushDeletes } = await import("../Mails/pendingDeletes");
+    const mount = await mountThread({ mailId: "m1", fromList: true });
+    try {
+      const del = Array.from(
+        mount.container.querySelectorAll('[data-mail-id="m1"] .actionRow button')
+      ).find((b) => b.textContent === "Delete") as Element;
+      await mount.click(del);
+      // Addressed by a mail that still exists, so a refetch finds the rest.
+      expect(mount.path()).toBe("/mail/m3");
+    } finally {
+      flushDeletes();
+      await mount.teardown();
+    }
+  });
+
+  it("moves off a mail marked as spam, and sends is_spam for a non-spam message", async () => {
+    const originalPost = call.post;
+    const posts: unknown[] = [];
+    call.post = (async (url: string, body: unknown) => {
+      posts.push([url, body]);
+      return { status: "success" };
+    }) as typeof call.post;
+    const mount = await mountThread({ mailId: "m3", fromList: true });
+    try {
+      const spam = Array.from(
+        mount.container.querySelectorAll('[data-mail-id="m3"] .actionRow button')
+      ).find((b) => b.textContent === "Mark spam") as Element;
+      expect(spam).toBeDefined();
+      await mount.click(spam);
+      expect(posts).toEqual([
+        ["/api/mails/spam/mark", { mail_id: "m3", is_spam: true }]
+      ]);
+      expect(mount.path()).toBe("/mail/m2");
+    } finally {
+      call.post = originalPost;
+      await mount.teardown();
+    }
+  });
+
+  it("labels a spam message's button Not spam and moves it out", async () => {
+    thread[2] = { ...(thread[2] as object), spam: true };
+    const originalPost = call.post;
+    const posts: unknown[] = [];
+    call.post = (async (url: string, body: unknown) => {
+      posts.push([url, body]);
+      return { status: "success" };
+    }) as typeof call.post;
+    const mount = await mountThread({ mailId: "m1" });
+    try {
+      const notSpam = Array.from(
+        mount.container.querySelectorAll('[data-mail-id="m3"] .actionRow button')
+      ).find((b) => b.textContent === "Not spam") as Element;
+      await mount.click(notSpam);
+      expect(posts).toEqual([
+        ["/api/mails/spam/mark", { mail_id: "m3", is_spam: false }]
+      ]);
+    } finally {
+      call.post = originalPost;
+      await mount.teardown();
+    }
+  });
+});
+
 describe("mail page — leaving", () => {
   it("Back from a page opened from the list steps back to it", async () => {
     const mount = await mountThread({ fromList: true });
@@ -443,6 +508,16 @@ describe("mail page — leaving", () => {
 
   it("Escape stays on the page while the writer is open", async () => {
     const mount = await mountThread({ context: { isWriterOpen: true } });
+    try {
+      await mount.escape();
+      expect(mount.path()).toBe("/mail/m1");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("Escape stays on the page while the accounts menu is open", async () => {
+    const mount = await mountThread({ context: { isAccountsOpen: true } });
     try {
       await mount.escape();
       expect(mount.path()).toBe("/mail/m1");

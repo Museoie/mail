@@ -16,7 +16,6 @@ import { buildSnippet } from "./snippet";
 
 export interface GetMailsOptions {
   sent: boolean;
-  new: boolean;
   saved: boolean;
   spam: boolean;
   pagination?: Pagination;
@@ -71,7 +70,6 @@ export const getMailHeaders = async (
 
   const pgOptions: GetMailHeadersOptions = {
     sent: options.sent,
-    new: options.new,
     saved: options.saved,
     spam: options.spam,
     from,
@@ -94,7 +92,6 @@ export const getMailHeadersDelta = async (
 
   const pgOptions: GetMailHeadersOptions = {
     sent: options.sent,
-    new: options.new,
     saved: options.saved,
     spam: options.spam,
   };

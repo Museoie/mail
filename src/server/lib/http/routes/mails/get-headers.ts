@@ -37,7 +37,6 @@ export const getHeadersRoute = new Route<
 
     const options: GetMailsOptions = {
       sent: !!req.query.sent,
-      new: !!req.query.new,
       saved: !!req.query.saved,
       spam: !!req.query.spam
     };

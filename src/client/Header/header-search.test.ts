@@ -271,10 +271,16 @@ describe("header accounts menu button", () => {
     });
     try {
       const { act } = await import("react");
+      const event = new KeyboardEvent("keydown", {
+        key: "Escape",
+        cancelable: true
+      });
       await act(async () => {
-        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        window.dispatchEvent(event);
       });
       expect(calls).toEqual([false]);
+      // Handled here, so a mail page underneath doesn't also go back.
+      expect(event.defaultPrevented).toBe(true);
     } finally {
       await mount.teardown();
     }

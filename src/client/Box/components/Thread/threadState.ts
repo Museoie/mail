@@ -13,9 +13,9 @@ const isThreadKey = (key: unknown) =>
   typeof key === "string" && key.startsWith("/api/mails/thread/");
 
 /**
- * The messages shown open when a conversation is first displayed, like
- * Gmail and iOS Mail: the one that was opened, the newest, and any still
- * unread. Everything else starts as a one-line summary.
+ * The messages shown open when a conversation is first displayed: the one
+ * that was opened, the newest, and any still unread — the ones a reader came
+ * for. Everything else starts as a one-line summary.
  */
 export const initialExpanded = (
   thread: MailHeaderData[],

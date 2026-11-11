@@ -28,7 +28,6 @@ const makeMaskedUser = (overrides: Partial<MaskedUser> = {}) => new MaskedUser({
 
 const defaultOptions = {
   sent: false,
-  new: false,
   saved: false,
 };
 
@@ -51,7 +50,7 @@ describe("getMailHeaders", () => {
     expect(mockGetMailHeaders).toHaveBeenCalledWith(
       "user-123",
       "inbox@example.com",
-      expect.objectContaining({ sent: false, new: false, saved: false })
+      expect.objectContaining({ sent: false, saved: false })
     );
   });
 
@@ -250,7 +249,7 @@ describe("getMailHeadersDelta", () => {
     const callArgs = mockGetMailHeadersDelta.mock.calls[0];
     expect(callArgs[0]).toBe("user-123");
     expect(callArgs[1]).toBe("inbox@example.com");
-    expect(callArgs[2]).toMatchObject({ sent: true, new: false, saved: false });
+    expect(callArgs[2]).toMatchObject({ sent: true, saved: false });
     // Delta returns the full changed set, so it must NOT carry pagination.
     expect(callArgs[2]).not.toHaveProperty("from");
     expect(callArgs[2]).not.toHaveProperty("size");

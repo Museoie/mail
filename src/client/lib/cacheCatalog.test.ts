@@ -14,7 +14,7 @@ describe("cacheCatalog", () => {
     expect(matchCacheCatalog("/api/mails/headers/me@hoie.kim?sent=1")?.id).toBe(
       "mail-headers"
     );
-    expect(matchCacheCatalog("/api/mails/headers/me@hoie.kim?new=1")?.id).toBe(
+    expect(matchCacheCatalog("/api/mails/headers/me@hoie.kim?saved=1")?.id).toBe(
       "mail-headers"
     );
     expect(
@@ -73,7 +73,7 @@ describe("revalidateOnMountPolicy", () => {
     const seeded = [
       "/api/mails/headers/me@hoie.kim",
       "/api/mails/headers/me@hoie.kim?sent=1",
-      "/api/mails/headers/me@hoie.kim?new=1",
+      "/api/mails/headers/me@hoie.kim?saved=1",
       "/api/mails/headers/me@hoie.kim?saved=1",
       "/api/mails/headers/me@hoie.kim?spam=1",
     ];

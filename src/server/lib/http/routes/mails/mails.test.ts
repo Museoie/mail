@@ -225,13 +225,13 @@ describe("getHeadersRoute", () => {
       method: "GET",
       session: { user: makeUser("alice") },
       params: { account: "alice@example.com" },
-      query: { sent: "1", new: "1" },
+      query: { sent: "1" },
     });
 
     await getHeadersRoute.callback(req);
 
     const callArgs = mockGetMailHeaders.mock.calls[0];
-    expect(callArgs[2]).toMatchObject({ sent: true, new: true, saved: false });
+    expect(callArgs[2]).toMatchObject({ sent: true, saved: false });
   });
 
   it("passes the ?spam= flag to getMailHeaders (per-account spam folder)", async () => {

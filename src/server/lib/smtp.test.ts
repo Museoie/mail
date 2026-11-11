@@ -819,6 +819,43 @@ describe("onData handler", () => {
     expect(mockSaveMailHandler).not.toHaveBeenCalled();
   });
 
+  it("sends a client's reply with its In-Reply-To and References", async () => {
+    mockParseMessage.mockImplementation(() =>
+      Promise.resolve({
+        messageId: "<reply@test.com>",
+        inReplyTo: "<b@other.com>",
+        references: ["<a@other.com>", "<b@other.com>"],
+        from: { text: "admin@test.com", value: [{ address: "admin@test.com" }] },
+        to: { text: "recipient@other.com", value: [{ address: "recipient@other.com" }] },
+        subject: "Re: plan",
+        text: "ok",
+        attachments: []
+      })
+    );
+    const session = {
+      user: "admin",
+      envelope: {
+        mailFrom: { address: "admin@test.com" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+    mockGetUser.mockResolvedValue({
+      getSigned: () => ({ username: "admin" })
+    });
+
+    await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    const sent = (mockSendMail.mock.calls[0] as unknown[])[1] as {
+      inReplyTo?: string;
+      references?: string[];
+    };
+    expect(sent.inReplyTo).toBe("<b@other.com>");
+    expect(sent.references).toEqual(["<a@other.com>", "<b@other.com>"]);
+  });
+
   it("refuses an outgoing message when the credential rotated after AUTH", async () => {
     // The revocation fence: the send gate re-checks the
     // stamp, closing the window between RCPT TO and DATA.

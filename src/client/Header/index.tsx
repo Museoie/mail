@@ -95,8 +95,7 @@ const Header = () => {
   });
 
   const onClickTitle = () => {
-    // The writer docks over the list; the menu replaces it, as the old
-    // hamburger did.
+    // The writer docks over the list, so opening the menu closes it.
     if (isWriterOpen) {
       setIsWriterOpen(false);
       setIsAccountsOpen(true);
@@ -112,6 +111,8 @@ const Header = () => {
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
         return;
       }
+      // Handled: views underneath (a mail page) don't also act on it.
+      e.preventDefault();
       setIsAccountsOpen(false);
       titleRef.current?.focus();
     };

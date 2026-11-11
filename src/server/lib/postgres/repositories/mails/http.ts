@@ -97,7 +97,6 @@ export const getMailHeadersDelta = async (
       // every changed row, so from/size are deliberately omitted.
       getMailHeaders(user_id, address, {
         sent: options.sent,
-        new: options.new,
         saved: options.saved,
         spam: options.spam,
         since,

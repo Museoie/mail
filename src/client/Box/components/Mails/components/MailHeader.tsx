@@ -69,7 +69,7 @@ const MailHeader = (props: MailHeaderProps) => {
   // List row (design doc §5): sender + relative date on the first line,
   // subject on the second, snippet on the third. The snippet stays out of
   // search results (the highlight is shown instead). Opening a mail goes to
-  // its own page (see Thread), so the row has no expanded form.
+  // its own page (see Thread).
   const sender = isSent
     ? "me"
     : mail?.from?.value?.map((e) => e?.name || e?.address).join(", ");
