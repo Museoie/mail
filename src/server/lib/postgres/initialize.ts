@@ -17,6 +17,10 @@ import {
   MarkerKey,
 } from "./migration";
 import { searchVectorDdl, searchVectorReindexSql } from "./search-vector";
+import {
+  HEADERLESS_SQL,
+  SUBJECT_KEY_SQL,
+} from "./repositories/mails/thread";
 import { logger } from "../logger";
 import { ADMIN_RO_USERNAME } from "../read-only";
 import { withTimeout } from "../util";
@@ -72,6 +76,15 @@ const IDX_MAILS_SEARCH_SQL = buildCreateIndex("mails", "search_vector", {
   concurrently: true,
 });
 
+// The thread view's subject match (repositories/mails/thread.ts): header-less
+// mail looked up by a digest of its normalized subject. An expression index,
+// so it can't be a `table.indexes` entry; the expression and predicate must
+// match `buildThreadSubjectQuery` exactly for the planner to use it.
+const THREAD_SUBJECT_INDEX_NAME = "idx_mails_thread_subject_key";
+const IDX_MAILS_THREAD_SUBJECT_SQL = `CREATE INDEX CONCURRENTLY IF NOT EXISTS ${THREAD_SUBJECT_INDEX_NAME}
+  ON mails (user_id, (${SUBJECT_KEY_SQL}))
+  WHERE ${HEADERLESS_SQL}`;
+
 /**
  * Every index the app owns, as (name, statement) pairs. Names are exposed
  * alongside the SQL because the maintenance phase has to identify invalid
@@ -89,6 +102,10 @@ export const indexSpecs = (): Statement[] => {
     }
   }
   specs.push({ name: MAILS_SEARCH_INDEX_NAME, sql: IDX_MAILS_SEARCH_SQL });
+  specs.push({
+    name: THREAD_SUBJECT_INDEX_NAME,
+    sql: IDX_MAILS_THREAD_SUBJECT_SQL,
+  });
   return specs;
 };
 

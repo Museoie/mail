@@ -12,9 +12,6 @@ export const getMailsQueryUrl = (account: string, category: Category) => {
     case Category.SentMails:
       queryOption = "?sent=1";
       break;
-    case Category.NewMails:
-      queryOption = "?new=1";
-      break;
     case Category.SavedMails:
       queryOption = "?saved=1";
       break;

@@ -1,26 +1,20 @@
-/* The shell grid (design doc §4): an 80px rail, the 320px accounts column,
- * and the centered message list. The accounts column is an `auto` track, so
- * when it is hidden the track collapses to zero and the center column takes
- * the freed width. Below 1050px the accounts column leaves the grid and
- * becomes an overlay (see Accounts/index.scss); below 750px the rail
- * becomes a bottom bar and the grid is a single column. */
+/* The shell grid (design doc §4): an 80px rail and the centered message
+ * list. The accounts list is a menu opened from the header, centred over the
+ * list (see Accounts/index.scss), not a column. Below 750px the rail becomes
+ * a bottom bar and the grid is a single column. */
 .shell {
   height: calc(100vh - var(--headerHeight));
   height: calc(100dvh - var(--headerHeight));
   display: grid;
-  grid-template-columns: 80px auto minmax(0, 1fr);
+  grid-template-columns: 80px minmax(0, 1fr);
   background-color: var(--bg);
   color: var(--textBright);
 
-  /* Left edge of the center column, where the center curtain starts.
-   * Wide + accounts open: rail 80 + accounts 320. Wide + accounts closed:
-   * rail only. Narrow: the accounts column is an overlay, so the center
-   * always starts at the rail. */
-  --center-left: 400px;
+  /* Left edge of the center column, where the center curtain starts: the
+   * rail's right edge. */
+  --center-left: 80px;
 
   &.accounts-closed {
-    --center-left: 80px;
-
     .accounts {
       display: none;
     }
@@ -37,13 +31,9 @@
     padding: 5px 0.5rem 0.5rem 0.5rem;
     background-color: var(--bg);
 
-    /* The list doesn't scroll while the accounts overlay is open — the
-     * old mobile behavior. Gated to the overlay range: wide screens keep
-     * the in-grid accounts column scrollable alongside the list. */
+    /* The list doesn't scroll under the open accounts menu. */
     &.lock-scroll {
-      @media (max-width: 1050px) {
-        overflow: hidden;
-      }
+      overflow: hidden;
     }
   }
 
@@ -76,14 +66,6 @@
       display: block;
       pointer-events: all;
     }
-
-    /* Wide screens: the accounts column is in the grid, so there is no
-     * accounts overlay to dismiss — the curtain only covers the writer. */
-    &.on-accounts:not(.on-writer) {
-      @media (min-width: 1051px) {
-        display: none;
-      }
-    }
   }
 
   /* Compose docks inside the grid: right: 0, width min(600px, 100%),
@@ -113,13 +95,6 @@
       transition: opacity 150ms ease;
       box-shadow: rgb(0 0 0 / 10%) -10px 10px 10px 10px;
     }
-  }
-}
-
-@media (max-width: 1050px) {
-  .shell {
-    grid-template-columns: 80px minmax(0, 1fr);
-    --center-left: 80px;
   }
 }
 

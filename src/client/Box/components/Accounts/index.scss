@@ -443,20 +443,20 @@
   }
 }
 
-/* Below 1050px the accounts column leaves the grid and becomes an overlay
- * opened from the rail (design doc §4); the rail stays in the grid. */
-@media (max-width: 1050px) {
-  .tab-holder .accounts {
-    position: fixed;
-    top: var(--headerHeight);
-    bottom: 0;
-    left: 80px;
-    /* height: auto so top + bottom size it; the base 100% height would
-     * over-constrain it and push 50px past the viewport bottom. */
-    height: auto;
-    z-index: 24;
-    box-shadow: rgb(0 0 0 / 30%) 8px 0 24px;
-  }
+/* The accounts menu: opened from the account name in the header and shown
+ * centred right under it, at every width — a popover over the list, not a
+ * grid column. */
+.tab-holder .accounts {
+  position: fixed;
+  top: calc(var(--headerHeight) + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 24px));
+  height: auto;
+  max-height: min(560px, calc(100dvh - var(--headerHeight) - 24px));
+  z-index: 24;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
 }
 
 /* Below 750px the rail becomes a bottom bar (design doc §4) and the
@@ -498,10 +498,11 @@
     }
   }
 
+  /* Keep the menu above the bottom bar. */
   .tab-holder .accounts {
-    left: 0;
-    width: min(320px, 100%);
-    bottom: var(--bottomBarHeight);
+    max-height: calc(
+      100dvh - var(--headerHeight) - var(--bottomBarHeight) - 16px
+    );
   }
 }
 

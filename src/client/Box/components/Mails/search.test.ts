@@ -119,6 +119,7 @@ const mountMails = async (options: MountOptions = {}) => {
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { QueryClient, QueryClientProvider } = await import("react-query");
+  const { MemoryRouter } = await import("react-router-dom");
   const { Context, IsOnlineProvider } = await import("client");
   const Mails = (await import("./index")).default;
 
@@ -187,7 +188,12 @@ const mountMails = async (options: MountOptions = {}) => {
           createElement(
             Context.Provider,
             { value: contextValue as never },
-            createElement(Mails, { page: 0 })
+            // Rows navigate to a mail's page, so the list needs a router.
+            createElement(
+              MemoryRouter,
+              null,
+              createElement(Mails, { page: 0 })
+            )
           )
         )
       )

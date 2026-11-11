@@ -24,6 +24,10 @@ type MountOptions = {
   selectedCategory?: Category;
   isSettingsOpen?: boolean;
   accounts?: unknown;
+  isAccountsOpen?: boolean;
+  setIsAccountsOpen?: (v: unknown) => void;
+  isWriterOpen?: boolean;
+  setIsWriterOpen?: (v: unknown) => void;
 };
 
 const mountHeader = async (options: MountOptions = {}) => {
@@ -51,10 +55,10 @@ const mountHeader = async (options: MountOptions = {}) => {
     domainName: "example.com",
     userInfo,
     setUserInfo: () => {},
-    isAccountsOpen: true,
-    setIsAccountsOpen: () => {},
-    isWriterOpen: false,
-    setIsWriterOpen: () => {},
+    isAccountsOpen: options.isAccountsOpen ?? false,
+    setIsAccountsOpen: options.setIsAccountsOpen ?? (() => {}),
+    isWriterOpen: options.isWriterOpen ?? false,
+    setIsWriterOpen: options.setIsWriterOpen ?? (() => {}),
     replyData: {},
     setReplyData: () => {},
     selectedAccount,
@@ -126,7 +130,7 @@ describe("header unread count", () => {
     });
     try {
       const pill = mount.container.querySelector(".header-unread-count");
-      expect(mount.container.querySelector("h1")?.textContent).toBe(
+      expect(mount.container.querySelector("h1 .title-text")?.textContent).toBe(
         "maple@example.com"
       );
       expect(pill?.textContent).toBe("3");
@@ -154,7 +158,7 @@ describe("header unread count", () => {
       selectedCategory: Category.Search
     });
     try {
-      expect(mount.container.querySelector("h1")?.textContent).toBe("Search");
+      expect(mount.container.querySelector("h1 .title-text")?.textContent).toBe("Search");
       expect(
         mount.container.querySelector(".header-unread-count")?.getAttribute("title")
       ).toBe("4 unread in all accounts");
@@ -166,7 +170,7 @@ describe("header unread count", () => {
   it("titles the Settings page Settings", async () => {
     const mount = await mountHeader({ isSettingsOpen: true });
     try {
-      expect(mount.container.querySelector("h1")?.textContent).toBe("Settings");
+      expect(mount.container.querySelector("h1 .title-text")?.textContent).toBe("Settings");
     } finally {
       await mount.teardown();
     }
@@ -209,6 +213,86 @@ describe("header controls", () => {
       expect(
         mount.container.querySelector('[aria-label="Compose new mail"]')
       ).toBeNull();
+    } finally {
+      await mount.teardown();
+    }
+  });
+});
+
+describe("header accounts menu button", () => {
+  it("opens the accounts menu from the account name", async () => {
+    const calls: unknown[] = [];
+    const mount = await mountHeader({
+      setIsAccountsOpen: (v: unknown) => calls.push(v)
+    });
+    try {
+      const button = mount.container.querySelector(
+        "h1 button.title-button"
+      ) as HTMLButtonElement;
+      expect(button.getAttribute("aria-expanded")).toBe("false");
+      expect(button.getAttribute("aria-controls")).toBe("accounts-menu");
+      const { act } = await import("react");
+      await act(async () => {
+        button.click();
+      });
+      expect(calls).toEqual([true]);
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("closes the writer and opens the menu when composing", async () => {
+    const accounts: unknown[] = [];
+    const writer: unknown[] = [];
+    const mount = await mountHeader({
+      isWriterOpen: true,
+      setIsWriterOpen: (v: unknown) => writer.push(v),
+      setIsAccountsOpen: (v: unknown) => accounts.push(v)
+    });
+    try {
+      const { act } = await import("react");
+      await act(async () => {
+        (
+          mount.container.querySelector("button.title-button") as HTMLElement
+        ).click();
+      });
+      expect(writer).toEqual([false]);
+      expect(accounts).toEqual([true]);
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("Escape closes the open menu", async () => {
+    const calls: unknown[] = [];
+    const mount = await mountHeader({
+      isAccountsOpen: true,
+      setIsAccountsOpen: (v: unknown) => calls.push(v)
+    });
+    try {
+      const { act } = await import("react");
+      const event = new KeyboardEvent("keydown", {
+        key: "Escape",
+        cancelable: true
+      });
+      await act(async () => {
+        window.dispatchEvent(event);
+      });
+      expect(calls).toEqual([false]);
+      // Handled here, so a mail page underneath doesn't also go back.
+      expect(event.defaultPrevented).toBe(true);
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("is plain text before sign-in", async () => {
+    const mount = await mountHeader({ userInfo: undefined, selectedAccount: "" });
+    try {
+      expect(mount.container.querySelector("button")).toBeNull();
+      expect(mount.container.querySelector("h1")?.textContent).toBe(
+        "@example.com"
+      );
     } finally {
       await mount.teardown();
     }

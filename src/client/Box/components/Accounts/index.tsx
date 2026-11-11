@@ -15,7 +15,6 @@ import {
   LogoutIcon,
   SettingsIcon,
   InboxIcon,
-  NewMailIcon,
   FoldersIcon,
   SortDownIcon,
   SortUpIcon,
@@ -58,6 +57,7 @@ import {
   folderBadgeCounts
 } from "./accountList";
 import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
+import { opensAccountsAfterFolderChange } from "./accountsMenu";
 
 import "./index.scss";
 
@@ -263,15 +263,16 @@ const Accounts = ({
             categoryForAccount(accountName, { received, sent, spam })
           );
           setSelectedAccount(accountName);
-          if (viewSize.width <= 1050) setIsAccountsOpen(false);
+          setIsAccountsOpen(false);
           return;
         }
         setIsSettingsOpen(false);
         if (selectedAccount !== accountName) {
           setPage(1);
           setSelectedAccount(accountName);
-          if (viewSize.width <= 1050) setIsAccountsOpen(false);
         }
+        // Picking an account is the menu's job done.
+        setIsAccountsOpen(false);
       };
 
       const isSelected = selectedAccount === accountName;
@@ -330,9 +331,7 @@ const Accounts = ({
       );
     } else if (sortBy === SortBy.Size) {
       const sortKey =
-        selectedCategory === Category.NewMails
-          ? "unread_doc_count"
-          : selectedCategory === Category.SavedMails
+        selectedCategory === Category.SavedMails
           ? "saved_doc_count"
           : "doc_count";
       sortedAccountData.sort(
@@ -351,7 +350,6 @@ const Accounts = ({
     const accountComponents = filteredAccountData.map(renderAccount);
 
     const categoryIcons = {
-      [Category.NewMails]: NewMailIcon,
       [Category.AllMails]: InboxIcon,
       [Category.SavedMails]: EmptyStarIcon,
       [Category.SentMails]: SendIcon,
@@ -366,10 +364,9 @@ const Accounts = ({
     const onClickCategory = (category: Category) => {
       if (category === Category.Search) {
         // Entering search parks the current account and folder and starts
-        // from an empty term (design doc §9). The search box now lives in
-        // the center column, so the accounts panel no longer needs to open
-        // for the input to be reachable — opening it would cover the box
-        // at ≤1050px, where the panel is an overlay.
+        // from an empty term (design doc §9). The search box lives in the
+        // center column, so the accounts menu stays closed — it would cover
+        // the box.
         enterSearch();
         return;
       }
@@ -388,6 +385,15 @@ const Accounts = ({
         setSelectedAccount(preSearchAccount.current);
       }
       setSelectedCategory(category);
+      // On a phone the account list is hidden behind the header, so moving
+      // to another folder opens it: picking the account is the next step.
+      setIsAccountsOpen(
+        opensAccountsAfterFolderChange(
+          viewSize.width,
+          selectedCategory,
+          category
+        )
+      );
     };
 
     // While Settings is open no folder is the current view.
@@ -396,7 +402,7 @@ const Accounts = ({
     const categoryComponents = Object.values(Category).map((e, i) => {
       const classes = ["rail-item"];
       if (currentFolder === e) classes.push("clicked");
-      // The five folder items hide on the narrow bar — the Folders entry
+      // The four folder items hide on the narrow bar — the Folders entry
       // opens them as a sheet instead (design doc §4, option A). Search
       // stays: it is one of the narrow bar's five items.
       if (e !== Category.Search) classes.push("folder-rail-item");
@@ -468,8 +474,7 @@ const Accounts = ({
     const onClickCompose = () => {
       // One overlay at a time on narrow screens: the writer docks over the
       // list, so the accounts overlay (which also covers the list) closes.
-      if (!isWriterOpen && isAccountsOpen && viewSize.width <= 1050)
-        setIsAccountsOpen(false);
+      if (!isWriterOpen && isAccountsOpen) setIsAccountsOpen(false);
       setIsWriterOpen(!isWriterOpen);
     };
 
@@ -478,7 +483,7 @@ const Accounts = ({
     const onClickSettings = () => {
       if (!isSettingsOpen) {
         setIsWriterOpen(false);
-        if (isAccountsOpen && viewSize.width <= 1050) setIsAccountsOpen(false);
+        if (isAccountsOpen) setIsAccountsOpen(false);
       }
       setIsSettingsOpen(!isSettingsOpen);
     };
@@ -529,11 +534,10 @@ const Accounts = ({
       setSelectedAccount("");
     };
 
-    // The Folders sheet rows (design doc §4, option A): the five folders
+    // The Folders sheet rows (design doc §4, option A): the four folders
     // with their badge totals from the accounts payload already in hand.
     const sheetFolders = (
       [
-        Category.NewMails,
         Category.AllMails,
         Category.SavedMails,
         Category.SentMails,
@@ -618,7 +622,7 @@ const Accounts = ({
             onClose={() => setIsFoldersSheetOpen(false)}
           />
         ) : null}
-        <aside className="accounts" aria-label="Accounts">
+        <aside className="accounts" id="accounts-menu" aria-label="Accounts">
           <div className="accounts_header">
             <div className="filter_box">
               <input

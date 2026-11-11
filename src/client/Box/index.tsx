@@ -6,7 +6,9 @@ import {
   useRef,
   useState
 } from "react";
-import { Writer, Accounts, Mails, Settings } from "./components";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { openedFromList } from "./components/Mails/mailPage";
+import { Writer, Accounts, Mails, Settings, Thread } from "./components";
 import { Context } from "client";
 import "./index.scss";
 
@@ -24,8 +26,29 @@ const Box = () => {
     setIsAccountsOpen,
     isWriterOpen,
     setIsWriterOpen,
-    isSettingsOpen
+    isSettingsOpen,
+    selectedAccount,
+    selectedCategory
   } = useContext(Context);
+
+  // `/mail/:mailId` shows that mail's conversation over the list, which
+  // stays mounted underneath so Back returns to the same scroll position.
+  const { mailId } = useParams<{ mailId?: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Switching account or folder while reading is navigation to that list.
+  const listKey = `${selectedCategory}|${selectedAccount}`;
+  const lastListKey = useRef(listKey);
+  useEffect(() => {
+    if (lastListKey.current === listKey) return;
+    lastListKey.current = listKey;
+    if (!mailId) return;
+    // Opened from the list: step back to it, so history doesn't gain a
+    // second list entry. Opened directly: replace the page with the list.
+    if (openedFromList(location.state)) navigate(-1);
+    else navigate("/", { replace: true });
+  }, [listKey, mailId, navigate, location.state]);
 
   const [page, setPage] = useState(1);
   const centerColRef = useRef<HTMLElement>(null);
@@ -60,7 +83,7 @@ const Box = () => {
         className={
           "center-col" +
           (isAccountsOpen ? " lock-scroll" : "") +
-          (isSettingsOpen ? " behind-settings" : "")
+          (isSettingsOpen || mailId ? " behind-settings" : "")
         }
         onScroll={loadMoreNearBottom}
         ref={centerColRef}
@@ -80,6 +103,15 @@ const Box = () => {
           </Suspense>
         </div>
       </main>
+      {mailId && !isSettingsOpen ? (
+        <div className="center-col thread-col">
+          <div className="center-inner">
+            <Suspense fallback={<></>}>
+              <Thread key={mailId} mailId={mailId} />
+            </Suspense>
+          </div>
+        </div>
+      ) : null}
       {isSettingsOpen ? (
         <div className="center-col settings-col">
           <div className="center-inner">

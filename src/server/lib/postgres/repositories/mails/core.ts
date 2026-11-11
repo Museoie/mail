@@ -92,6 +92,8 @@ export const syncMappedPivotsForRow = async (
 export interface SaveMailInput {
   user_id: string;
   message_id: string;
+  in_reply_to?: string | null;
+  reference_ids?: string[] | null;
   subject?: string;
   date?: string;
   html?: string;
@@ -287,6 +289,10 @@ export const saveMail = async (
       spam_score: input.spam_score ?? 0,
       spam_reasons: input.spam_reasons ? JSON.stringify(input.spam_reasons) : null,
       is_spam: input.is_spam ?? false,
+      in_reply_to: input.in_reply_to ?? null,
+      reference_ids: input.reference_ids?.length
+        ? JSON.stringify(input.reference_ids)
+        : null,
       ...input.placement,
     };
 

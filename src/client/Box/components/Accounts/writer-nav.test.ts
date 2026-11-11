@@ -308,11 +308,11 @@ describe("Settings page", () => {
   const railState = async (settingsOpen: boolean) => {
     const { container, waitForRail, teardown } = await mountAccounts({
       settingsOpen,
-      category: Category.NewMails
+      category: Category.AllMails
     });
     try {
       const items = Array.from(await waitForRail());
-      const newTab = items.find((el) => el.textContent?.startsWith("New"))!;
+      const newTab = items.find((el) => el.textContent?.startsWith("All"))!;
       const settings = items.find(
         (el) => el.getAttribute("aria-label") === "Settings"
       )!;
@@ -341,8 +341,8 @@ describe("Settings page", () => {
     // The current folder keeps its count too: badges never come and go as
     // the reader moves between folders. (textContent is label + badge.)
     const closed = await railState(false);
-    expect(closed.clicked).toEqual(["New4"]);
-    expect(closed.selectedTabs).toEqual(["New4"]);
+    expect(closed.clicked).toEqual(["All4"]);
+    expect(closed.selectedTabs).toEqual(["All4"]);
     expect(closed.settingsPressed).toBe("false");
     expect(closed.newBadge).toBe("4");
   });
@@ -382,7 +382,7 @@ describe("Settings page", () => {
     });
     try {
       await clickRailItem("Folders");
-      expect(document.querySelectorAll(".folders-sheet-row").length).toBe(5);
+      expect(document.querySelectorAll(".folders-sheet-row").length).toBe(4);
       expect(
         document.querySelectorAll(".folders-sheet-row[aria-current]").length
       ).toBe(0);
@@ -430,14 +430,16 @@ describe("Settings page", () => {
     }
   });
 
-  it("opening it at 1920px leaves the accounts column alone", async () => {
+  // The accounts list is a popover menu at every width now, so opening a
+  // page under it closes it at 1920px too.
+  it("opening it at 1920px closes the accounts menu", async () => {
     const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts({
       width: 1920,
       accountsOpen: true
     });
     try {
       await clickRailItem("Settings");
-      expect(accountsOpenCalls).toEqual([]);
+      expect(accountsOpenCalls).toEqual([false]);
     } finally {
       await teardown();
     }
@@ -507,10 +509,9 @@ describe("Folder tabs show numeric unread counts", () => {
     }
   };
 
-  it("New shows the received unread total and All does not repeat it", async () => {
+  it("All shows the received unread total", async () => {
     // Received unread: maple 3 + fern 1 = 4.
-    expect(await badgeFor("New")).toBe("4");
-    expect(await badgeFor("All")).toBeNull();
+    expect(await badgeFor("All")).toBe("4");
   });
 
   it("Sent and Spam show their own unread totals", async () => {
@@ -580,5 +581,48 @@ describe("Closed writer does not block clicks", () => {
     // translated off-screen still covers the right 600px in the hit-test
     // tree if the transform is ever dropped. No translateX remains.
     expect(scss).not.toContain("translateX");
+  });
+});
+
+describe("Folder changes and the accounts menu", () => {
+  it("moving to another folder at 390px opens the accounts menu", async () => {
+    const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts({
+      width: 390,
+      accountsOpen: false,
+      category: Category.AllMails
+    });
+    try {
+      await clickRailItem("Spam");
+      expect(accountsOpenCalls).toEqual([true]);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("moving to another folder at 1920px leaves it closed", async () => {
+    const { accountsOpenCalls, clickRailItem, teardown } = await mountAccounts({
+      width: 1920,
+      accountsOpen: false,
+      category: Category.AllMails
+    });
+    try {
+      await clickRailItem("Spam");
+      expect(accountsOpenCalls).toEqual([false]);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("picking an account closes the menu at any width", async () => {
+    const { accountsOpenCalls, clickAccountRow, teardown } = await mountAccounts({
+      width: 1920,
+      accountsOpen: true
+    });
+    try {
+      await clickAccountRow("fern");
+      expect(accountsOpenCalls).toEqual([false]);
+    } finally {
+      await teardown();
+    }
   });
 });

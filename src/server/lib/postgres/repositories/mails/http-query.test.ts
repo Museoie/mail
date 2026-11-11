@@ -31,7 +31,6 @@ const headerOptions = (
   overrides: Partial<GetMailHeadersOptions> = {}
 ): GetMailHeadersOptions => ({
   sent: false,
-  new: false,
   saved: false,
   ...overrides,
 });
@@ -80,7 +79,6 @@ describe("buildMailHeadersQuery", () => {
     for (const options of [
       {},
       { sent: true },
-      { new: true },
       { saved: true },
       { spam: true },
     ]) {
@@ -113,7 +111,7 @@ describe("buildMailHeadersQuery", () => {
   it("excludes is_spam from every non-spam view", () => {
     // Without this the "Mark as spam" button is cosmetic: the row reappears on
     // the next refetch because the inbox query still returns it.
-    for (const options of [{}, { sent: true }, { new: true }, { saved: true }]) {
+    for (const options of [{}, { sent: true }, { saved: true }]) {
       const sql = headersSql(options);
       expect(sql).toContain("AND is_spam = FALSE");
       expect(sql).not.toContain("is_spam = TRUE");

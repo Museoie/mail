@@ -2,7 +2,6 @@ import { useEffect, type ComponentType, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import { Category, onKeyboardActivate } from "client";
 import InboxIcon from "../InboxIcon";
-import NewMailIcon from "../NewMailIcon";
 import { EmptyStarIcon, BanIcon } from "../../../Mails/components";
 import { SendIcon } from "../../../Writer/components";
 
@@ -19,14 +18,13 @@ const folderIcons: Record<
   Exclude<Category, Category.Search>,
   ComponentType<SVGProps<SVGSVGElement>>
 > = {
-  [Category.NewMails]: NewMailIcon,
   [Category.AllMails]: InboxIcon,
   [Category.SavedMails]: EmptyStarIcon,
   [Category.SentMails]: SendIcon,
   [Category.SpamMails]: BanIcon
 };
 
-// The narrow-nav Folders sheet (design doc §4, option A): the five folders
+// The narrow-nav Folders sheet (design doc §4, option A): the four folders
 // with their unread counts, as a bottom sheet. Rendered through a portal
 // over everything so it opens above the writer
 // pane while the writer is open — tapping a folder is navigation, so it

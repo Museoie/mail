@@ -43,10 +43,7 @@ describe("emptyFolderState", () => {
     ]);
   });
 
-  it("counts unread for New and saved for Saved", () => {
-    expect(
-      emptyFolderState(Category.NewMails, "shop@x.com", accounts).others
-    ).toEqual([{ key: "bank@x.com", count: 1 }]);
+  it("counts saved mail for Saved", () => {
     expect(
       emptyFolderState(Category.SavedMails, "shop@x.com", accounts).others
     ).toEqual([{ key: "bank@x.com", count: 2 }]);

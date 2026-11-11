@@ -194,6 +194,26 @@ export const parseHeaderValue = (input: string): StructuredHeaderValue => {
 };
 
 /** Wraps a message id in angle brackets, or answers `undefined` for an empty one. */
+/** Longest Message-ID kept, matching the `message_id` column. */
+const MAX_MESSAGE_ID_LENGTH = 512;
+/** Most References entries kept: the oldest ones add nothing to threading. */
+export const MAX_REFERENCE_IDS = 50;
+
+/**
+ * The Message-IDs in an `In-Reply-To` or `References` value, in order,
+ * each in angle brackets. Comments and anything outside `<…>` are dropped,
+ * as are duplicates and over-long ids; the newest `MAX_REFERENCE_IDS` stay.
+ */
+export const parseMessageIdList = (value: string): string[] => {
+  const ids: string[] = [];
+  for (const match of value.matchAll(/<([^<>\s]+)>/g)) {
+    const id = `<${match[1]}>`;
+    if (id.length > MAX_MESSAGE_ID_LENGTH || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  return ids.slice(-MAX_REFERENCE_IDS);
+};
+
 export const ensureMessageIdFormat = (value: string): string | undefined => {
   if (!value.length) return undefined;
   let id = value;

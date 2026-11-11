@@ -112,6 +112,10 @@ export interface MailType {
    */
   text_line_count?: number | null;
   html_line_count?: number | null;
+  /** The Message-ID this mail answers, for threading. */
+  inReplyTo?: string;
+  /** The conversation's Message-IDs, oldest first, for threading. */
+  references?: string[];
 }
 
 export class Mail extends Model<Mail> implements MailType {
@@ -140,6 +144,8 @@ export class Mail extends Model<Mail> implements MailType {
   declare rfc822_size?: number | null;
   declare text_line_count?: number | null;
   declare html_line_count?: number | null;
+  declare inReplyTo?: string;
+  declare references?: string[];
 
   constructor(data?: Partial<Mail>) {
     super(data);

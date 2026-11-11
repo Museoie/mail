@@ -131,6 +131,25 @@ describe("Store.storeMail — what the destination box decides (#725)", () => {
     expect(savedInput().placement).toBeUndefined();
   });
 
+  it("saves an appended mail's threading headers", async () => {
+    await new Store(makeUser()).storeMail(
+      {
+        ...(makeMail() as object),
+        inReplyTo: "<a@x>",
+        references: ["<root@x>", "<a@x>"],
+      } as never,
+      "INBOX"
+    );
+    expect(savedInput().in_reply_to).toBe("<a@x>");
+    expect(savedInput().reference_ids).toEqual(["<root@x>", "<a@x>"]);
+  });
+
+  it("saves no threading headers for a mail that carries none, such as a copy", async () => {
+    await new Store(makeUser()).storeMail(makeMail(), "INBOX");
+    expect(savedInput().in_reply_to).toBeNull();
+    expect(savedInput().reference_ids).toBeNull();
+  });
+
   it("records no mapping row for INBOX or the unified Sent view", async () => {
     await new Store(makeUser()).storeMail(makeMail(), "INBOX");
     expect(savedInput().mailbox).toBeUndefined();

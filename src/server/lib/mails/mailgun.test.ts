@@ -313,6 +313,21 @@ describe("sendMailgunMail", () => {
     expect(only().get("h:In-Reply-To")).toBe("<original-msg@example.com>");
   });
 
+  it("sends References, space-separated, when provided", async () => {
+    const mail = new MailDataToSend({
+      ...baseMail,
+      inReplyTo: "<b@example.com>",
+      references: ["<a@example.com>", "<b@example.com>"],
+    });
+    await sendMailgunMail("admin", mail);
+    expect(only().get("h:References")).toBe("<a@example.com> <b@example.com>");
+  });
+
+  it("sends no References header without references", async () => {
+    await sendMailgunMail("admin", baseMail);
+    expect(only().get("h:References")).toBeNull();
+  });
+
   it("should return Mailgun's response with its HTTP status on success", async () => {
     respond = () => accepted("msg-id-999");
     const result = await sendMailgunMail("admin", baseMail);

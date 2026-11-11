@@ -61,13 +61,12 @@ export const accountBadgeCount = (
  * doc §4, option A): the same per-account rule as `accountBadgeCount` —
  * saved for Saved, unread everywhere else — summed over the bucket each
  * folder draws from. Reads the accounts payload already in hand; no extra
- * fetch. New and All both draw from `received`, so they share its unread
- * total, matching the list header's "unread" noun for both.
+ * fetch. All draws its unread total from `received`, matching the list
+ * header's "unread" noun.
  */
 export const folderBadgeCounts = (
   data: AccountsGetResponse | undefined
 ): {
-  [Category.NewMails]: number;
   [Category.AllMails]: number;
   [Category.SavedMails]: number;
   [Category.SentMails]: number;
@@ -82,7 +81,6 @@ export const folderBadgeCounts = (
   const spam = data?.spam ?? [];
   const unreadReceived = sum(received, "unread_doc_count");
   return {
-    [Category.NewMails]: unreadReceived,
     [Category.AllMails]: unreadReceived,
     [Category.SavedMails]: sum(received, "saved_doc_count"),
     [Category.SentMails]: sum(sent, "unread_doc_count"),
@@ -129,19 +127,14 @@ export const accountBadge = (account: Account, category: Category): Badge => {
 };
 
 /**
- * The badge a folder tab shows. All Mails draws from the same unread total as
- * New Mails, so it carries none: two tabs showing one number read as two
- * different piles, and the second one used to appear and vanish as the
- * current folder moved. Every other badge shows whether or not its folder is
- * the current one, so counts never come and go on navigation.
+ * The badge a folder tab shows: All Mails carries the received unread total.
+ * Every badge shows whether or not its folder is the current one, so counts
+ * never come and go on navigation.
  */
 export const folderBadge = (
   category: Exclude<Category, Category.Search>,
   counts: ReturnType<typeof folderBadgeCounts>
 ): Badge => {
-  if (category === Category.AllMails) {
-    return { count: 0, tone: "unread", label: "" };
-  }
   const count = counts[category];
   if (category === Category.SavedMails) {
     return { count, tone: "neutral", label: `${count} saved` };

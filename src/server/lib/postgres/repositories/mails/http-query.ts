@@ -31,7 +31,6 @@ import {
 
 export interface GetMailHeadersOptions {
   sent: boolean;
-  new: boolean;
   saved: boolean;
   // Restrict to spam-flagged received mail. Spam is a per-account folder like
   // received/sent, so it rides the same address-scoped query path.
@@ -101,9 +100,7 @@ export const buildMailHeadersQuery = (
   const values: ParamValue[] = [user_id, addressJson];
   let paramIdx = 3;
 
-  if (options.new) {
-    sql += ` AND read = FALSE`;
-  } else if (options.saved) {
+  if (options.saved) {
     sql += ` AND saved = TRUE`;
   }
 

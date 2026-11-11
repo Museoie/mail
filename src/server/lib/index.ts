@@ -43,6 +43,7 @@ export {
   MailValidationError,
   MailSendingError,
   markSpam,
+  getThread,
 } from "./mails";
 export type { AccountsGetResponse, GetMailsOptions, MailHeadersDelta, ValidationResult, SaveMailHandlerOptions } from "./mails";
 

@@ -903,7 +903,11 @@ const onDataOutgoing = async (
       // let the recipient's client collapse its line breaks.
       html: parsed.html || (parsed.text ? plainTextToHtml(parsed.text) : ""),
       sender,
-      senderFullName: parsed.from?.value?.[0]?.name || sender
+      senderFullName: parsed.from?.value?.[0]?.name || sender,
+      // A reply written in a mail client keeps its place in the conversation:
+      // the headers go out with it and onto the stored Sent copy.
+      inReplyTo: parsed.inReplyTo,
+      references: parsed.references
     });
 
     await sendMail(signedUser, mailData);

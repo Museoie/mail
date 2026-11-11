@@ -752,6 +752,24 @@ describe("appendMessage — MIME parse", () => {
     expect(response).toBe("a1 NO APPEND failed to store message\r\n");
   });
 
+  it("keeps an appended reply's In-Reply-To and References for threading", async () => {
+    const reply = [
+      "Subject: Re: note",
+      "Message-ID: <reply@example.com>",
+      "In-Reply-To: <orig@example.com>",
+      "References: <root@example.com> <orig@example.com>",
+      "Content-Type: text/plain",
+      "",
+      "ok",
+      "",
+    ].join("\r\n");
+    const { mail } = await appendCapturing(spool(reply));
+    if (!mail) throw new Error("storeMail was never called");
+
+    expect(mail.inReplyTo).toBe("<orig@example.com>");
+    expect(mail.references).toEqual(["<root@example.com>", "<orig@example.com>"]);
+  });
+
   it("stores a plain-text message's text as its html, which the web body reads", async () => {
     const plain = "Subject: note\r\nContent-Type: text/plain\r\n\r\nline one\r\n";
     const { mail } = await appendCapturing(spool(plain));

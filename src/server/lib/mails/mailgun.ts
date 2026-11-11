@@ -27,6 +27,7 @@ export interface MailgunMessage {
   text?: string;
   attachment: MailgunAttachment[];
   "h:In-Reply-To"?: string;
+  "h:References"?: string;
 }
 
 /** Mailgun's answer to an accepted message: the queued message's id and a status line. */
@@ -233,8 +234,17 @@ export const sendMailgunMail = async (
   mail: MailDataToSend,
   files?: UploadedFileDynamicArray
 ) => {
-  const { sender, senderFullName, to, cc, bcc, subject, html, inReplyTo } =
-    mail;
+  const {
+    sender,
+    senderFullName,
+    to,
+    cc,
+    bcc,
+    subject,
+    html,
+    inReplyTo,
+    references
+  } = mail;
 
   // Read at call time: the filter below is only meaningful against the domain
   // the process is actually serving.
@@ -287,7 +297,8 @@ export const sendMailgunMail = async (
     html,
     text,
     attachment,
-    "h:In-Reply-To": inReplyTo
+    "h:In-Reply-To": inReplyTo,
+    "h:References": references?.length ? references.join(" ") : undefined
   });
 
   // Only external addresses go to Mailgun: a host-domain Cc or Bcc handed to

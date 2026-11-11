@@ -516,3 +516,29 @@ describe("parseMessage failures", () => {
     expect(fs.existsSync(attachmentDir)).toBe(false);
   });
 });
+
+describe("parseMessage — threading headers", () => {
+  it("reads In-Reply-To and References", async () => {
+    const parsed = await parse(
+      message(
+        "Message-ID: <c@x>",
+        "In-Reply-To: <b@x>",
+        "References: <a@x>",
+        " <b@x>",
+        "Subject: Re: plan",
+        "",
+        "body"
+      )
+    );
+    expect(parsed.inReplyTo).toBe("<b@x>");
+    expect(parsed.references).toEqual(["<a@x>", "<b@x>"]);
+  });
+
+  it("leaves both unset when the headers are absent or empty", async () => {
+    const parsed = await parse(
+      message("Message-ID: <c@x>", "In-Reply-To: ", "Subject: hi", "", "body")
+    );
+    expect(parsed.inReplyTo).toBeUndefined();
+    expect(parsed.references).toBeUndefined();
+  });
+});

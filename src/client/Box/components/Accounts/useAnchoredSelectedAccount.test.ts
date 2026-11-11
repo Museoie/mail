@@ -263,7 +263,6 @@ describe("useAnchoredSelectedAccount", () => {
       ).writes;
     }
     expect(writesByCategory).toEqual({
-      [Category.NewMails]: [""],
       [Category.AllMails]: ["only@x.com"],
       [Category.SavedMails]: [""],
       [Category.SentMails]: [""],

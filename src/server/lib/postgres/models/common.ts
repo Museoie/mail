@@ -82,6 +82,8 @@ export const RFC822_SIZE = "rfc822_size";
 // derives its own count. Kept only until the columns are dropped.
 export const TEXT_LINE_COUNT = "text_line_count";
 export const HTML_LINE_COUNT = "html_line_count";
+export const IN_REPLY_TO = "in_reply_to";
+export const REFERENCE_IDS = "reference_ids";
 
 // Sessions columns
 export const SESSION_ID = "session_id";

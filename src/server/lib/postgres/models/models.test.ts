@@ -215,6 +215,24 @@ describe("ModelValidationError", () => {
 // ---------------------------------------------------------------------------
 
 describe("MailModel construction", () => {
+  it("carries the threading headers, and accepts rows without them", () => {
+    const withHeaders = new MailModel({
+      ...makeMailData(),
+      in_reply_to: "<a@x>",
+      reference_ids: ["<a@x>"],
+    });
+    expect(withHeaders.in_reply_to).toBe("<a@x>");
+    expect(withHeaders.toJSON().reference_ids).toEqual(["<a@x>"]);
+
+    const without = new MailModel(makeMailData());
+    expect(without.toJSON().in_reply_to).toBeNull();
+    expect(without.toJSON().reference_ids).toBeNull();
+
+    expect(
+      () => new MailModel({ ...makeMailData(), reference_ids: "<a@x>" })
+    ).toThrow();
+  });
+
   it("constructs from valid data and assigns all fields", () => {
     const data = makeMailData();
     const m = new MailModel(data);

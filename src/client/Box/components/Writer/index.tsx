@@ -8,7 +8,7 @@ import {
   MouseEventHandler
 } from "react";
 
-import { useMutation } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
 
 import {
   ApiResponse,
@@ -81,6 +81,7 @@ const Writer = () => {
 
   const { isOnline } = useIsOnline();
   const { showToast, confirm } = useFeedback();
+  const queryClient = useQueryClient();
   // Problems found on Send, shown in the form next to the fields instead of
   // in a browser alert.
   const [errors, setErrors] = useState<string[]>([]);
@@ -356,6 +357,13 @@ const Writer = () => {
       return;
     }
     showToast({ message: "Mail sent." });
+    // The sent reply joins its conversation and the Sent list.
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        typeof queryKey === "string" &&
+        (queryKey.startsWith("/api/mails/thread/") ||
+          queryKey.startsWith("/api/mails/headers/"))
+    });
     setIsWriterOpen(false);
     clearDraft();
   };

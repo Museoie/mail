@@ -46,6 +46,17 @@ export const flushDeletes = () => {
 
 export const pendingDeleteCount = () => pending.size;
 
+/** Whether `id` is deleted but still inside its undo window. */
+export const isPendingDelete = (id: string) => pending.has(id);
+
+/**
+ * Drops mail whose delete is waiting out its undo window. The server still
+ * holds such mail until the window ends, so anything fetched in the meantime
+ * would otherwise show a mail the user has just deleted.
+ */
+export const withoutPendingDeletes = <T extends { id: string }>(mails: T[]) =>
+  pending.size ? mails.filter((m) => !pending.has(m.id)) : mails;
+
 /** The request itself; `keepalive` lets it finish while the page unloads. */
 export const sendDelete = (mailId: string) =>
   fetch(`/api/mails/${mailId}`, { method: "DELETE", keepalive: true }).catch(

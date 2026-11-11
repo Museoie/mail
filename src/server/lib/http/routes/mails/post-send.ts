@@ -12,7 +12,8 @@ export type SendMailPostResponse =
   | { status: "success" }
   | { status: "failed"; message: string };
 
-export type SendMailPostBody = MailDataToSendType;
+/** `references` is the server's to work out from the stored conversation. */
+export type SendMailPostBody = Omit<MailDataToSendType, "references">;
 
 export const postSendMailRoute = new Route<SendMailPostResponse>(
   "POST",
@@ -34,7 +35,10 @@ export const postSendMailRoute = new Route<SendMailPostResponse>(
     }
 
     try {
-      await sendMail(user, new MailDataToSend({ ...body }), attachments);
+      const { references: _ignored, ...fields } = body as SendMailPostBody & {
+        references?: unknown;
+      };
+      await sendMail(user, new MailDataToSend({ ...fields }), attachments);
       return { status: "success" };
     } catch (error) {
       if (error instanceof MailValidationError || error instanceof MailSendingError) {

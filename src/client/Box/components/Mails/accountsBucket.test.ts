@@ -50,9 +50,6 @@ describe("bucketsForMail", () => {
     expect(bucketsForMail(Category.SentMails, sentToMe, "me@x.com")).toEqual([
       "received"
     ]);
-    expect(bucketsForMail(Category.NewMails, sentToMe, "me@x.com")).toEqual([
-      "received"
-    ]);
   });
 
   // The spam folder is `is_spam = TRUE`, and both counted lists are its
@@ -107,7 +104,6 @@ describe("bucketsForMail", () => {
     });
     const both = ["received", "sent"];
     expect(bucketsForMail(Category.AllMails, ccSelf, "me@x.com")).toEqual(both);
-    expect(bucketsForMail(Category.NewMails, ccSelf, "me@x.com")).toEqual(both);
     expect(bucketsForMail(Category.SavedMails, ccSelf, "me@x.com")).toEqual(
       both
     );
@@ -121,10 +117,6 @@ describe("bucketsForMail", () => {
   // a mail the account also sent reached its received counters.
   it("reads a category listing received mail as proof of the received side", () => {
     expect(bucketsForMail(Category.AllMails, sentByMe, "me@x.com")).toEqual([
-      "received",
-      "sent"
-    ]);
-    expect(bucketsForMail(Category.NewMails, sentByMe, "me@x.com")).toEqual([
       "received",
       "sent"
     ]);
@@ -210,10 +202,9 @@ describe("wholeBucketForCategory", () => {
     expect(wholeBucketForCategory(Category.SpamMails)).toBe("spam");
   });
 
-  // New Mails and Saved Mails filter `received` by a counter, so an emptied
-  // list there says the counter hit zero, not that the account left `received`.
+  // Saved Mails filters `received` by a counter, so an emptied list there
+  // says the counter hit zero, not that the account left `received`.
   it("names none for the counter-filtered views and Search", () => {
-    expect(wholeBucketForCategory(Category.NewMails)).toBeNull();
     expect(wholeBucketForCategory(Category.SavedMails)).toBeNull();
     expect(wholeBucketForCategory(Category.Search)).toBeNull();
   });
@@ -331,12 +322,12 @@ describe("evictAccountFromCategory", () => {
     expect(next.spam.map((a) => a.key)).toEqual(["spammy@x.com"]);
   });
 
-  // Trashing the last unread mail empties the New Mails list without the
-  // account leaving `received` — it still holds every read mail. Evicting on
+  // Unsaving the last saved mail empties the Saved Mails list without the
+  // account leaving `received` — it still holds every other mail. Evicting on
   // that signal strands a real account out of every other view until a
   // refetch.
   it("keeps the account when the category only filters a bucket", () => {
-    for (const category of [Category.NewMails, Category.SavedMails]) {
+    for (const category of [Category.SavedMails]) {
       expect(
         evictAccountFromCategory(data(), category, "me@x.com").received.map(
           (a) => a.key
@@ -348,7 +339,7 @@ describe("evictAccountFromCategory", () => {
   it("hands back the same payload for a category that lists no bucket", () => {
     const before = data();
     expect(
-      evictAccountFromCategory(before, Category.NewMails, "me@x.com")
+      evictAccountFromCategory(before, Category.SavedMails, "me@x.com")
     ).toBe(before);
     expect(evictAccountFromCategory(before, Category.Search, "me@x.com")).toBe(
       before
@@ -361,11 +352,7 @@ describe("evictAccountFromCategory", () => {
 // the counter it writes stays plausible until the next payload lands.
 // `getAccountStats` builds `received` under `AND is_spam = FALSE`, so a
 describe("accountCountForCategory", () => {
-  it("reads unread for New and All from the received bucket", () => {
-    expect(accountCountForCategory(data(), Category.NewMails, "me@x.com")).toEqual({
-      count: 2,
-      noun: "unread"
-    });
+  it("reads unread for All from the received bucket", () => {
     expect(accountCountForCategory(data(), Category.AllMails, "me@x.com")).toEqual({
       count: 2,
       noun: "unread"

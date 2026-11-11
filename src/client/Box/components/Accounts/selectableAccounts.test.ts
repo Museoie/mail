@@ -38,10 +38,6 @@ describe("accountsForCategory", () => {
     ]);
   });
 
-  it("lists only accounts with unread mail for New Mails", () => {
-    expect(keys(Category.NewMails)).toEqual(["unread@x.com"]);
-  });
-
   it("lists only accounts with starred mail for Saved Mails", () => {
     expect(keys(Category.SavedMails)).toEqual(["starred@x.com"]);
   });
@@ -80,7 +76,7 @@ describe("accountsForCategory", () => {
 describe("resolveSelectedAccount", () => {
   it("leaves a selection the category lists alone", () => {
     expect(
-      resolveSelectedAccount("unread@x.com", Category.NewMails, lists)
+      resolveSelectedAccount("unread@x.com", Category.AllMails, lists)
     ).toBe(null);
     expect(resolveSelectedAccount("sender@x.com", Category.SentMails, lists))
       .toBe(null);
@@ -92,7 +88,7 @@ describe("resolveSelectedAccount", () => {
   it("keeps a real selection the category does not list", () => {
     expect(resolveSelectedAccount("sender@x.com", Category.AllMails, lists))
       .toBe(null);
-    expect(resolveSelectedAccount("read@x.com", Category.NewMails, lists))
+    expect(resolveSelectedAccount("read@x.com", Category.SavedMails, lists))
       .toBe(null);
   });
 
@@ -102,8 +98,8 @@ describe("resolveSelectedAccount", () => {
   it("re-anchors a name no list holds to the category's first account", () => {
     expect(resolveSelectedAccount("phantom@x.com", Category.AllMails, lists))
       .toBe("read@x.com");
-    expect(resolveSelectedAccount("keyword", Category.NewMails, lists)).toBe(
-      "unread@x.com"
+    expect(resolveSelectedAccount("keyword", Category.SavedMails, lists)).toBe(
+      "starred@x.com"
     );
   });
 
@@ -190,7 +186,7 @@ describe("resolveSelectedAccount", () => {
       resolveSelectedAccount("", Category.SpamMails, { received, spam: [] })
     ).toBe(null);
     expect(
-      resolveSelectedAccount("", Category.NewMails, {
+      resolveSelectedAccount("", Category.SavedMails, {
         received: [makeAccount("read@x.com")]
       })
     ).toBe(null);
