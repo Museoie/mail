@@ -107,4 +107,20 @@ describe("getMailBody", () => {
     // MailBodyData constructor coerces null/undefined html to ""
     expect(result!.html).toBe("");
   });
+
+  it("converts a plain-text body stored in the html column", async () => {
+    mockGetMailById.mockResolvedValue({
+      mail_id: "mail-006",
+      html: "line 1\nline 2 & more",
+      text: "line 1\nline 2 & more",
+      attachments: null,
+      message_id: "<msg-006@example.com>",
+      insight: null,
+    });
+
+    const result = await getMailBody("user-123", "mail-006");
+    expect(result!.html).toBe(
+      '<div style="white-space: pre-wrap">line 1\nline 2 &amp; more</div>'
+    );
+  });
 });

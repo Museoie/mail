@@ -4,6 +4,7 @@ import { Category } from "client";
 import {
   accountsForCategory,
   categoryForAccount,
+  mostRecentAccount,
   resolveSelectedAccount
 } from "./selectableAccounts";
 
@@ -327,5 +328,59 @@ describe("categoryForAccount", () => {
         key
       );
     }
+  });
+});
+
+describe("mostRecentAccount", () => {
+  const at = (key: string, date: string) =>
+    new Account({
+      key,
+      updated: new Date(date),
+      doc_count: 1,
+      unread_doc_count: 0,
+      saved_doc_count: 0
+    });
+
+  it("picks the account with the newest mail", () => {
+    expect(
+      mostRecentAccount([
+        at("a@x.com", "2026-01-01"),
+        at("b@x.com", "2026-03-01"),
+        at("c@x.com", "2026-02-01")
+      ])?.key
+    ).toBe("b@x.com");
+  });
+
+  it("keeps list order on a tie", () => {
+    expect(
+      mostRecentAccount([at("a@x.com", "2026-01-01"), at("b@x.com", "2026-01-01")])
+        ?.key
+    ).toBe("a@x.com");
+  });
+
+  it("is undefined for an empty list", () => {
+    expect(mostRecentAccount([])).toBeUndefined();
+  });
+});
+
+describe("resolveSelectedAccount — fresh login", () => {
+  it("anchors to the account with the newest mail, not the first one", () => {
+    const older = new Account({
+      key: "a-old@x.com",
+      updated: new Date("2026-01-01"),
+      doc_count: 1,
+      unread_doc_count: 0,
+      saved_doc_count: 0
+    });
+    const newer = new Account({
+      key: "z-new@x.com",
+      updated: new Date("2026-05-01"),
+      doc_count: 1,
+      unread_doc_count: 0,
+      saved_doc_count: 0
+    });
+    expect(
+      resolveSelectedAccount("", Category.AllMails, { received: [older, newer] })
+    ).toBe("z-new@x.com");
   });
 });

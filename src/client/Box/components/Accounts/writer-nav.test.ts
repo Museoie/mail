@@ -336,14 +336,15 @@ describe("Settings page", () => {
     expect(open.clicked).toEqual(["Settings"]);
     expect(open.selectedTabs).toEqual([]);
     expect(open.settingsPressed).toBe("true");
-    // The folder isn't highlighted, so its unread count shows again.
     expect(open.newBadge).toBe("4");
 
+    // The current folder keeps its count too: badges never come and go as
+    // the reader moves between folders. (textContent is label + badge.)
     const closed = await railState(false);
-    expect(closed.clicked).toEqual(["New"]);
-    expect(closed.selectedTabs).toEqual(["New"]);
+    expect(closed.clicked).toEqual(["New4"]);
+    expect(closed.selectedTabs).toEqual(["New4"]);
     expect(closed.settingsPressed).toBe("false");
-    expect(closed.newBadge).toBeNull();
+    expect(closed.newBadge).toBe("4");
   });
 
   it("opening it closes the writer", async () => {
@@ -506,10 +507,10 @@ describe("Folder tabs show numeric unread counts", () => {
     }
   };
 
-  it("New and All share the received unread total", async () => {
+  it("New shows the received unread total and All does not repeat it", async () => {
     // Received unread: maple 3 + fern 1 = 4.
     expect(await badgeFor("New")).toBe("4");
-    expect(await badgeFor("All")).toBe("4");
+    expect(await badgeFor("All")).toBeNull();
   });
 
   it("Sent and Spam show their own unread totals", async () => {
@@ -517,15 +518,13 @@ describe("Folder tabs show numeric unread counts", () => {
     expect(await badgeFor("Spam")).toBe("2");
   });
 
-  it("Saved shows the saved total", async () => {
-    // Saved is the selected category in badgeFor's default mount, so it
-    // shows no badge there — mount with All selected instead.
+  it("Saved shows the saved total, selected or not", async () => {
     expect(await badgeFor("Saved", Category.AllMails)).toBe("1");
+    // SavedMails is the selected category in badgeFor's default mount.
+    expect(await badgeFor("Saved")).toBe("1");
   });
 
-  it("the selected tab and Search show no badge", async () => {
-    // SavedMails is the selected category in badgeFor's mount.
-    expect(await badgeFor("Saved")).toBeNull();
+  it("Search shows no badge", async () => {
     expect(await badgeFor("Search")).toBeNull();
   });
 });

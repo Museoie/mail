@@ -36,6 +36,8 @@ export const searchMail = async (
         : undefined,
       highlight: m.highlight,
       snippet: buildSnippet(m.text),
+      // Search spans the spam folder; the row says so.
+      ...(m.is_spam ? { spam: true } : {}),
     });
   });
 };

@@ -21,7 +21,12 @@ beforeAll(() => {
 });
 afterAll(() => GlobalRegistrator.unregister());
 
-beforeEach(() => window.localStorage.clear());
+beforeEach(() => {
+  window.localStorage.clear();
+  // Discard asks before throwing a draft away; outside the app's feedback
+  // provider that falls back to the browser's confirm.
+  window.confirm = () => true;
+});
 
 const { Editor } = await import("client/lib/editor");
 const { selectAll } = await import("client/lib/editor/commands");
@@ -146,7 +151,7 @@ describe("Writer compose (design doc §7)", () => {
       selectedAccount: "maple@example.com"
     });
     try {
-      expect(inputByPlaceholder(container, "name").value).toBe("maple");
+      expect(inputByPlaceholder(container, "Your name").value).toBe("maple");
       expect(inputByPlaceholder(container, "account").value).toBe("maple");
     } finally {
       await teardown();
@@ -160,7 +165,7 @@ describe("Writer compose (design doc §7)", () => {
       selectedAccount: "maple@example.com"
     });
     try {
-      expect(inputByPlaceholder(container, "name").value).toBe("Fern");
+      expect(inputByPlaceholder(container, "Your name").value).toBe("Fern");
       expect(inputByPlaceholder(container, "account").value).toBe("fern");
     } finally {
       await teardown();
@@ -183,19 +188,22 @@ describe("Writer compose (design doc §7)", () => {
   it("opens Cc and Bcc independently from labeled buttons", async () => {
     const { act, container, teardown } = await mountWriter();
     try {
-      const cc = inputByPlaceholder(container, "cc-1@email.com, cc-2@email.com");
-      const bcc = inputByPlaceholder(container, "bcc-1@email.com, bcc-2@email.com");
-      expect(cc.disabled).toBe(true);
-      expect(bcc.disabled).toBe(true);
+      const cc = () =>
+        inputByPlaceholder(container, "Cc recipients, separated by commas");
+      const bcc = () =>
+        inputByPlaceholder(container, "Bcc recipients, separated by commas");
+      // A closed field is not rendered at all, so it can't be tabbed into.
+      expect(cc()).toBeNull();
+      expect(bcc()).toBeNull();
       await act(async () => {
         buttonByText(container, "Cc").click();
       });
-      expect(cc.disabled).toBe(false);
-      expect(bcc.disabled).toBe(true);
+      expect(cc()).not.toBeNull();
+      expect(bcc()).toBeNull();
       await act(async () => {
         buttonByText(container, "Bcc").click();
       });
-      expect(bcc.disabled).toBe(false);
+      expect(bcc()).not.toBeNull();
     } finally {
       await teardown();
     }
@@ -206,9 +214,9 @@ describe("Writer compose (design doc §7)", () => {
       selectedAccount: "maple@example.com"
     });
     try {
-      const to = inputByPlaceholder(container, "to-1@email.com, to-2@email.com");
-      const subject = inputByPlaceholder(container, "This is the mail subject");
-      const name = inputByPlaceholder(container, "name");
+      const to = inputByPlaceholder(container, "Recipients, separated by commas");
+      const subject = inputByPlaceholder(container, "Subject");
+      const name = inputByPlaceholder(container, "Your name");
       await act(async () => {
         setInputValue(to, "bob@example.com");
         setInputValue(subject, "Hello");
@@ -239,7 +247,7 @@ describe("Writer compose (design doc §7)", () => {
     try {
       // Fresh compose pre-fills From but the user typed nothing: no draft.
       expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(false);
-      const to = inputByPlaceholder(container, "to-1@email.com, to-2@email.com");
+      const to = inputByPlaceholder(container, "Recipients, separated by commas");
       await act(async () => {
         setInputValue(to, "bob@example.com");
       });
@@ -434,7 +442,7 @@ describe("Writer compose settings", () => {
       }
     });
     try {
-      expect(inputByPlaceholder(container, "name").value).toBe("billing");
+      expect(inputByPlaceholder(container, "Your name").value).toBe("billing");
       expect(inputByPlaceholder(container, "account").value).toBe("billing");
       // The pre-fill alone is not a draft.
       expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(false);
@@ -477,11 +485,11 @@ describe("Writer compose settings", () => {
       defaultFrom: "billing@example.com"
     });
     try {
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("billing");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("billing");
       // Closed without Discard: the pre-filled From stays in the form.
       await mount.update({ isWriterOpen: false });
       await mount.update({ isWriterOpen: true, replyData: reply });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("");
       expect(inputByPlaceholder(mount.container, "account").value).toBe("maple");
     } finally {
       await mount.teardown();
@@ -503,7 +511,7 @@ describe("Writer compose settings", () => {
         selectedCategory: Category.AllMails
       });
       await mount.update({ isWriterOpen: true, replyData: reply });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("");
       expect(inputByPlaceholder(mount.container, "account").value).toBe("maple");
     } finally {
       await mount.teardown();
@@ -526,7 +534,7 @@ describe("Writer compose settings", () => {
           to: { address: "billing@example.com" } as ReplyData["to"]
         }
       });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("billing");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("billing");
       expect(inputByPlaceholder(mount.container, "account").value).toBe(
         "billing"
       );
@@ -551,7 +559,7 @@ describe("Writer compose settings", () => {
           to: { address: "Billing@Example.com" } as ReplyData["to"]
         }
       });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("billing");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("billing");
     } finally {
       await mount.teardown();
     }
@@ -565,7 +573,7 @@ describe("Writer compose settings", () => {
     try {
       await mount.update({ isWriterOpen: false });
       await mount.update({ isWriterOpen: true, replyData: forward });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("billing");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("billing");
     } finally {
       await mount.teardown();
     }
@@ -580,11 +588,11 @@ describe("Writer compose settings", () => {
     });
     try {
       await mount.act(async () => {
-        setInputValue(inputByPlaceholder(mount.container, "name"), "Maple Lee");
+        setInputValue(inputByPlaceholder(mount.container, "Your name"), "Maple Lee");
       });
       await mount.update({ isWriterOpen: false });
       await mount.update({ isWriterOpen: true, replyData: reply });
-      expect(inputByPlaceholder(mount.container, "name").value).toBe("Maple Lee");
+      expect(inputByPlaceholder(mount.container, "Your name").value).toBe("Maple Lee");
     } finally {
       await mount.teardown();
     }
@@ -599,7 +607,7 @@ describe("Writer compose settings", () => {
       defaultFrom: "billing@example.com"
     });
     try {
-      expect(inputByPlaceholder(container, "name").value).toBe("");
+      expect(inputByPlaceholder(container, "Your name").value).toBe("");
       expect(inputByPlaceholder(container, "account").value).toBe("maple");
     } finally {
       await teardown();
@@ -662,11 +670,11 @@ describe("Writer compose settings", () => {
     try {
       await mount.act(async () => {
         setInputValue(
-          inputByPlaceholder(mount.container, "to-1@email.com, to-2@email.com"),
+          inputByPlaceholder(mount.container, "Recipients, separated by commas"),
           ""
         );
         setInputValue(
-          inputByPlaceholder(mount.container, "This is the mail subject"),
+          inputByPlaceholder(mount.container, "Subject"),
           ""
         );
       });
@@ -712,6 +720,168 @@ describe("Writer compose settings", () => {
       expect(String(posted!.get("html"))).not.toContain("<p>  </p>");
     } finally {
       await mount.teardown();
+    }
+  });
+});
+
+describe("Writer close, validation and send feedback", () => {
+  it("the close button closes the writer and keeps the draft", async () => {
+    const closes: unknown[] = [];
+    const { act, container, teardown } = await mountWriter({
+      setIsWriterOpen: (v: unknown) => closes.push(v)
+    });
+    try {
+      const to = inputByPlaceholder(container, "Recipients, separated by commas");
+      await act(async () => {
+        setInputValue(to, "bob@example.com");
+      });
+      await act(async () => {
+        buttonByLabel(container, "Close compose (draft is kept)").click();
+      });
+      expect(closes).toEqual([false]);
+      expect(to.value).toBe("bob@example.com");
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("Escape closes the writer", async () => {
+    const closes: unknown[] = [];
+    const { act, teardown } = await mountWriter({
+      setIsWriterOpen: (v: unknown) => closes.push(v)
+    });
+    try {
+      await act(async () => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      });
+      expect(closes).toEqual([false]);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("Discard closes the writer after clearing the draft", async () => {
+    const closes: unknown[] = [];
+    const { act, container, teardown } = await mountWriter({
+      selectedAccount: "maple@example.com",
+      setIsWriterOpen: (v: unknown) => closes.push(v)
+    });
+    try {
+      await act(async () => {
+        setInputValue(
+          inputByPlaceholder(container, "Recipients, separated by commas"),
+          "bob@example.com"
+        );
+      });
+      await act(async () => {
+        buttonByText(container, "Discard").click();
+      });
+      await act(async () => {});
+      expect(closes).toEqual([false]);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("keeps the draft when the discard is cancelled", async () => {
+    const { act, container, teardown } = await mountWriter();
+    window.confirm = () => false;
+    try {
+      const to = inputByPlaceholder(container, "Recipients, separated by commas");
+      await act(async () => {
+        setInputValue(to, "bob@example.com");
+      });
+      await act(async () => {
+        buttonByText(container, "Discard").click();
+      });
+      await act(async () => {});
+      expect(to.value).toBe("bob@example.com");
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("shows invalid recipients in the form and does not send", async () => {
+    const { call } = await import("client");
+    const originalPost = call.postFormData;
+    let posted = false;
+    call.postFormData = (async () => {
+      posted = true;
+      return { status: "success" };
+    }) as typeof call.postFormData;
+    const { act, container, teardown } = await mountWriter({
+      selectedAccount: "maple@example.com"
+    });
+    try {
+      await act(async () => {
+        setInputValue(
+          inputByPlaceholder(container, "Recipients, separated by commas"),
+          "not-an-email, bob@example.com"
+        );
+      });
+      await act(async () => {
+        buttonByText(container, "Send").click();
+      });
+      await act(async () => {});
+      const errors = container.querySelector(".writer-errors");
+      expect(errors?.getAttribute("role")).toBe("alert");
+      expect(errors?.textContent).toContain(
+        "This address isn't valid: not-an-email"
+      );
+      expect(posted).toBe(false);
+    } finally {
+      call.postFormData = originalPost;
+      await teardown();
+    }
+  });
+
+  it("keeps the writer open with the reason when the send fails", async () => {
+    const { call } = await import("client");
+    const originalPost = call.postFormData;
+    call.postFormData = (async () => ({
+      status: "failed",
+      message: "Mailgun refused the message."
+    })) as typeof call.postFormData;
+    const closes: unknown[] = [];
+    const { act, container, teardown } = await mountWriter({
+      selectedAccount: "maple@example.com",
+      setIsWriterOpen: (v: unknown) => closes.push(v)
+    });
+    try {
+      const to = inputByPlaceholder(container, "Recipients, separated by commas");
+      await act(async () => {
+        setInputValue(to, "bob@example.com");
+      });
+      await act(async () => {
+        buttonByText(container, "Send").click();
+      });
+      await act(async () => {});
+      await act(async () => {});
+      expect(container.querySelector(".writer-errors")?.textContent).toContain(
+        "Mailgun refused the message."
+      );
+      expect(closes).toEqual([]);
+      expect(to.value).toBe("bob@example.com");
+    } finally {
+      call.postFormData = originalPost;
+      await teardown();
+    }
+  });
+
+  it("keeps the draft dot off after the selection moves on from a pre-filled compose", async () => {
+    const setHasDraftCalls: unknown[] = [];
+    const { update, teardown } = await mountWriter({
+      selectedAccount: "maple@example.com",
+      setHasDraft: (v: unknown) => setHasDraftCalls.push(v)
+    });
+    try {
+      // Entering search empties the selection; the pre-filled From is still
+      // only a pre-fill, not something the user typed.
+      const { Category } = await import("client");
+      await update({ selectedAccount: "", selectedCategory: Category.Search });
+      expect(setHasDraftCalls[setHasDraftCalls.length - 1]).toBe(false);
+    } finally {
+      await teardown();
     }
   });
 });

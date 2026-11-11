@@ -9,7 +9,15 @@ import {
 import { useQuery } from "react-query";
 import { AttachmentType, MailBodyData } from "common";
 import { BodyGetResponse } from "server";
-import { Context, ContextType, call, processHtmlForViewer } from "client";
+import {
+  Context,
+  ContextType,
+  call,
+  countRemoteImages,
+  processHtmlForViewer,
+  useResolvedTheme
+} from "client";
+import { formatFileSize } from "client/lib/formatters";
 import FileIcon from "client/Box/components/FileIcon";
 
 interface Props {
@@ -30,11 +38,14 @@ const replaceBlockquoteWithDetails = (text: string, blockquote: Element) => {
 };
 
 const MailBody = ({ mailId }: Props) => {
-  const { setIsWriterOpen, replyData, setReplyData } = useContext(
-    Context
-  ) as ContextType;
+  const { setIsWriterOpen, replyData, setReplyData, theme = "system" } =
+    useContext(Context) as ContextType;
+  const resolvedTheme = useResolvedTheme(theme);
 
   const [isLoadingIframe, setIsLoadingIframe] = useState(true);
+  // Remote images stay hidden until the reader asks for them: loading one
+  // tells the sender the mail was opened, and when and where.
+  const [showRemoteImages, setShowRemoteImages] = useState(false);
 
   const queryUrl = `/api/mails/body/${mailId}`;
 
@@ -92,8 +103,11 @@ const MailBody = ({ mailId }: Props) => {
       // restore it after the resize completes.
       const savedScroll = window.scrollY;
 
-      // Reset iframe height to auto to get accurate content measurements
-      iframeDom.style.height = "auto";
+      // Collapse the iframe before measuring. The body is `height: 100%`,
+      // so its scrollHeight is never less than the iframe's own height; with
+      // `height: auto` that is the 150px default, which left a short mail
+      // sitting in a box of empty space.
+      iframeDom.style.height = "0px";
 
       const contentHeight = content.scrollHeight;
       const contentWidth = content.scrollWidth;
@@ -170,14 +184,21 @@ const MailBody = ({ mailId }: Props) => {
             .catch(console.error);
         };
         return (
-          <div
+          <button
             key={i}
+            type="button"
             className="attachment cursor"
             onClick={onClickAttachment}
+            title={`Download ${attachment.filename}`}
           >
             <FileIcon />
-            <span>{attachment.filename}</span>
-          </div>
+            <span className="attachment-name">{attachment.filename}</span>
+            {attachment.size ? (
+              <span className="attachment-size">
+                {formatFileSize(attachment.size)}
+              </span>
+            ) : null}
+          </button>
         );
       }
     );
@@ -275,9 +296,30 @@ const MailBody = ({ mailId }: Props) => {
       pendingTimers.current.push(id);
     };
 
+    const remoteImageCount = showRemoteImages ? 0 : countRemoteImages(data.html);
+
     return (
       <div className="text">
         {isLoadingIframe ? <BodyLoadingSkeleton /> : null}
+        {remoteImageCount > 0 ? (
+          <div className="remote-images-notice" role="status">
+            <span>
+              {remoteImageCount === 1
+                ? "1 remote image is hidden to protect your privacy."
+                : `${remoteImageCount} remote images are hidden to protect your privacy.`}
+            </span>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                setIsLoadingIframe(true);
+                setShowRemoteImages(true);
+              }}
+            >
+              Show images
+            </button>
+          </div>
+        ) : null}
         {attachments.length ? (
           <div className="attachmentBox">{attachments}</div>
         ) : (
@@ -285,7 +327,10 @@ const MailBody = ({ mailId }: Props) => {
         )}
         <iframe
           title={mailId}
-          srcDoc={processHtmlForViewer(data.html)}
+          srcDoc={processHtmlForViewer(data.html, {
+            blockRemoteImages: !showRemoteImages,
+            theme: resolvedTheme
+          })}
           onLoad={onLoadIframe}
           ref={iframeElement}
           sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"

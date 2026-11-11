@@ -12,3 +12,5 @@ export * from "./cacheCatalog";
 export * from "./cachePersist";
 export * from "./serviceWorker";
 export * from "./online";
+export * from "./feedback";
+export * from "./theme";

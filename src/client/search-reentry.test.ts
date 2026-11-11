@@ -224,7 +224,7 @@ const mountApp = async () => {
     click,
     headerSearchTrigger: () =>
       container.querySelector(
-        '.menu.right [aria-label="Search"]'
+        '.categories [role="tab"][aria-label="Search"]'
       ) as HTMLElement | null,
     searchInput: () =>
       container.querySelector(
@@ -297,10 +297,10 @@ describe("entering search closes the writer (real App behavior)", () => {
     try {
       await mount.waitFor(() => mount.mailCards()[0] ?? null);
 
-      // Open the writer from the header Compose button.
+      // Open the writer from the rail's Compose item.
       const compose = (await mount.waitFor(() =>
         mount.container.querySelector(
-          '.menu.right [aria-label="Compose new mail"]'
+          '.categories [aria-label="Compose new mail"]'
         )
       )) as Element;
       await mount.click(compose);
@@ -425,6 +425,17 @@ describe("Settings page (real App behavior)", () => {
       await mount.click(
         await mount.waitFor(() =>
           mount.container.querySelector(".accounts-logout")
+        )
+      );
+      // Logout asks in an in-app dialog (rendered at the provider, inside
+      // the app's container).
+      await mount.click(
+        await mount.waitFor(() =>
+          Array.from(
+            mount.container.querySelectorAll(
+              '[role="alertdialog"] button'
+            )
+          ).find((b) => b.textContent === "Log out") ?? null
         )
       );
       const form = (await mount.waitFor(() =>

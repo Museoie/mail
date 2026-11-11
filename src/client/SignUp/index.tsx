@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect, ChangeEvent, KeyboardEvent } from "react";
+import { useState, useContext, useEffect, ChangeEvent, FormEvent } from "react";
 import { useMutation } from "react-query";
 import { useParams, useLocation, Link } from "react-router-dom";
 
@@ -9,6 +9,8 @@ import { SignedUser, SignedUserType } from "common";
 import { ApiResponse, SetInfoPostResponse, TokenPostResponse } from "server";
 import { Context, call } from "client";
 
+import { copyFor, statusFor, SignUpMode } from "./messages";
+import "../SignIn/index.scss";
 import "./index.scss";
 
 interface SignUpBody {
@@ -63,28 +65,19 @@ const SignUp = () => {
     } else return call.post<TokenPostResponse>("/api/users/token", body);
   });
 
-  let infoMessage;
-
-  if (email) {
-    infoMessage = "🤐 Please set your user information.";
-    if (passwordMismatch) infoMessage = "⚠️ Passwords do not match. Please try again.";
-    if (mutation.isLoading) infoMessage = "🧐 Setting your information...";
-    if (mutation.isError) infoMessage = "🤯 Server error";
-    if (mutation.data?.status === "success") infoMessage = "🤗 All set up!";
-    else if (mutation.data) {
-      infoMessage = "🤔 Something is wrong. Please try again.";
-    }
-  } else {
-    infoMessage = "😀 Please provide your email.";
-    if (mutation.isLoading) infoMessage = "🧐 Sending confirmation email...";
-    if (mutation.isError) infoMessage = "🤯 Server error";
-    if (mutation.data?.status === "success") {
-      infoMessage =
-        "🤗 Please check your mail box and continue to set your user information.";
-    } else if (mutation.data) {
-      infoMessage = "🤔 Something is wrong. Please try again.";
-    }
-  }
+  const mode: SignUpMode = email
+    ? "set-info"
+    : query.get("mode") === "reset"
+      ? "reset"
+      : "signup";
+  const copy = copyFor(mode);
+  const status = statusFor({
+    mode,
+    passwordMismatch,
+    isLoading: mutation.isLoading,
+    isError: mutation.isError,
+    data: mutation.data
+  });
 
   useEffect(() => {
     const data = mutation.data as SetInfoResponse | undefined;
@@ -111,76 +104,90 @@ const SignUp = () => {
     if (email) window.name = "mail-confirm";
   };
 
-  const onKeyDownInput = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") onClickSignUp();
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onClickSignUp();
   };
 
   return (
     <div className="container_login">
-      <blockquote className="login_card">
-        <h3 className="greeting">Welcome to Mail!</h3>
-        <div className="info_message">{infoMessage}</div>
-        <input
-          className="login_ui"
-          placeholder="Email address"
-          type="email"
-          value={emailInput}
-          onKeyDown={onKeyDownInput}
-          onChange={onChangeEmail}
-          disabled={!!email}
-        />
-        {email ? (
-          <>
-            <input
-              className="login_ui"
-              placeholder="username"
-              type="username"
-              value={usernameInput}
-              onKeyDown={onKeyDownInput}
-              onChange={onChangeUsername}
-              disabled={!!username}
-            />
-            <input
-              className="login_ui"
-              placeholder="password"
-              type="password"
-              value={passwordInput}
-              onKeyDown={onKeyDownInput}
-              onChange={onChangePassword}
-            />
-            {passwordInput ? (
-              <input
-                className="login_ui"
-                placeholder="password to confirm"
-                type="password"
-                value={passwordConfirmInput}
-                onKeyDown={onKeyDownInput}
-                onChange={onChangePasswordConfirm}
-              />
-            ) : null}
-          </>
-        ) : null}
-        <button className="login_ui" onClick={onClickSignUp}>
+      <form onSubmit={onSubmit} noValidate>
+        <div className="login_card">
+          <h2 className="greeting">{copy.title}</h2>
+          <p className="signup_intro">{copy.intro}</p>
+          <div
+            className={"info_message" + (status.isError ? " error" : "")}
+            role={status.isError ? "alert" : "status"}
+          >
+            {status.message}
+          </div>
+          <label className="login_label" htmlFor="signup-email">
+            Email address
+          </label>
+          <input
+            id="signup-email"
+            className="login_ui"
+            type="email"
+            autoComplete="email"
+            value={emailInput}
+            onChange={onChangeEmail}
+            disabled={!!email}
+          />
           {email ? (
             <>
-              <UserEditIcon />
-              <span>Set Up</span>
+              <label className="login_label" htmlFor="signup-username">
+                Username
+              </label>
+              <input
+                id="signup-username"
+                className="login_ui"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="off"
+                value={usernameInput}
+                onChange={onChangeUsername}
+                disabled={!!username}
+              />
+              <label className="login_label" htmlFor="signup-password">
+                Password
+              </label>
+              <input
+                id="signup-password"
+                className="login_ui"
+                type="password"
+                autoComplete="new-password"
+                value={passwordInput}
+                onChange={onChangePassword}
+              />
+              <label className="login_label" htmlFor="signup-password-confirm">
+                Confirm password
+              </label>
+              <input
+                id="signup-password-confirm"
+                className="login_ui"
+                type="password"
+                autoComplete="new-password"
+                value={passwordConfirmInput}
+                onChange={onChangePasswordConfirm}
+              />
             </>
-          ) : (
-            <>
-              <SignUpIcon />
-              <span>Send Confirm Email</span>
-            </>
-          )}
-        </button>
-        <div className="card_footer">
-          <div className="info_message">
-            <span>Already have an account?</span>
-            &nbsp;
-            <Link to="/sign-in">Sign In</Link>
+          ) : null}
+          <button
+            className="login_ui"
+            type="submit"
+            disabled={mutation.isLoading}
+          >
+            {email ? <UserEditIcon /> : <SignUpIcon />}
+            <span>{copy.button}</span>
+          </button>
+          <div className="card_footer">
+            <div className="footer_line">
+              <span>Already have an account?</span>{" "}
+              <Link to="/sign-in">Sign in</Link>
+            </div>
           </div>
         </div>
-      </blockquote>
+      </form>
     </div>
   );
 };

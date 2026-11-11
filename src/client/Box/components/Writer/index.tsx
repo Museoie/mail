@@ -23,7 +23,8 @@ import {
   useLocalStorage,
   processHtmlToSendMail,
   call,
-  useIsOnline
+  useIsOnline,
+  useFeedback
 } from "client";
 import {
   RichTextEditor,
@@ -36,7 +37,8 @@ import {
 } from "client/lib/editor";
 import { displayNameFor } from "../Accounts/accountList";
 
-import { SendIcon, AttachIcon, EraserIcon } from "./components";
+import { SendIcon, AttachIcon } from "./components";
+import { CloseIcon } from "../Mails/components";
 import FileIcon from "../FileIcon";
 
 import {
@@ -49,6 +51,7 @@ import {
   signatureHtml
 } from "./lib";
 import { hasDraftFields } from "./draft";
+import { invalidAddresses } from "./validate";
 
 import "./index.scss";
 
@@ -77,6 +80,10 @@ const Writer = () => {
   const prefillAccount = selectedMailbox || defaultFrom;
 
   const { isOnline } = useIsOnline();
+  const { showToast, confirm } = useFeedback();
+  // Problems found on Send, shown in the form next to the fields instead of
+  // in a browser alert.
+  const [errors, setErrors] = useState<string[]>([]);
 
   const [isCcOpen, setIsCcOpen] = useLocalStorage("isCcOpen", false);
   const [isBccOpen, setIsBccOpen] = useLocalStorage("isBccOpen", false);
@@ -87,6 +94,14 @@ const Writer = () => {
   const [bcc, setBcc] = useLocalStorage("bcc", "");
   const [subject, setSubject] = useLocalStorage("subject", "");
   const [sender, setSender] = useLocalStorage("sender", "");
+  // The mailbox the From pre-fill last wrote, so the draft dot can tell
+  // pre-filled values from typed ones even after the selection moves on
+  // (entering search, picking another account) — judging against the
+  // current selection would light the dot for an untouched compose.
+  const [prefilledFrom, setPrefilledFrom] = useLocalStorage(
+    "prefilledFrom",
+    ""
+  );
   const [initialContent, setInitialContent] = useLocalStorage(
     "initialContent",
     ""
@@ -203,6 +218,7 @@ const Writer = () => {
     if (!account) return;
     setName(displayNameFor(account));
     setSender(account.split("@")[0] || "");
+    setPrefilledFrom(account);
   }, [
     isWriterOpen,
     name,
@@ -211,7 +227,8 @@ const Writer = () => {
     selectedMailbox,
     prefillAccount,
     setName,
-    setSender
+    setSender,
+    setPrefilledFrom
   ]);
 
   // The rail Compose button's draft dot (design doc §7): a draft is any
@@ -229,8 +246,10 @@ const Writer = () => {
         sender,
         initialContent,
         isReply: !!(originalMessageMeta.id || originalMessageMeta.messageId),
-        prefilledName: displayNameFor(prefillAccount),
-        prefilledSender: prefillAccount.split("@")[0] || ""
+        prefilledName: prefilledFrom ? displayNameFor(prefilledFrom) : undefined,
+        prefilledSender: prefilledFrom
+          ? prefilledFrom.split("@")[0] || ""
+          : undefined
       })
     );
   }, [
@@ -243,7 +262,7 @@ const Writer = () => {
     initialContent,
     originalMessageMeta.id,
     originalMessageMeta.messageId,
-    prefillAccount,
+    prefilledFrom,
     setHasDraft
   ]);
 
@@ -330,11 +349,15 @@ const Writer = () => {
 
   const onSuccessSendMail = (data: ApiResponse<SendMailPostResponse>) => {
     if (data.status !== "success") {
-      return alert(data.message || "Failed to send. Please try again.");
+      // Keep the draft and the writer open so the user can fix and resend.
+      const message = data.message || "Failed to send. Please try again.";
+      setErrors([message]);
+      showToast({ message: "Your mail wasn't sent.", tone: "error" });
+      return;
     }
-    alert("Your mail is sent successfully");
+    showToast({ message: "Mail sent." });
     setIsWriterOpen(false);
-    onClickEraserIcon();
+    clearDraft();
   };
 
   const mutation = useMutation(sendMail, { onSuccess: onSuccessSendMail });
@@ -344,7 +367,9 @@ const Writer = () => {
     setName(name);
   };
 
-  const onClickEraserIcon = () => {
+  const clearDraft = () => {
+    setErrors([]);
+    setPrefilledFrom("");
     setName("");
     setSender("");
     setTo("");
@@ -362,6 +387,58 @@ const Writer = () => {
       prefix: ""
     });
   };
+
+  const hasDraftContent = hasDraftFields({
+    name,
+    to,
+    cc,
+    bcc,
+    subject,
+    sender,
+    initialContent,
+    isReply: !!(originalMessageMeta.id || originalMessageMeta.messageId),
+    prefilledName: prefilledFrom ? displayNameFor(prefilledFrom) : undefined,
+    prefilledSender: prefilledFrom
+      ? prefilledFrom.split("@")[0] || ""
+      : undefined
+  }) || Object.keys(attachments).length > 0;
+
+  // Discard throws the draft away and closes the writer; it asks first when
+  // there is anything to lose.
+  const onClickDiscard = async () => {
+    if (hasDraftContent) {
+      const ok = await confirm({
+        title: "Discard this draft?",
+        message: "The message, its recipients and attachments will be lost.",
+        confirmLabel: "Discard",
+        danger: true
+      });
+      if (!ok) return;
+    }
+    clearDraft();
+    setIsWriterOpen(false);
+  };
+
+  // Close keeps the draft (it is saved as you type) — the same as tapping
+  // Compose again.
+  const onClickClose = useCallback(() => {
+    setIsWriterOpen(false);
+  }, [setIsWriterOpen]);
+
+  // Escape closes the writer, keeping the draft. A dialog open on top owns
+  // Escape instead.
+  useEffect(() => {
+    if (!isWriterOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+        return;
+      }
+      onClickClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isWriterOpen, onClickClose]);
 
   const onClickCc = () => {
     setIsCcOpen(!isCcOpen);
@@ -413,10 +490,29 @@ const Writer = () => {
     });
   };
 
-  const onClickSend = () => {
-    if (!sender.trim()) return alert("Please enter a sender account name.");
-    if (!to.trim()) return alert("Please enter a recipient email address.");
-    if (!window.confirm("Do you want to send it?")) return;
+  const onClickSend = async () => {
+    const problems: string[] = [];
+    if (!sender.trim()) problems.push("Enter the account to send from.");
+    if (!to.trim()) problems.push("Enter at least one recipient.");
+    const bad = [
+      ...invalidAddresses(to),
+      ...(isCcOpen ? invalidAddresses(cc) : []),
+      ...(isBccOpen ? invalidAddresses(bcc) : [])
+    ];
+    if (bad.length) {
+      problems.push(
+        `${bad.length === 1 ? "This address isn't" : "These addresses aren't"} valid: ${bad.join(", ")}`
+      );
+    }
+    setErrors(problems);
+    if (problems.length) return;
+
+    const ok = await confirm({
+      title: "Send this mail?",
+      message: `To: ${to}` + (subject ? `\nSubject: ${subject}` : ""),
+      confirmLabel: "Send"
+    });
+    if (!ok) return;
 
     const formData = new FormData();
 
@@ -430,8 +526,9 @@ const Writer = () => {
       senderFullName: name,
       sender,
       to,
-      cc,
-      bcc,
+      // A closed Cc/Bcc field is not part of the message the user sees.
+      cc: isCcOpen ? cc : "",
+      bcc: isBccOpen ? bcc : "",
       subject,
       html,
       inReplyTo: originalMessage.messageId
@@ -460,15 +557,20 @@ const Writer = () => {
     };
 
     return (
-      <div
+      <button
         key={i}
+        type="button"
         className="attachment cursor"
-        title="Click to remove"
+        title={`Remove ${file.name}`}
+        aria-label={`Remove attachment ${file.name}`}
         onClick={onClickRemove}
       >
         <FileIcon />
         <span>{file.name}</span>
-      </div>
+        <span className="attachment-remove" aria-hidden="true">
+          ×
+        </span>
+      </button>
     );
   });
 
@@ -482,43 +584,62 @@ const Writer = () => {
   };
 
   return (
-    <blockquote className="writer">
-      <div>
-        <div className="fieldName">
-          <span>From:</span>
-          <span>
-            <EraserIcon className="cursor" onClick={onClickEraserIcon} />
-          </span>
-        </div>
-        <div className="margin_box inputBox-flex">
+    <blockquote className="writer" aria-label="Compose">
+      <div className="writer-top">
+        <h2 className="writer-title">
+          {originalMessageMeta.id || originalMessageMeta.messageId
+            ? subject.toLowerCase().startsWith("fwd:")
+              ? "Forward"
+              : "Reply"
+            : "New message"}
+        </h2>
+        <button
+          type="button"
+          className="writer-close"
+          aria-label="Close compose (draft is kept)"
+          title="Close — your draft is kept"
+          onClick={onClickClose}
+        >
+          <CloseIcon />
+        </button>
+      </div>
+      <div className="writer-field">
+        <span className="fieldName" id="writer-from-label">
+          From
+        </span>
+        <div className="from-row" role="group" aria-labelledby="writer-from-label">
           <input
+            id="writer-name"
             className="writer-short"
-            placeholder="name"
+            placeholder="Your name"
+            aria-label="Sender name"
             autoComplete="off"
             value={name}
             onChange={onChangeName}
           />
           <div className="from_address">
-            <span className="helper-text"> &lt; </span>
             <input
+              id="writer-sender"
               className="writer-short"
               placeholder="account"
+              aria-label="Sender account"
               autoComplete="off"
               value={sender}
               onChange={(e) => setSender(e.target.value)}
             />
-            <span className="helper-text">@{domainName} &gt;</span>
+            <span className="helper-text">@{domainName}</span>
           </div>
         </div>
       </div>
-      <div>
+      <div className="writer-field">
         <div className="fieldName">
-          <span>To: </span>
+          <label htmlFor="writer-to">To</label>
           <span className="cc-bcc-toggles">
             <button
               type="button"
               className={"small-button" + (isCcOpen ? " active" : "")}
               aria-pressed={isCcOpen}
+              aria-label="Show Cc"
               onClick={onClickCc}
             >
               Cc
@@ -527,105 +648,134 @@ const Writer = () => {
               type="button"
               className={"small-button" + (isBccOpen ? " active" : "")}
               aria-pressed={isBccOpen}
+              aria-label="Show Bcc"
               onClick={onClickBcc}
             >
               Bcc
             </button>
           </span>
         </div>
-        <div className="inputBox-flex margin_box">
+        <input
+          id="writer-to"
+          className="writer-long"
+          placeholder="Recipients, separated by commas"
+          type="text"
+          inputMode="email"
+          autoComplete="off"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+      </div>
+      {isCcOpen ? (
+        <div className="writer-field">
+          <label className="fieldName" htmlFor="writer-cc">
+            Cc
+          </label>
           <input
+            id="writer-cc"
             className="writer-long"
-            placeholder="to-1@email.com, to-2@email.com"
+            placeholder="Cc recipients, separated by commas"
+            inputMode="email"
             autoComplete="off"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-          <input
-            className={isCcOpen ? "writer-long" : "writer-long hide"}
-            placeholder="cc-1@email.com, cc-2@email.com"
-            autoComplete="off"
-            disabled={isCcOpen ? false : true}
             value={cc}
             onChange={(e) => setCc(e.target.value)}
           />
+        </div>
+      ) : null}
+      {isBccOpen ? (
+        <div className="writer-field">
+          <label className="fieldName" htmlFor="writer-bcc">
+            Bcc
+          </label>
           <input
-            className={isBccOpen ? "writer-long" : "writer-long hide"}
-            placeholder="bcc-1@email.com, bcc-2@email.com"
+            id="writer-bcc"
+            className="writer-long"
+            placeholder="Bcc recipients, separated by commas"
+            inputMode="email"
             autoComplete="off"
-            disabled={isBccOpen ? false : true}
             value={bcc}
             onChange={(e) => setBcc(e.target.value)}
           />
         </div>
-      </div>
-      <div>
-        <div className="fieldName">Subject: </div>
-        <div className="inputBox-flex margin_box">
-          <input
-            className="writer-long"
-            placeholder="This is the mail subject"
-            autoComplete="off"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-        </div>
+      ) : null}
+      <div className="writer-field">
+        <label className="fieldName" htmlFor="writer-subject">
+          Subject
+        </label>
+        <input
+          id="writer-subject"
+          className="writer-long"
+          placeholder="Subject"
+          autoComplete="off"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
       </div>
       <div className="writer-body">
-        <div className="fieldName">
-          <span>Content: </span>
-          <span>
-            <AttachIcon className="cursor" onClick={onClickAttach} />
-          </span>
-        </div>
-        <div
-          className="format-toolbar"
-          role="toolbar"
-          aria-label="Formatting"
-        >
+        <div className="writer-toolbar">
+          <div
+            className="format-toolbar"
+            role="toolbar"
+            aria-label="Formatting"
+          >
+            <button
+              type="button"
+              className={"small-button" + (formatState.bold ? " active" : "")}
+              aria-pressed={formatState.bold}
+              aria-label="Bold"
+              title="Bold"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => runFormat(toggleMark("bold"))}
+            >
+              <b>B</b>
+            </button>
+            <button
+              type="button"
+              className={"small-button" + (formatState.italic ? " active" : "")}
+              aria-pressed={formatState.italic}
+              aria-label="Italic"
+              title="Italic"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => runFormat(toggleMark("italic"))}
+            >
+              <i>I</i>
+            </button>
+            <button
+              type="button"
+              className={
+                "small-button" + (formatState.bulletList ? " active" : "")
+              }
+              aria-pressed={formatState.bulletList}
+              aria-label="Bulleted list"
+              title="Bulleted list"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => runFormat(toggleList("bulletList"))}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              className={
+                "small-button" + (formatState.blockquote ? " active" : "")
+              }
+              aria-pressed={formatState.blockquote}
+              aria-label="Quote"
+              title="Quote"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => runFormat(toggleWrap("blockquote"))}
+            >
+              Quote
+            </button>
+          </div>
           <button
             type="button"
-            className={"small-button" + (formatState.bold ? " active" : "")}
-            aria-pressed={formatState.bold}
-            aria-label="Bold"
-            title="Bold"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => runFormat(toggleMark("bold"))}
+            className="small-button attach-button"
+            aria-label="Attach files"
+            title="Attach files"
+            onClick={onClickAttach}
           >
-            <b>B</b>
-          </button>
-          <button
-            type="button"
-            className={"small-button" + (formatState.italic ? " active" : "")}
-            aria-pressed={formatState.italic}
-            aria-label="Italic"
-            title="Italic"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => runFormat(toggleMark("italic"))}
-          >
-            <i>I</i>
-          </button>
-          <button
-            type="button"
-            className={"small-button" + (formatState.bulletList ? " active" : "")}
-            aria-pressed={formatState.bulletList}
-            aria-label="Bulleted list"
-            title="Bulleted list"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => runFormat(toggleList("bulletList"))}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            className={"small-button" + (formatState.blockquote ? " active" : "")}
-            aria-pressed={formatState.blockquote}
-            aria-label="Quote"
-            title="Quote"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => runFormat(toggleWrap("blockquote"))}
-          >
-            Quote
+            <AttachIcon />
+            <span>Attach</span>
           </button>
         </div>
         <div className="writer-content-wrap">
@@ -662,7 +812,7 @@ const Writer = () => {
                       title="Remove quote"
                       onClick={onClickRemoveQuote}
                     >
-                      ×
+                      Remove quote
                     </button>
                   </div>
                   {originalMessage.subject ? (
@@ -688,19 +838,28 @@ const Writer = () => {
           </div>
         </div>
       </div>
+      {errors.length ? (
+        <ul className="writer-errors" role="alert">
+          {errors.map((e) => (
+            <li key={e}>{e}</li>
+          ))}
+        </ul>
+      ) : null}
       <div className="writer-buttons">
-        <button type="button" className="discard" onClick={onClickEraserIcon}>
+        <button type="button" className="discard" onClick={onClickDiscard}>
           Discard
         </button>
         <button
+          type="button"
+          className="send"
           onClick={onClickSend}
-          disabled={!isOnline}
+          disabled={!isOnline || mutation.isLoading}
           title={
             isOnline ? undefined : "You're offline — reconnect to send mail"
           }
         >
           <SendIcon />
-          <span>Send</span>
+          <span>{mutation.isLoading ? "Sending…" : "Send"}</span>
         </button>
       </div>
     </blockquote>

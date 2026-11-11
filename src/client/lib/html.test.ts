@@ -12,7 +12,7 @@ afterAll(() => GlobalRegistrator.unregister());
 // caller, so the contract is exercised through it. The returned string wraps
 // the sanitized markup in a <style> block for the iframe srcdoc — re-parse it
 // and assert on the DOM.
-const { processHtmlForViewer } = await import("./html");
+const { processHtmlForViewer, countRemoteImages } = await import("./html");
 
 /** Sanitize `html`, then re-parse the viewer output into a queryable document. */
 const viewerDoc = (html: string): Document =>
@@ -313,5 +313,106 @@ describe("processHtmlForViewer — output shape", () => {
     expect(doc.querySelector("h1")?.textContent).toBe("Title");
     expect(doc.querySelector("strong")?.textContent).toBe("bold");
     expect(doc.querySelector("li")?.textContent).toBe("item");
+  });
+});
+
+describe("processHtmlForViewer — remote image blocking", () => {
+  const blocked = (html: string) =>
+    new DOMParser().parseFromString(
+      processHtmlForViewer(html, { blockRemoteImages: true }),
+      "text/html"
+    );
+
+  test("leaves remote images alone unless asked", () => {
+    const doc = viewerDoc(`<img src="https://t.example/p.png">`);
+    expect(doc.querySelector("img")?.getAttribute("src")).toBe(
+      "https://t.example/p.png"
+    );
+  });
+
+  test("drops a remote <img> source and hides the element", () => {
+    const img = blocked(
+      `<img src="https://t.example/p.png" srcset="//t.example/p2.png 2x" width="600" height="200">`
+    ).querySelector("img");
+    expect(img?.hasAttribute("src")).toBe(false);
+    expect(img?.hasAttribute("srcset")).toBe(false);
+    expect(img?.hasAttribute("data-remote-blocked")).toBe(true);
+  });
+
+  test("keeps inline data: and cid: images", () => {
+    const doc = blocked(
+      `<img id="a" src="data:image/png;base64,AAAA"><img id="b" src="cid:logo">`
+    );
+    expect(doc.getElementById("a")?.getAttribute("src")).toContain("data:");
+    expect(doc.getElementById("b")?.getAttribute("src")).toBe("cid:logo");
+    expect(doc.querySelector("[data-remote-blocked]")).toBeNull();
+  });
+
+  test("drops remote backgrounds and posters without hiding the element", () => {
+    const doc = blocked(
+      `<table background="http://t.example/bg.png"><tr><td>x</td></tr></table><video poster="https://t.example/v.png"></video>`
+    );
+    expect(doc.querySelector("table")?.hasAttribute("background")).toBe(false);
+    expect(doc.querySelector("table")?.hasAttribute("data-remote-blocked")).toBe(false);
+    expect(doc.querySelector("video")?.hasAttribute("poster")).toBe(false);
+  });
+
+  test("does not treat a remote link href as an image", () => {
+    const doc = blocked(`<a href="https://example.com">x</a>`);
+    expect(doc.querySelector("a")?.getAttribute("href")).toBe("https://example.com");
+  });
+
+  test("the viewer stylesheet hides blocked elements", () => {
+    expect(processHtmlForViewer("<p>x</p>")).toContain(
+      "[data-remote-blocked]"
+    );
+  });
+});
+
+describe("countRemoteImages", () => {
+  test("counts each element that loads a remote image", () => {
+    expect(
+      countRemoteImages(
+        `<img src="https://a/1.png"><img src="data:image/png;base64,AA"><table background="//a/bg.png"></table><a href="https://a">x</a>`
+      )
+    ).toBe(2);
+  });
+
+  test("is zero for a mail with no remote images", () => {
+    expect(countRemoteImages("<p>hello</p>")).toBe(0);
+  });
+});
+
+describe("processHtmlForViewer — reading-pane fit", () => {
+  test("wraps long words and caps media and table width", () => {
+    const out = processHtmlForViewer("<p>x</p>");
+    expect(out).toContain("overflow-wrap: anywhere");
+    expect(out).toMatch(/img, video \{\s*max-width: 100%/);
+    expect(out).toMatch(/table \{\s*max-width: 100%/);
+  });
+
+  test("gives links a color readable on the dark pane", () => {
+    expect(processHtmlForViewer("<p>x</p>")).toMatch(/a \{\s*color: #6cb0f0/);
+  });
+});
+
+describe("processHtmlForViewer — theme colors", () => {
+  test("uses dark-panel colors by default", () => {
+    const out = processHtmlForViewer("<p>x</p>");
+    expect(out).toContain("color: #d1d1d1");
+  });
+
+  test("declares the theme's color scheme so the frame stays transparent", () => {
+    expect(processHtmlForViewer("<p>x</p>")).toContain("color-scheme: dark");
+    expect(
+      processHtmlForViewer("<p>x</p>", { theme: "light" })
+    ).toContain("color-scheme: light");
+  });
+
+  test("uses light-panel colors on the light theme", () => {
+    const out = processHtmlForViewer("<p>x</p>", { theme: "light" });
+    expect(out).toContain("color: #24262a");
+    expect(out).toMatch(/a \{\s*color: #1b63c4/);
+    expect(out).not.toContain("color: #d1d1d1");
   });
 });

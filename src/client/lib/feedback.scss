@@ -1,0 +1,147 @@
+/* Toasts and the confirm dialog (lib/feedback.tsx), on the dark theme's
+ * tokens. */
+.feedback-toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 100;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  pointer-events: none;
+}
+
+/* Clear the bottom bar on a phone. */
+@media (max-width: 750px) {
+  .feedback-toasts {
+    bottom: calc(var(--bottomBarHeight) + 12px);
+  }
+}
+
+.feedback-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 6px 6px 16px;
+  border-radius: 8px;
+  background-color: var(--surfaceRaised);
+  color: var(--textBrighter);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 50%);
+  font-size: 15px;
+  pointer-events: auto;
+
+  &.error {
+    border-left: 4px solid var(--orange);
+  }
+
+  .feedback-toast-action {
+    min-height: 36px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--blue);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--hover);
+    }
+  }
+
+  .feedback-toast-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: var(--textDim);
+    font-size: 20px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--hover);
+      color: var(--textBright);
+    }
+  }
+}
+
+.feedback-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgb(0 0 0 / 55%);
+}
+
+.feedback-dialog {
+  width: min(420px, 100%);
+  padding: 20px;
+  border-radius: 10px;
+  background-color: var(--surface);
+  color: var(--textBright);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 60%);
+
+  h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--textBrighter);
+  }
+
+  p {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textSoft);
+    overflow-wrap: anywhere;
+  }
+
+  .feedback-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .feedback-button {
+    min-width: 88px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    background: none;
+    color: var(--textBright);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--surfaceRaised);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    &.primary {
+      border-color: var(--blue);
+      background-color: var(--blue);
+      color: white;
+    }
+
+    &.danger {
+      border-color: var(--orange);
+      background-color: var(--orange);
+    }
+  }
+}

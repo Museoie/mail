@@ -49,6 +49,17 @@ const isKnownAccount = (
   );
 
 /**
+ * The account in `listed` that received mail most recently — the one a
+ * reader most likely opened the app for. Ties keep list order, so a payload
+ * without dates falls back to the first account.
+ */
+export const mostRecentAccount = (listed: Account[]): Account | undefined =>
+  listed.reduce<Account | undefined>((best, a) => {
+    if (!best) return a;
+    return +new Date(a.updated) > +new Date(best.updated) ? a : best;
+  }, undefined);
+
+/**
  * The `selectedAccount` the current category requires, `""` to clear a name no
  * list holds, or `null` when nothing has to change.
  *
@@ -93,9 +104,13 @@ export const resolveSelectedAccount = (
     return "";
   }
 
-  if (!selectedAccount) return listed[0].key;
+  // Anchor to the account with the newest mail, not the first one in
+  // payload order: on a fresh login that is the mail the reader came for,
+  // where the alphabetically-first account is arbitrary.
+  const anchor = (mostRecentAccount(listed) as Account).key;
+  if (!selectedAccount) return anchor;
   if (isKnownAccount(selectedAccount, lists)) return null;
-  return listed[0].key;
+  return anchor;
 };
 
 /**
