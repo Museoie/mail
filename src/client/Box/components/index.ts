@@ -9,6 +9,7 @@ export const Writer = lazy(() => import("./Writer"));
 export const Mails = lazy(() => import("./Mails"));
 export const Accounts = lazy(() => import("./Accounts"));
 export const Settings = lazy(() => import("./Settings"));
+export const Thread = lazy(() => import("./Thread"));
 
 export { default as FileIcon } from "./FileIcon";
 
@@ -31,9 +32,7 @@ export class MailsSynchronizer {
 
       let countInAccounts: number;
 
-      if (category === Category.NewMails)
-        countInAccounts = accountData?.unread_doc_count || 0;
-      else if (category === Category.SavedMails)
+      if (category === Category.SavedMails)
         countInAccounts =
           (accounts.received.find((e) => e.key === account)?.saved_doc_count ||
             0) +
@@ -42,9 +41,6 @@ export class MailsSynchronizer {
 
       const countInMails = mails.reduce((acc, e) => {
         switch (category) {
-          case Category.NewMails:
-            if (!e.read) return acc + 1;
-            return acc;
           case Category.SavedMails:
             if (e.saved) return acc + 1;
             return acc;

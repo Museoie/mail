@@ -2,19 +2,18 @@ import {
   useState,
   useContext,
   useEffect,
-  useCallback,
   Dispatch,
   ReactNode,
   SetStateAction
 } from "react";
 import { useQuery, useQueryClient } from "react-query";
+import { useNavigate } from "react-router-dom";
 import { marked } from "marked";
-import { MailBodyData, MailHeaderData, ReplyData } from "common";
+import { MailHeaderData } from "common";
 
 import {
   ApiResponse,
   AccountsGetResponse,
-  BodyGetResponse,
   HeadersGetResponse,
   MarkMailPostBody,
   MarkMailPostResponse,
@@ -26,7 +25,6 @@ import {
 
 import {
   MailHeader,
-  MailBody,
   SkeletonMail,
   KebabIcon,
   NewTabIcon,
@@ -50,7 +48,6 @@ import {
   call,
   isSentMail,
   canMarkSpam,
-  processHtmlForViewer,
   useIsOnline,
   revalidateOnMountPolicy,
   formatDataAge,
@@ -65,6 +62,8 @@ import {
 } from "client/Box/components/Accounts";
 import { getMailsQueryUrl } from "./mailsQuery";
 import { emptyFolderState } from "./emptyState";
+import { openMailInNewTab, useStartReply } from "./mailActions";
+import { FROM_LIST_STATE, mailPagePath } from "./mailPage";
 import {
   UNDO_WINDOW_MS,
   cancelDelete,
@@ -150,13 +149,10 @@ const RowAction = ({
 interface RenderedMailProps {
   mail: MailHeaderData;
   i: number;
-  activeMailId: ActiveMailMap;
-  setActiveMailId: Dispatch<SetStateAction<ActiveMailMap>>;
   requestMarkRead: (
     mail: MailHeaderData
   ) => Promise<ApiResponse<MarkMailPostResponse>>;
   markReadInQueryData: (mail: MailHeaderData) => void;
-  setReplyData: Dispatch<SetStateAction<ReplyData>>;
   requestDeleteMail: (
     mail: MailHeaderData
   ) => Promise<ApiResponse<MailDeleteResponse>>;
@@ -165,13 +161,11 @@ interface RenderedMailProps {
     isSpam: boolean
   ) => Promise<ApiResponse<SpamMarkPostResponse>>;
   selectedAccount: string;
-  domainName: string;
   accountsCache: AccountsCache;
   selectedCategory: Category;
   removeAccountFromQueryData: () => void;
   requestMarkSaved: (mail: MailHeaderData, saved: boolean) => void;
   markSavedInQueryData: (mail: MailHeaderData, saved: boolean) => void;
-  isWriterOpen: boolean;
   openedKebab: string;
   setOpenedKebab: Dispatch<SetStateAction<string>>;
   density: Density;
@@ -181,29 +175,23 @@ interface RenderedMailProps {
 const RenderedMail = ({
   mail,
   i,
-  activeMailId,
-  setActiveMailId,
   requestMarkRead,
   markReadInQueryData,
-  setReplyData,
   requestDeleteMail,
   requestMarkSpam,
   selectedAccount,
-  domainName,
   accountsCache,
   selectedCategory,
   removeAccountFromQueryData,
   requestMarkSaved,
   markSavedInQueryData,
-  isWriterOpen,
   openedKebab,
   setOpenedKebab,
   density,
   isSent
 }: RenderedMailProps) => {
-  const { isSettingsOpen, theme = "system" } = useContext(Context);
+  const { theme = "system" } = useContext(Context);
   const resolvedTheme = useResolvedTheme(theme);
-  const isActive = !!activeMailId[mail.id];
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
@@ -211,127 +199,31 @@ const RenderedMail = ({
 
   const queryClient = useQueryClient();
   const { showToast } = useFeedback();
+  const navigate = useNavigate();
+  const startReply = useStartReply();
 
-  const onClickClose = useCallback(() => {
-    setActiveMailId((current) => {
-      const next = { ...current };
-      delete next[mail.id];
-      return next;
-    });
-  }, [mail.id, setActiveMailId]);
+  const onClickOpenInNewTab = () =>
+    openMailInNewTab(queryClient, mail.id, resolvedTheme).catch(console.error);
 
-  // Esc collapses the open message (design doc §6). The writer owns Esc
-  // while it is open, typing in a field keeps its own Esc, an open dialog
-  // overlay (the Folders sheet) owns Esc too, and the list stays mounted
-  // but hidden under Settings, so all four skip this handler.
-  useEffect(() => {
-    if (!isActive) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (isWriterOpen || isSettingsOpen) return;
-      // A dialog overlay owns Esc while it is open — the Folders sheet
-      // registers its own window-level Escape handler. Without this, one
-      // press closes the dialog and collapses the message behind it.
-      // Dialogs are only mounted while open, so presence in the document
-      // means one is open.
-      if (document.querySelector('[role="dialog"]')) return;
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.tagName === "SELECT" ||
-          target.isContentEditable)
-      )
-        return;
-      onClickClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isActive, isWriterOpen, isSettingsOpen, onClickClose]);
-
-  const onClickOpenInNewTab = async () => {
-    const queryUrl = `/api/mails/body/${mail.id}`;
-    const getMail = () =>
-      call.get<BodyGetResponse>(queryUrl).then(({ status, body, message }) => {
-        if (status === "success") return new MailBodyData(body);
-        throw new Error(message);
-      });
-    const data = await queryClient.fetchQuery<MailBodyData>(queryUrl, getMail, {
-      staleTime: Infinity
-    });
-    // Render the email inside a sandboxed iframe in the new tab — NOT
-    // directly into the top document. A `blob:` document inherits this
-    // page's origin, so any script in the email body would otherwise run
-    // with full app origin (cookies / session). The inline preview is
-    // safe only because its iframe omits `allow-scripts`; the new tab must
-    // preserve that backstop. The shell below carries no script of its own
-    // and confines the email to an iframe whose sandbox matches the inline
-    // viewer (no `allow-scripts`, no top-navigation), so email scripts stay
-    // inert and `<meta http-equiv=refresh>` can't redirect the tab. The
-    // sanitizer stays defense-in-depth, not the sole barrier.
-    // The shell also carries its own <meta name="referrer"> so this path no
-    // longer relies on the blob: URL for Referer suppression (the inner
-    // srcdoc document gets its own from processHtmlForViewer).
-    const processed = processHtmlForViewer(data.html, { theme: resolvedTheme });
-    // The tab's own page matches the viewer's scheme and panel color, or the
-    // mail's theme-colored text would sit on a default white page.
-    const panel = resolvedTheme === "light" ? "#ffffff" : "#222222";
-    // Escape for embedding in the double-quoted `srcdoc` attribute.
-    const srcdoc = processed.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-    const shell =
-      '<!doctype html><html><head><meta charset="utf-8" />' +
-      '<meta name="referrer" content="no-referrer" />' +
-      `<style>:root{color-scheme:${resolvedTheme}}` +
-      `html,body{margin:0;padding:0;height:100%;background:${panel}}` +
-      "iframe{border:0;width:100%;height:100%}</style></head>" +
-      '<body><iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" ' +
-      `srcdoc="${srcdoc}"></iframe></body></html>`;
-    const blob = new Blob([shell], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
-    // Revoke after a delay so the new tab has a chance to load. Chrome /
-    // Safari hold the blob alive in the open tab regardless once the
-    // load is committed.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  };
-
+  // A mail opens on its own page, with the rest of its conversation.
   const onClickMailcard = () => {
-    if (isActive) {
-      onClickClose();
-    } else {
-      // Auto-mark-read is a side effect of opening, not a user-clicked
-      // control — so gate the request itself when offline rather than
-      // disabling a button. The mail still opens and renders cached body.
-      if (!mail.read && isOnline) {
-        requestMarkRead(mail);
-        markReadInQueryData(mail);
-        mail.read = true;
-      }
-      const clonedActiveMailId = { ...activeMailId, [mail.id]: true };
-      setActiveMailId(clonedActiveMailId);
+    // Auto-mark-read is a side effect of opening, not a user-clicked
+    // control — so gate the request itself when offline rather than
+    // disabling a button. The page still opens and renders cached data.
+    if (!mail.read && isOnline) {
+      requestMarkRead(mail);
+      markReadInQueryData(mail);
+      mail.read = true;
     }
+    navigate(mailPagePath(mail.id), { state: FROM_LIST_STATE });
   };
 
   const onClickReply = () => {
-    if (!isActive) {
-      const clonedActiveMailId = { ...activeMailId, [mail.id]: true };
-      setActiveMailId(clonedActiveMailId);
-    }
-    if (isSentMail(mail, domainName)) {
-      const ownAddress = mail.from?.value?.[0]?.address || selectedAccount;
-      setReplyData({ ...mail, from: mail.to, to: { address: ownAddress } });
-    } else {
-      setReplyData({ ...mail, to: { address: selectedAccount } });
-    }
+    startReply(mail, "reply").catch(console.error);
   };
 
   const onClickShare = () => {
-    if (!isActive) {
-      const clonedActiveMailId = { ...activeMailId, [mail.id]: true };
-      setActiveMailId(clonedActiveMailId);
-    }
-    setReplyData({ ...mail, to: { address: "" } });
+    startReply(mail, "forward").catch(console.error);
   };
 
   const onClickTrash = () => {
@@ -476,7 +368,6 @@ const RenderedMail = ({
   const classes = ["mailcard"];
 
   if (!mail.read) classes.push("unread");
-  if (isActive) classes.push("active");
   if (mail.saved) classes.push("star");
 
   let searchHighlight;
@@ -503,7 +394,6 @@ const RenderedMail = ({
 
   // Mutating controls (save, delete) are disabled while offline; the handlers
   // also early-return as a backstop against a stray click.
-  const offlineClass = isOnline ? "" : " disabled";
   const offlineTitle = isOnline
     ? undefined
     : "You're offline — reconnect to make changes";
@@ -528,23 +418,11 @@ const RenderedMail = ({
     >
       <MailHeader
         mail={mail}
-        isActive={isActive}
         density={density}
         isSent={isSent}
         onClick={onClickMailcard}
         onMouseLeave={() => setOpenedKebab("")}
       />
-      {isActive && (
-        <button
-          type="button"
-          className="mail-close"
-          title="Close"
-          aria-label="Close message"
-          onClick={onClickClose}
-        >
-          <CloseIcon />
-        </button>
-      )}
       {isSummaryOpen && (
         <div className="insight">
           {!!summary?.length && (
@@ -559,90 +437,9 @@ const RenderedMail = ({
           )}
         </div>
       )}
-      {isActive ? (
-        <div className="actionRow" role="toolbar" aria-label="Message actions">
-          {summary?.length || actionItems?.length ? (
-            <button
-              type="button"
-              className="actionButton cursor"
-              title={isSummaryOpen ? "Hide summary" : "Show summary"}
-              aria-expanded={isSummaryOpen}
-              onClick={onClickRobot}
-            >
-              <RobotIcon />
-              <span>Summary</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="actionButton cursor"
-            title="Reply"
-            onClick={onClickReply}
-          >
-            <ReplyIcon />
-            <span>Reply</span>
-          </button>
-          <button
-            type="button"
-            className="actionButton cursor"
-            title="Forward"
-            onClick={onClickShare}
-          >
-            <ShareIcon />
-            <span>Forward</span>
-          </button>
-          <button
-            type="button"
-            className={"actionButton cursor" + offlineClass}
-            title={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
-            onClick={onClickStar}
-          >
-            {mail.saved ? (
-              <SolidStarIcon className="star" />
-            ) : (
-              <EmptyStarIcon />
-            )}
-            <span>{mail.saved ? "Unsave" : "Save"}</span>
-          </button>
-          <button
-            type="button"
-            className="actionButton cursor"
-            title="Open this email body in a new tab"
-            onClick={onClickOpenInNewTab}
-          >
-            <NewTabIcon />
-            <span>Open in new tab</span>
-          </button>
-          {canToggleSpam ? (
-            <button
-              type="button"
-              className={"actionButton cursor" + offlineClass}
-              title={
-                offlineTitle ?? (isSpamView ? "Not spam" : "Mark as spam")
-              }
-              onClick={onClickSpam}
-            >
-              {isSpamView ? <CircleCheckIcon /> : <BanIcon />}
-              <span>{isSpamView ? "Not spam" : "Mark spam"}</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={"actionButton cursor" + offlineClass}
-            title={offlineTitle ?? "Delete"}
-            onClick={onClickTrash}
-          >
-            <TrashIcon />
-            <span>Delete</span>
-          </button>
-        </div>
-      ) : null}
-      {isActive ? (
-        <MailBody mailId={mail.id} />
-      ) : searchHighlight ? (
+      {searchHighlight ? (
         <div className="search_highlight">{searchHighlight}</div>
       ) : null}
-      {!isActive && (
       <div
         className={
           "actionBox" +
@@ -740,14 +537,9 @@ const RenderedMail = ({
           </>
         )}
       </div>
-      )}
     </blockquote>
   );
 };
-
-interface ActiveMailMap {
-  [k: string]: boolean;
-}
 
 const RenderedMails = ({
   page,
@@ -769,8 +561,6 @@ const RenderedMails = ({
   category?: Category;
 }) => {
   const {
-    isWriterOpen,
-    setReplyData,
     setSelectedAccount,
     selectedAccount: contextAccount,
     selectedCategory: contextCategory,
@@ -780,7 +570,6 @@ const RenderedMails = ({
   const selectedAccount = accountProp ?? contextAccount;
   const selectedCategory = categoryProp ?? contextCategory;
 
-  const [activeMailId, setActiveMailId] = useState<ActiveMailMap>({});
   const [openedKebab, setOpenedKebab] = useState("");
 
   const accountsCache = new AccountsCache();
@@ -796,10 +585,6 @@ const RenderedMails = ({
 
   const containerClass =
     "mails_container" + (density === "compact" ? " compact" : "");
-
-  useEffect(() => {
-    setActiveMailId({});
-  }, [selectedAccount]);
 
   const touchStartHandler = () => setOpenedKebab("");
 
@@ -1009,21 +794,16 @@ const RenderedMails = ({
           key={mail.id}
           mail={mail}
           i={i}
-          activeMailId={activeMailId}
-          setActiveMailId={setActiveMailId}
           requestMarkRead={requestMarkRead}
           markReadInQueryData={markReadInQueryData}
-          setReplyData={setReplyData}
           requestDeleteMail={requestDeleteMail}
           requestMarkSpam={requestMarkSpam}
           selectedAccount={selectedAccount}
-          domainName={domainName}
           accountsCache={accountsCache}
           selectedCategory={selectedCategory}
           removeAccountFromQueryData={removeAccountFromQueryData}
           requestMarkSaved={requestMarkSaved}
           markSavedInQueryData={markSavedInQueryData}
-          isWriterOpen={isWriterOpen}
           openedKebab={openedKebab}
           setOpenedKebab={setOpenedKebab}
           density={density}

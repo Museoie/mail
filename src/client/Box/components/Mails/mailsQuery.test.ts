@@ -7,9 +7,6 @@ describe("getMailsQueryUrl", () => {
     expect(getMailsQueryUrl("alice@x.com", Category.AllMails)).toBe(
       "/api/mails/headers/alice@x.com"
     );
-    expect(getMailsQueryUrl("alice@x.com", Category.NewMails)).toBe(
-      "/api/mails/headers/alice@x.com?new=1"
-    );
     expect(getMailsQueryUrl("alice@x.com", Category.SentMails)).toBe(
       "/api/mails/headers/alice@x.com?sent=1"
     );

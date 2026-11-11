@@ -43,7 +43,7 @@ export const bucketsForMail = (
   if (category === Category.SpamMails) return ["spam"];
 
   const listedByRecipientCondition =
-    category === Category.AllMails || category === Category.NewMails;
+    category === Category.AllMails;
   const isSender = holdsAddress(mail.from, accountKey);
   const isRecipient =
     listedByRecipientCondition ||
@@ -61,10 +61,9 @@ export const bucketsForMail = (
  * one — the test for whether an emptied sidebar list means the account left a
  * bucket.
  *
- * New Mails and Saved Mails are `unread_doc_count` / `saved_doc_count` filters
- * over the buckets they draw from, so one of those lists running empty means a
- * counter reached zero, not that the account left the bucket: it still holds
- * the mail behind the other counters. Search shows no bucket at all, since
+ * Saved Mails is a `saved_doc_count` filter over the buckets it draws from,
+ * so its list running empty means a counter reached zero, not that the
+ * account left the bucket: it still holds the mail behind the other counters. Search shows no bucket at all, since
  * `selectedAccount` carries the search term there rather than an account key.
  */
 export const wholeBucketForCategory = (
@@ -138,7 +137,6 @@ export const accountCountForCategory = (
   const account = data[bucket]?.find((a) => a.key === key);
   if (!account) return null;
   switch (category) {
-    case Category.NewMails:
     case Category.AllMails:
       return { count: account.unread_doc_count, noun: "unread" };
     case Category.SavedMails:

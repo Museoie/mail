@@ -17,6 +17,8 @@ import {
   getAccountUidNext
 } from "server";
 import { sendMailgunMail } from "./mailgun";
+import { getReferenceIdsByMessageId } from "../postgres/repositories/mails/thread";
+import { MAX_REFERENCE_IDS } from "../mime/header";
 import { validateMailData, MailValidationError } from "./validation";
 import { sendAlarm } from "../alarm";
 import { logger } from "../logger";
@@ -54,6 +56,12 @@ export const sendMail = async (
 
   const { persistToSentMailbox = true } = options ?? {};
   const { id: userId, username } = user;
+  if (mailToSend.inReplyTo && !mailToSend.references) {
+    mailToSend.references = await threadReferences(
+      userId,
+      mailToSend.inReplyTo
+    );
+  }
   try {
     const response = await sendMailgunMail(username, mailToSend, files);
     if (!persistToSentMailbox) return response;
@@ -143,6 +151,28 @@ export const addressField = (list?: string) =>
 export const envelopeRecipients = (...lists: (string | undefined)[]) =>
   parseAddressList(lists.filter(Boolean).join(","));
 
+/**
+ * The `References` for a reply: the answered message's own References plus
+ * its Message-ID (RFC 5322 §3.6.4), so recipients' clients — and this app's
+ * thread view — keep the reply in the conversation. A failed lookup still
+ * threads the reply under the message it answers.
+ */
+export const threadReferences = async (
+  userId: string,
+  inReplyTo: string,
+  lookup: typeof getReferenceIdsByMessageId = getReferenceIdsByMessageId
+): Promise<string[]> => {
+  let earlier: string[] = [];
+  try {
+    earlier = (await lookup(userId, inReplyTo)) ?? [];
+  } catch (error) {
+    logger.warn("Couldn't read the answered mail's References", {}, error);
+  }
+  return [...earlier.filter((id) => id !== inReplyTo), inReplyTo].slice(
+    -MAX_REFERENCE_IDS
+  );
+};
+
 const getSentMail = async (
   user: SignedUser,
   mailToSend: MailDataToSend,
@@ -187,6 +217,8 @@ const getSentMail = async (
     read: true,
     sent: true,
     saved: false,
+    inReplyTo: mailToSend.inReplyTo || undefined,
+    references: mailToSend.references,
     uid
   });
 };

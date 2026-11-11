@@ -14,7 +14,7 @@ import path from "path";
 
 // The narrow bottom bar (≤750px) shows five labeled items — Folders, Search,
 // Compose, Settings, Refresh — and the Folders entry opens a bottom sheet
-// with the five folders and their unread counts (design doc §4, option A).
+// with the four folders and their unread counts (design doc §4, option A).
 // These tests mount the real Accounts component (same harness as
 // `writer-nav.test.ts`) and drive the rail and the sheet.
 beforeAll(() => {
@@ -255,22 +255,20 @@ const mountAccounts = async (options: MountOptions = {}) => {
 };
 
 describe("Folders entry opens the sheet", () => {
-  it("lists all five folders with their unread counts", async () => {
+  it("lists all four folders with their unread counts", async () => {
     const { clickRailItem, waitForSheetRows, teardown } =
       await mountAccounts({ width: 390 });
     try {
       await clickRailItem("Folders");
       const rows = await waitForSheetRows();
-      expect(rows.length).toBe(5);
+      expect(rows.length).toBe(4);
       const byLabel = new Map(
         Array.from(rows).map((row) => [
           row.querySelector(".folders-sheet-label")?.textContent,
           row.querySelector(".numberBall")?.textContent
         ])
       );
-      expect(byLabel.get("New Mails")).toBe("3");
-      // All does not repeat New's unread total.
-      expect(byLabel.get("All Mails")).toBeUndefined();
+      expect(byLabel.get("All Mails")).toBe("3");
       expect(byLabel.get("Saved Mails")).toBe("1");
       expect(byLabel.get("Sent Mails")).toBe("1");
       expect(byLabel.get("Spam Mails")).toBe("3");
@@ -307,7 +305,7 @@ describe("Sheet opens above the writer", () => {
     try {
       await clickRailItem("Folders");
       const rows = await waitForSheetRows();
-      expect(rows.length).toBe(5);
+      expect(rows.length).toBe(4);
       expect(document.body.querySelector(".folders-sheet")).not.toBeNull();
     } finally {
       await teardown();
@@ -357,13 +355,12 @@ describe("Narrow bar shows five labeled items", () => {
     const { waitForRail, teardown } = await mountAccounts({ width: 1920 });
     try {
       const items = await waitForRail();
-      // Six category items + Folders + Compose + Settings + Refresh.
-      expect(items.length).toBe(10);
+      // Five category items + Folders + Compose + Settings + Refresh.
+      expect(items.length).toBe(9);
       const labels = Array.from(items).map(
         (el) => el.querySelector(".rail-label")?.textContent
       );
       expect(labels).toContain("Folders");
-      expect(labels).toContain("New");
       expect(labels).toContain("All");
       expect(labels).toContain("Saved");
       expect(labels).toContain("Sent");
@@ -379,7 +376,7 @@ describe("Narrow bar shows five labeled items", () => {
 
   it("the narrow bar hides the folder items, shows Folders, and keeps labels", async () => {
     // happy-dom has no layout engine, so the breakpoint rules themselves
-    // are pinned here in the stylesheet: the five folder items hide at
+    // are pinned here in the stylesheet: the four folder items hide at
     // ≤750px, the Folders entry shows there (and hides above it), and the
     // rail labels are no longer hidden at ≤750px — five labeled items fit
     // a phone width. The sandbox screenshots verify the rendered result.

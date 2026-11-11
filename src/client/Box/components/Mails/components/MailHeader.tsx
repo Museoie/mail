@@ -10,7 +10,6 @@ export interface MailHeaderProps extends Omit<
   "onClick"
 > {
   mail: MailHeaderData;
-  isActive: boolean;
   density: Density;
   isSent: boolean;
   onClick?: () => void;
@@ -21,7 +20,7 @@ export interface MailHeaderProps extends Omit<
 // it stops propagation on click AND keydown: without the keydown stop, Enter
 // or Space on the button would bubble to the header's onKeyboardActivate and
 // collapse the message instead of expanding the list.
-const AddressList = ({
+export const AddressList = ({
   label,
   address
 }: {
@@ -64,55 +63,23 @@ const AddressList = ({
 };
 
 const MailHeader = (props: MailHeaderProps) => {
-  const { mail, isActive, density, isSent, onClick, onMouseLeave } = props;
-  const { date, time, duration } = getDateForMailHeader(new Date(mail.date));
+  const { mail, density, isSent, onClick, onMouseLeave } = props;
+  const { duration } = getDateForMailHeader(new Date(mail.date));
 
-  const cc = "cc" in mail ? mail.cc : undefined;
-  const bcc = "bcc" in mail ? mail.bcc : undefined;
-
-  if (cc?.value && !Array.isArray(cc.value)) cc.value = [cc.value];
-  if (bcc?.value && !Array.isArray(bcc.value)) bcc.value = [bcc.value];
-
-  // Collapsed row (design doc §5): sender + relative date on the first line,
-  // subject on the second, snippet on the third. The snippet stays out of the
-  // expanded header (the body is shown there) and out of search results (the
-  // highlight is shown instead).
-  if (!isActive) {
-    const sender = isSent
-      ? "me"
-      : mail?.from?.value?.map((e) => e?.name || e?.address).join(", ");
-    const hasHighlight =
-      !!mail.highlight &&
-      (mail.highlight.subject?.length ?? 0) +
-        (mail.highlight.text?.length ?? 0) >
-        0;
-    const showSnippet =
-      density === "comfortable" && !!mail.snippet && !hasHighlight;
-    return (
-      <div
-        className="header cursor"
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={onClick ? onKeyboardActivate(onClick) : undefined}
-        onMouseLeave={onMouseLeave}
-      >
-        <div className="mailcard-line1 content">
-          {!mail.read && <span className="unread-dot" aria-hidden="true" />}
-          <span className="sender">{sender}</span>
-          <span className="mailcard-date">{duration}</span>
-        </div>
-        <div className="mailcard-subject content">
-          {mail.spam ? <span className="spam-tag">Spam</span> : null}
-          {mail.subject || <span className="no-subject">(No Subject)</span>}
-        </div>
-        {showSnippet && (
-          <div className="mailcard-snippet content">{mail.snippet}</div>
-        )}
-      </div>
-    );
-  }
-
+  // List row (design doc §5): sender + relative date on the first line,
+  // subject on the second, snippet on the third. The snippet stays out of
+  // search results (the highlight is shown instead). Opening a mail goes to
+  // its own page (see Thread), so the row has no expanded form.
+  const sender = isSent
+    ? "me"
+    : mail?.from?.value?.map((e) => e?.name || e?.address).join(", ");
+  const hasHighlight =
+    !!mail.highlight &&
+    (mail.highlight.subject?.length ?? 0) +
+      (mail.highlight.text?.length ?? 0) >
+      0;
+  const showSnippet =
+    density === "comfortable" && !!mail.snippet && !hasHighlight;
   return (
     <div
       className="header cursor"
@@ -122,23 +89,18 @@ const MailHeader = (props: MailHeaderProps) => {
       onKeyDown={onClick ? onKeyboardActivate(onClick) : undefined}
       onMouseLeave={onMouseLeave}
     >
+      <div className="mailcard-line1 content">
+        {!mail.read && <span className="unread-dot" aria-hidden="true" />}
+        <span className="sender">{sender}</span>
+        <span className="mailcard-date">{duration}</span>
+      </div>
       <div className="mailcard-subject content">
+        {mail.spam ? <span className="spam-tag">Spam</span> : null}
         {mail.subject || <span className="no-subject">(No Subject)</span>}
       </div>
-      <AddressList label="from" address={mail.from} />
-      <AddressList label="to" address={mail.to} />
-      {cc && cc.value ? <AddressList label="cc" address={cc} /> : <></>}
-      {bcc && bcc.value ? (
-        <AddressList label="bcc" address={bcc} />
-      ) : (
-        <></>
+      {showSnippet && (
+        <div className="mailcard-snippet content">{mail.snippet}</div>
       )}
-      <div className="mailcard-small content">
-        <time dateTime={new Date(mail.date).toISOString()}>
-          {date}, {time}
-        </time>{" "}
-        ({duration})
-      </div>
     </div>
   );
 };

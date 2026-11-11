@@ -76,7 +76,6 @@ describe("canMarkSpam", () => {
         Object.values(Category).map((c) => [c, canMarkSpam(selfAddressed, c)])
       )
     ).toEqual({
-      "New Mails": false,
       "All Mails": false,
       "Saved Mails": false,
       "Sent Mails": false,

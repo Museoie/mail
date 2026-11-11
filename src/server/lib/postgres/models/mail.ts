@@ -37,6 +37,8 @@ import {
   RFC822_SIZE,
   TEXT_LINE_COUNT,
   HTML_LINE_COUNT,
+  IN_REPLY_TO,
+  REFERENCE_IDS,
 } from "./common";
 import { Model, ModelValidationError, createTable, validateObject } from "./base";
 
@@ -88,6 +90,8 @@ export interface MailJSON {
   rfc822_size: number | null;
   text_line_count: number | null;
   html_line_count: number | null;
+  in_reply_to: string | null;
+  reference_ids: string[] | null;
 }
 
 const mailSchema = {
@@ -140,6 +144,12 @@ const mailSchema = {
   // describes. Kept only until the columns are dropped.
   [TEXT_LINE_COUNT]: "INTEGER",
   [HTML_LINE_COUNT]: "INTEGER",
+  // The Message-IDs the mail answers (`In-Reply-To`) and the conversation it
+  // belongs to (`References`), for showing a mail inside its thread.
+  // Nullable: rows stored before these columns existed have neither, and
+  // the thread lookup falls back to subject and participants for them.
+  [IN_REPLY_TO]: "VARCHAR(512)",
+  [REFERENCE_IDS]: "JSONB",
   [UPDATED]: "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP",
   search_vector: "TSVECTOR",
 };
@@ -183,6 +193,8 @@ export class MailModel extends Model<MailJSON, MailSchema> {
   declare rfc822_size: number | null;
   declare text_line_count: number | null;
   declare html_line_count: number | null;
+  declare in_reply_to: string | null;
+  declare reference_ids: string[] | null;
   declare updated: string;
 
   static typeChecker = {
@@ -225,6 +237,13 @@ export class MailModel extends Model<MailJSON, MailSchema> {
       v === null || typeof v === "number",
     html_line_count: (v: unknown): v is number | null =>
       v === null || typeof v === "number",
+    // Optional as well as nullable: rows read with an explicit column list
+    // that predates these columns, and models built in code, don't carry
+    // them, and threading treats a missing value as "no headers".
+    in_reply_to: (v: unknown): v is string | null | undefined =>
+      v === undefined || isNullableString(v),
+    reference_ids: (v: unknown): v is unknown[] | null | undefined =>
+      v === undefined || isNullableArray(v),
     updated: isNullableString,
     search_vector: isNullableString,
   };
@@ -271,6 +290,8 @@ export class MailModel extends Model<MailJSON, MailSchema> {
       rfc822_size: this.rfc822_size,
       text_line_count: this.text_line_count,
       html_line_count: this.html_line_count,
+      in_reply_to: this.in_reply_to ?? null,
+      reference_ids: this.reference_ids ?? null,
     };
   }
 }
@@ -422,6 +443,11 @@ export const mailsTable = createTable<MailJSON, MailSchema, MailModel>({
     { column: BCC_ADDRESS, using: "gin", opclass: "jsonb_path_ops" },
     { column: ENVELOPE_TO, using: "gin", opclass: "jsonb_path_ops" },
     { column: FROM_ADDRESS, using: "gin", opclass: "jsonb_path_ops" },
+    // Thread lookup (repositories/mails/thread.ts): replies by the id they
+    // answer, and the References overlap (`?|`, which needs the default
+    // jsonb_ops opclass).
+    { column: IN_REPLY_TO },
+    { column: REFERENCE_IDS, using: "gin" },
   ],
   ModelClass: MailModel,
   supportsSoftDelete: false,

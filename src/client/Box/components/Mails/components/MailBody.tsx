@@ -38,8 +38,7 @@ const replaceBlockquoteWithDetails = (text: string, blockquote: Element) => {
 };
 
 const MailBody = ({ mailId }: Props) => {
-  const { setIsWriterOpen, replyData, setReplyData, theme = "system" } =
-    useContext(Context) as ContextType;
+  const { theme = "system" } = useContext(Context) as ContextType;
   const resolvedTheme = useResolvedTheme(theme);
 
   const [isLoadingIframe, setIsLoadingIframe] = useState(true);
@@ -69,21 +68,6 @@ const MailBody = ({ mailId }: Props) => {
       pendingFrames.current = [];
     };
   }, []);
-
-  useEffect(() => {
-    if (
-      query.data?.html &&
-      replyData.id === query.data.id &&
-      replyData.messageId !== query.data.messageId
-    ) {
-      setReplyData({
-        ...replyData,
-        html: query.data.html,
-        messageId: query.data.messageId
-      });
-      setIsWriterOpen(true);
-    }
-  }, [setIsWriterOpen, replyData, setReplyData, query]);
 
   const adjustMailContentSize = useCallback(
     (iframeDom: HTMLIFrameElement | null) => {

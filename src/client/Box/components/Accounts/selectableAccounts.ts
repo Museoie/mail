@@ -28,8 +28,6 @@ export const accountsForCategory = (
 ): Account[] => {
   if (category === Category.Search) return [];
   if (category === Category.SentMails) return sent;
-  if (category === Category.NewMails)
-    return received.filter((a) => a.unread_doc_count);
   if (category === Category.SavedMails)
     return mergeSavedAccounts(received, sent);
   if (category === Category.SpamMails) return spam;

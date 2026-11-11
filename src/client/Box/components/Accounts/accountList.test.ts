@@ -89,7 +89,6 @@ describe("filterAccounts", () => {
 describe("accountBadgeCount", () => {
   it("reads unread everywhere except Saved", () => {
     const account = makeAccount("me@x.com", 3, 2);
-    expect(accountBadgeCount(account, Category.NewMails)).toBe(3);
     expect(accountBadgeCount(account, Category.AllMails)).toBe(3);
     expect(accountBadgeCount(account, Category.SentMails)).toBe(3);
     expect(accountBadgeCount(account, Category.SpamMails)).toBe(3);
@@ -112,7 +111,6 @@ describe("folderBadgeCounts", () => {
       spam: [makeAccount("spam@x.com", 3, 0)]
     };
     expect(folderBadgeCounts(data)).toEqual({
-      [Category.NewMails]: 3,
       [Category.AllMails]: 3,
       [Category.SavedMails]: 1,
       [Category.SentMails]: 1,
@@ -122,7 +120,6 @@ describe("folderBadgeCounts", () => {
 
   it("returns zeros when the payload has not loaded", () => {
     expect(folderBadgeCounts(undefined)).toEqual({
-      [Category.NewMails]: 0,
       [Category.AllMails]: 0,
       [Category.SavedMails]: 0,
       [Category.SentMails]: 0,
@@ -167,16 +164,14 @@ describe("accountBadge", () => {
 
 describe("folderBadge", () => {
   const counts = {
-    [Category.NewMails]: 4,
     [Category.AllMails]: 4,
     [Category.SavedMails]: 6,
     [Category.SentMails]: 0,
     [Category.SpamMails]: 2
   };
 
-  it("does not repeat New's unread total on All", () => {
-    expect(folderBadge(Category.AllMails, counts).count).toBe(0);
-    expect(folderBadge(Category.NewMails, counts)).toEqual({
+  it("shows the received unread total on All", () => {
+    expect(folderBadge(Category.AllMails, counts)).toEqual({
       count: 4,
       tone: "unread",
       label: "4 unread"

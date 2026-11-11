@@ -33,8 +33,6 @@ export const emptyFolderState = (
   const where = account ? ` in ${account}` : "";
   const message = (() => {
     switch (category) {
-      case Category.NewMails:
-        return `All caught up! No unread mail${where}.`;
       case Category.SavedMails:
         return `No saved mail${where}.`;
       case Category.SentMails:
@@ -47,11 +45,7 @@ export const emptyFolderState = (
   })();
 
   const countKey =
-    category === Category.NewMails
-      ? "unread_doc_count"
-      : category === Category.SavedMails
-        ? "saved_doc_count"
-        : "doc_count";
+    category === Category.SavedMails ? "saved_doc_count" : "doc_count";
 
   const others = accounts
     ? accountsForCategory(category, accounts)

@@ -12,17 +12,65 @@
   align-items: center;
 
   h1 {
-    font-size: min(max(4vw, 25px), 30px);
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+    max-width: calc(100vw - 32px);
     margin: 0;
-    /* The menu is absolutely positioned on the left, so the title leaves
-     * room for it on both sides (to stay centred) plus the unread pill.
-     * One line, always: a long account name truncates instead of wrapping
-     * down over the list. */
-    max-width: calc(100vw - 200px);
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: min(max(4vw, 22px), 28px);
+    text-align: center;
     white-space: nowrap;
+  }
+
+  /* The account name is the accounts menu button: the name, its unread
+   * count and a chevron, centred. One line, always — a long account name
+   * truncates instead of wrapping down over the list. */
+  .title-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 40px;
+    padding: 2px 10px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover,
+    &.open {
+      background-color: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 1px;
+    }
+
+    .title-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .title-chevron {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: var(--textDim);
+      transition: transform 150ms ease;
+    }
+
+    &.open .title-chevron {
+      transform: rotate(180deg);
+    }
+
+    .header-unread-count {
+      margin-left: 2px;
+    }
   }
 
   /* Total unread count (design doc §4/§9): the numeric total next to the
@@ -41,20 +89,4 @@
     text-align: center;
   }
 
-  .menu {
-    position: absolute;
-    height: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 21;
-
-    &.right {
-      right: 0.5rem;
-    }
-
-    &.left {
-      left: 0.5rem;
-    }
-  }
 }

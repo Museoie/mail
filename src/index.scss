@@ -373,30 +373,6 @@ svg {
   justify-content: center;
 }
 
-.menu {
-  .iconBox {
-    width: 72px;
-
-    > div {
-      position: relative;
-    }
-
-    svg {
-      height: 30px;
-    }
-  }
-
-  &:hover > .iconBox svg,
-  .cursor:hover > .iconBox svg {
-    height: 34px;
-  }
-
-  &:active > .iconBox svg,
-  .cursor:active > .iconBox svg {
-    height: 32px;
-  }
-}
-
 @keyframes loading {
   100% {
     transform: translateX(100%);

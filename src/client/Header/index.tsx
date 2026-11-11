@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { useQuery } from "react-query";
 import { AccountsGetResponse } from "server";
 import { Category, Context } from "client";
@@ -6,7 +6,6 @@ import {
   accountsQueryUrl,
   fetchAccounts
 } from "client/Box/components/Accounts";
-import LeftMenu from "./components/LeftMenu";
 import "./index.scss";
 
 /**
@@ -64,7 +63,11 @@ const Header = () => {
     selectedAccount,
     selectedCategory,
     isSettingsOpen,
-    newMailsTotal
+    newMailsTotal,
+    isAccountsOpen,
+    setIsAccountsOpen,
+    isWriterOpen,
+    setIsWriterOpen
   } = useContext(Context);
 
   // Subscribe to the sidebar's accounts query without fetching, like the
@@ -91,24 +94,89 @@ const Header = () => {
     accounts: accountsQuery.data
   });
 
-  // Search and Compose live in the rail (the bottom bar on a phone), which
-  // is always on screen, so the header no longer repeats them. That leaves
-  // the title the full width between the menu and the edge.
+  const onClickTitle = () => {
+    // The writer docks over the list; the menu replaces it, as the old
+    // hamburger did.
+    if (isWriterOpen) {
+      setIsWriterOpen(false);
+      setIsAccountsOpen(true);
+    } else setIsAccountsOpen(!isAccountsOpen);
+  };
+
+  // Escape closes the accounts menu and returns focus to its button.
+  const titleRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isAccountsOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
+        return;
+      }
+      setIsAccountsOpen(false);
+      titleRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isAccountsOpen, setIsAccountsOpen]);
+
+  const pill =
+    userInfo && count > 0 ? (
+      <span
+        className="header-unread-count"
+        title={countLabel}
+        aria-label={countLabel}
+      >
+        {count}
+      </span>
+    ) : null;
+
+  // Signed in, the title is the accounts menu button: it names the current
+  // mailbox and opens the account list centred beneath it. Search and
+  // Compose live in the rail (the bottom bar on a phone), which is always on
+  // screen.
   return (
     <header id="title_bar" className="sticky">
-      {userInfo ? <LeftMenu /> : null}
-      <h1 title={fullTitle}>{title}</h1>
-      {userInfo && count > 0 ? (
-        <span
-          className="header-unread-count"
-          title={countLabel}
-          aria-label={countLabel}
-        >
-          {count}
-        </span>
-      ) : null}
+      {userInfo ? (
+        <h1>
+          <button
+            type="button"
+            ref={titleRef}
+            className={"title-button" + (isAccountsOpen ? " open" : "")}
+            aria-haspopup="true"
+            aria-expanded={!!isAccountsOpen}
+            aria-controls="accounts-menu"
+            title={`${fullTitle} — switch account`}
+            onClick={onClickTitle}
+          >
+            <span className="title-text">{title}</span>
+            {pill}
+            <ChevronIcon />
+          </button>
+        </h1>
+      ) : (
+        <h1 title={fullTitle}>{title}</h1>
+      )}
     </header>
   );
 };
+
+const ChevronIcon = () => (
+  <svg
+    className="title-chevron"
+    aria-hidden="true"
+    viewBox="0 0 16 16"
+    width="16"
+    height="16"
+  >
+    <path
+      d="M3.5 6l4.5 4.5L12.5 6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export default Header;

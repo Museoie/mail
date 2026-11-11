@@ -1,0 +1,448 @@
+/* A mail's own page: its conversation, oldest first (Thread/index.tsx). */
+.thread {
+  padding: 4px 4px 24px;
+  color: var(--textBright);
+
+  .thread-bar {
+    position: sticky;
+    top: -5px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: -5px -4px 0;
+    padding: 6px 4px;
+    background-color: var(--bg);
+  }
+
+  .thread-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+    padding: 0 12px 0 8px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--blue);
+    font: inherit;
+    font-size: 16px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--surface);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: -2px;
+    }
+  }
+
+  .thread-count {
+    color: var(--textDim);
+    font-size: 14px;
+  }
+
+  .thread-subject {
+    margin: 8px 6px 14px;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--textBrighter);
+    overflow-wrap: anywhere;
+  }
+
+  .spam-tag {
+    display: inline-block;
+    margin-right: 8px;
+    padding: 0 6px;
+    border: 1px solid var(--orange);
+    border-radius: 4px;
+    color: var(--orange);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+    vertical-align: 3px;
+  }
+
+  .no-subject {
+    color: var(--textDim);
+  }
+
+  .thread-loading,
+  .thread-empty {
+    margin: 16px 6px;
+    color: var(--textDim);
+  }
+
+  .thread-messages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--divider);
+  }
+
+  .thread-message {
+    background-color: var(--panel);
+    /* Scrolled into view below the sticky Back bar, not under it. */
+    scroll-margin-top: 56px;
+
+    & + .thread-message,
+    & + .thread-fold,
+    .thread-fold + & {
+      border-top: 1px solid var(--divider);
+    }
+  }
+
+  .thread-avatar {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* A collapsed message: one line of sender and date, one of snippet. */
+  .thread-message-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: -2px;
+    }
+
+    .summary-text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .summary-sender {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &.unread {
+        font-weight: 700;
+        color: var(--textBrighter);
+      }
+    }
+
+    .summary-date {
+      flex-shrink: 0;
+      color: var(--textDim);
+      font-size: 13px;
+    }
+
+    .summary-snippet {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--textDim);
+      font-size: 14px;
+    }
+  }
+
+  /* "N more messages": a folded run of collapsed messages. */
+  .thread-fold {
+    background-color: var(--surface);
+
+    button {
+      width: 100%;
+      min-height: 40px;
+      border: none;
+      background: none;
+      color: var(--blue);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--surfaceRaised);
+      }
+    }
+  }
+
+  .thread-message.expanded {
+    padding: 12px 12px 8px;
+
+    .thread-message-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .thread-message-who {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0;
+      border: none;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
+
+      &:disabled {
+        cursor: default;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 2px;
+      }
+    }
+
+    .who-text {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .who-name {
+      font-weight: 600;
+      color: var(--textBrighter);
+      overflow-wrap: anywhere;
+    }
+
+    .who-address {
+      margin-left: 6px;
+      font-weight: normal;
+      color: var(--textDim);
+      font-size: 14px;
+    }
+
+    .who-date {
+      color: var(--textDim);
+      font-size: 13px;
+    }
+
+    .thread-saved {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      color: var(--orange);
+    }
+
+    .thread-message-addresses {
+      margin: 8px 0 0 48px;
+      font-size: 14px;
+      color: var(--textSoft);
+
+      .address-list {
+        overflow-wrap: anywhere;
+      }
+
+      .address-toggle {
+        margin-left: 6px;
+        padding: 0 6px;
+        border: none;
+        border-radius: 3px;
+        background-color: var(--surface);
+        color: var(--blue);
+        font-size: 13px;
+        cursor: pointer;
+      }
+    }
+
+    .actionRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 4px 48px;
+
+      .actionButton {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 32px;
+        padding: 0 10px;
+        border: none;
+        border-radius: 6px;
+        background-color: var(--surface);
+        color: var(--textBright);
+        font-size: 13px;
+        cursor: pointer;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+
+        &:hover {
+          background-color: var(--surfaceRaised);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--blue);
+          outline-offset: 1px;
+        }
+
+        &.disabled {
+          cursor: not-allowed;
+          opacity: 0.4;
+        }
+
+        .star {
+          color: var(--orange);
+        }
+      }
+    }
+
+    /* The body viewer (MailBody), as in the old reading view. */
+    .text {
+      margin-top: 8px;
+
+      .body-skeleton div {
+        height: 14px;
+        margin-bottom: 8px;
+        border-radius: 9px;
+        background-color: rgba(100, 100, 100, 0.2);
+      }
+
+      iframe {
+        width: 100%;
+        height: 0;
+        border: none;
+        background-color: var(--panel);
+        overflow-x: hidden;
+      }
+    }
+
+    .attachmentBox {
+      margin-top: 8px;
+
+      .attachment {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0 0.4rem 0.4rem 0;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--divider);
+        border-radius: 6px;
+        background: none;
+        color: var(--textBright);
+        font: inherit;
+        font-size: 15px;
+        cursor: pointer;
+
+        &:hover {
+          background-color: var(--surfaceRaised);
+        }
+
+        .attachment-size {
+          color: var(--textDim);
+          font-size: 13px;
+        }
+      }
+    }
+
+    .remote-images-notice {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      margin: 0.4rem 0;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      background-color: var(--surfaceRaised);
+      color: var(--textSoft);
+      font-size: 14px;
+
+      .text-button {
+        padding: 0.3rem 0.75rem;
+        border: 1px solid var(--divider);
+        border-radius: 6px;
+        background: none;
+        color: var(--blue);
+        font: inherit;
+        cursor: pointer;
+      }
+    }
+  }
+
+  /* Reply to the newest message from the end of the conversation. */
+  .thread-reply-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+
+    .thread-reply-button {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      border: 1px solid var(--divider);
+      border-radius: 10px;
+      background-color: var(--panel);
+      color: var(--textBright);
+      font: inherit;
+      cursor: pointer;
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover {
+        background-color: var(--surface);
+      }
+    }
+  }
+}
+
+@media (max-width: 750px) {
+  .thread {
+    .thread-subject {
+      font-size: 20px;
+    }
+
+    .thread-message.expanded {
+      .thread-message-addresses,
+      .actionRow {
+        margin-left: 0;
+      }
+
+      .actionRow .actionButton {
+        min-height: 40px;
+      }
+    }
+  }
+}

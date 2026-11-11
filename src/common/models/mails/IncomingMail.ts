@@ -17,6 +17,10 @@ export interface IncomingMail {
   text?: string;
   subject?: string;
   messageId?: string;
+  /** The Message-ID this mail answers. */
+  inReplyTo?: string;
+  /** The conversation's Message-IDs, oldest first. */
+  references?: string[];
 }
 
 export interface IncomingAttachment {

@@ -117,6 +117,8 @@ export interface MailDataToSendType {
   subject: string;
   html: string;
   inReplyTo?: string;
+  /** Message-IDs of the conversation, oldest first, for `References`. */
+  references?: string[];
 }
 
 export class MailDataToSend
@@ -131,6 +133,7 @@ export class MailDataToSend
   declare subject: string;
   declare html: string;
   declare inReplyTo?: string;
+  declare references?: string[];
 
   constructor(data?: Partial<MailDataToSend>) {
     super(data);

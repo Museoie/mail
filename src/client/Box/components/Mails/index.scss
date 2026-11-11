@@ -142,69 +142,6 @@
     margin: 0;
   }
 
-  .attachmentBox {
-    position: relative;
-
-    .attachment {
-      margin-bottom: 0.4rem;
-      position: relative;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.4rem;
-      margin-right: 0.4rem;
-      padding: 0.4rem 0.6rem;
-      border: 1px solid var(--divider);
-      border-radius: 6px;
-      background: none;
-      color: var(--textBright);
-      font: inherit;
-      font-size: 15px;
-
-      &:hover {
-        background-color: var(--surfaceRaised);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--blue);
-        outline-offset: 1px;
-      }
-
-      .attachment-size {
-        color: var(--textDim);
-        font-size: 13px;
-      }
-    }
-  }
-
-  /* Shown above a mail whose remote images were held back. */
-  .remote-images-notice {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
-    margin: 0.4rem 0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 6px;
-    background-color: var(--surfaceRaised);
-    color: var(--textSoft);
-    font-size: 14px;
-
-    .text-button {
-      padding: 0.3rem 0.75rem;
-      border: 1px solid var(--divider);
-      border-radius: 6px;
-      background: none;
-      color: var(--blue);
-      font: inherit;
-      cursor: pointer;
-
-      &:hover {
-        background-color: var(--surface);
-      }
-    }
-  }
-
   // Rows, not cards (design doc §5, budget TransactionRow pattern):
   // transparent rows separated by dividers, no card background, border, or
   // shadow. The red left border is gone — unread state is the dot + bold.
@@ -217,144 +154,9 @@
     border-bottom: 1px solid var(--divider);
 
     // Neutralize the global `blockquote > * { margin-left: 1rem }` rule, which
-    // would indent every row (the .text body's own 8px margins win at (0,3,0)).
+    // would indent every row.
     > * {
       margin-left: 0;
-    }
-
-    &.active {
-      background-color: var(--surface);
-    }
-
-    // The global `.mailcard:not(.skeleton):hover` rule ties .active at
-    // (0,3,0) and wins on source order, so the open row would lighten to
-    // --hover while the mouse is over it. Keep the open row's background.
-    &.active:hover {
-      background-color: var(--surface);
-    }
-
-    .text {
-      margin-left: 8px;
-      margin-right: 8px;
-      margin-top: 0.4rem;
-
-      .loading_message {
-        position: absolute;
-        margin-left: 8px;
-      }
-
-      .body-skeleton {
-        margin: 8px 0;
-
-        div {
-          height: 14px;
-          border-radius: 9px;
-          background-color: rgba(100, 100, 100, 0.2);
-          margin-bottom: 8px;
-
-          &:nth-child(1) {
-            width: 85%;
-          }
-
-          &:nth-child(2) {
-            width: 95%;
-          }
-
-          &:nth-child(3) {
-            width: 70%;
-          }
-
-          &:nth-child(4) {
-            width: 55%;
-            margin-bottom: 0;
-          }
-        }
-      }
-
-      iframe {
-        padding-left: 8px;
-        padding-right: 8px;
-        // Design doc §3: the body renders on --panel, not a white box. The
-        // email keeps its own colors inside the iframe; the viewer-normalized
-        // text color moves to --textBright in processHtmlForViewer, so
-        // default text stays readable on the dark panel.
-        background-color: var(--panel);
-        width: 100%;
-        height: 0;
-        border: none;
-        overflow-x: hidden;
-      }
-    }
-
-    &.active .header {
-      padding-right: 36px;
-      box-sizing: border-box;
-    }
-
-    .mail-close {
-      position: absolute;
-      top: 6px;
-      right: 4px;
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      border: none;
-      border-radius: 3px;
-      background: transparent;
-      color: var(--textDim);
-      cursor: pointer;
-
-      svg {
-        width: 16px;
-        height: 16px;
-      }
-
-      &:hover {
-        background-color: var(--surfaceRaised);
-        color: var(--textBright);
-      }
-    }
-
-    .actionRow {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin: 8px 0 0;
-
-      .actionButton {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 32px;
-        padding: 0 10px;
-        border: none;
-        border-radius: 3px;
-        background-color: var(--surface);
-        color: var(--textBright);
-        font-size: 13px;
-        cursor: pointer;
-
-        svg {
-          width: 14px;
-          height: 14px;
-        }
-
-        &:hover {
-          background-color: var(--surfaceRaised);
-        }
-
-        &.disabled {
-          cursor: not-allowed;
-          opacity: 0.4;
-        }
-
-        .star {
-          color: var(--orange);
-        }
-      }
     }
 
     .header {
@@ -478,9 +280,8 @@
       font-weight: 600;
     }
 
-    // Collapsed rows keep the subject on one line; the expanded (.active)
-    // header wraps.
-    &:not(.active) .mailcard-subject {
+    // Rows keep the subject on one line.
+    .mailcard-subject {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -586,10 +387,6 @@
     }
 
     @media only screen and (max-width: 750px) {
-      .actionRow .actionButton {
-        min-height: 40px;
-      }
-
       .actionBox {
         &.open {
           padding-top: 20px;

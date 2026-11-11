@@ -7,6 +7,7 @@ import { decodeBodyBytes } from "./charset";
 import {
   decodeWords,
   ensureMessageIdFormat,
+  parseMessageIdList,
   parseHeaderValue,
   rawOctetsAsUtf8,
   splitHeaderLine
@@ -31,6 +32,10 @@ export interface ParsedAttachment {
 
 export interface ParsedMessage {
   messageId?: string;
+  /** The Message-ID this mail answers (`In-Reply-To`). */
+  inReplyTo?: string;
+  /** The conversation's Message-IDs, oldest first (`References`). */
+  references?: string[];
   from?: ParsedAddress;
   to?: ParsedAddress | ParsedAddress[];
   cc?: ParsedAddress | ParsedAddress[];
@@ -126,12 +131,23 @@ const headerText = (line: string): string =>
 
 interface MessageHeaders extends EmbeddedHeaders {
   messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
   replyTo?: ParsedAddress;
   contentId?: string;
 }
 
 const ADDRESS_HEADERS = new Set(["from", "to", "cc", "bcc", "reply-to"]);
-const LAST_WINS = new Set(["from", "reply-to", "subject", "date", "message-id", "content-id"]);
+const LAST_WINS = new Set([
+  "from",
+  "reply-to",
+  "subject",
+  "date",
+  "message-id",
+  "content-id",
+  "in-reply-to",
+  "references"
+]);
 
 /**
  * The headers this parser reports, decoded: a repeated single-valued header
@@ -149,7 +165,10 @@ const readMessageHeaders = (lines: HeaderLines): MessageHeaders => {
       value = isNaN(date.getTime()) ? new Date() : date;
     } else if (key === "message-id") value = ensureMessageIdFormat(decodeWords(text));
     else if (key === "content-id") value = text || undefined;
-    else continue;
+    else if (key === "in-reply-to" || key === "references") {
+      const ids = parseMessageIdList(text);
+      value = ids.length ? ids : undefined;
+    } else continue;
     if (!value) continue;
     const list = collected.get(key) ?? [];
     list.push(value);
@@ -170,6 +189,13 @@ const readMessageHeaders = (lines: HeaderLines): MessageHeaders => {
     subject: pick<string>("subject") as string | undefined,
     date: pick<Date>("date") as Date | undefined,
     messageId: pick<string>("message-id") as string | undefined,
+    // In-Reply-To names one message; a list there is malformed, so its
+    // last id stands for the parent.
+    inReplyTo: (() => {
+      const ids = pick<string[]>("in-reply-to") as string[] | undefined;
+      return ids?.[ids.length - 1];
+    })(),
+    references: pick<string[]>("references") as string[] | undefined,
     contentId: pick<string>("content-id") as string | undefined
   };
 };
@@ -753,6 +779,8 @@ class MimeParser {
     const { text, html } = this.textContent();
     return {
       messageId: headers.messageId,
+      inReplyTo: headers.inReplyTo,
+      references: headers.references,
       from: headers.from,
       to: headers.to,
       cc: headers.cc,

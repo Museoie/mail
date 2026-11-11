@@ -156,6 +156,8 @@ export const saveMail = async (
   const input: SaveMailInput = {
     user_id: userId,
     message_id: mail.messageId,
+    in_reply_to: mail.inReplyTo ?? null,
+    reference_ids: mail.references?.length ? mail.references : null,
     subject: mail.subject,
     date: mail.date,
     html: mail.html,
@@ -255,6 +257,8 @@ export const convertMail = async (
 
   return new Mail({
     messageId,
+    inReplyTo: incoming.inReplyTo,
+    references: incoming.references,
     attachments,
     to,
     from,
@@ -280,6 +284,8 @@ export const convertMail = async (
  */
 export const incomingMailFromParsed = (parsed: ParsedMessage): IncomingMail => ({
   messageId: parsed.messageId,
+  inReplyTo: parsed.inReplyTo,
+  references: parsed.references,
   from: parsed.from,
   to: parsed.to,
   cc: parsed.cc,

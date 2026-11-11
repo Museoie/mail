@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   decodeWords,
   ensureMessageIdFormat,
+  MAX_REFERENCE_IDS,
+  parseMessageIdList,
   parseHeaderValue,
   rawOctetsAsUtf8,
   splitHeaderLine
@@ -85,5 +87,38 @@ describe("ensureMessageIdFormat", () => {
     expect(ensureMessageIdFormat("abc@x")).toBe("<abc@x>");
     expect(ensureMessageIdFormat("<abc@x>")).toBe("<abc@x>");
     expect(ensureMessageIdFormat("")).toBeUndefined();
+  });
+});
+
+describe("parseMessageIdList", () => {
+  it("reads every bracketed id in order", () => {
+    expect(parseMessageIdList("<a@x> <b@y>\r\n <c@z>")).toEqual([
+      "<a@x>",
+      "<b@y>",
+      "<c@z>"
+    ]);
+  });
+
+  it("drops comments, text outside brackets and duplicates", () => {
+    expect(parseMessageIdList("(old) <a@x> junk <a@x> <b@y>")).toEqual([
+      "<a@x>",
+      "<b@y>"
+    ]);
+  });
+
+  it("keeps only the newest ids of a long list", () => {
+    const ids = Array.from({ length: 80 }, (_, i) => `<m${i}@x>`).join(" ");
+    const parsed = parseMessageIdList(ids);
+    expect(parsed.length).toBe(MAX_REFERENCE_IDS);
+    expect(parsed[parsed.length - 1]).toBe("<m79@x>");
+  });
+
+  it("drops ids longer than the message_id column", () => {
+    expect(parseMessageIdList(`<${"a".repeat(600)}@x> <b@y>`)).toEqual(["<b@y>"]);
+  });
+
+  it("is empty for a value without ids", () => {
+    expect(parseMessageIdList("")).toEqual([]);
+    expect(parseMessageIdList("no ids here")).toEqual([]);
   });
 });

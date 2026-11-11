@@ -9,3 +9,4 @@ export * from "./search";
 export * from "./accounts";
 export * from "./update";
 export * from "./spam";
+export * from "./thread";

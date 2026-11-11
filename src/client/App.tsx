@@ -37,7 +37,6 @@ import {
 } from "client";
 
 export enum Category {
-  NewMails = "New Mails",
   AllMails = "All Mails",
   SavedMails = "Saved Mails",
   SentMails = "Sent Mails",
@@ -138,10 +137,16 @@ const App = ({ user: session }: Props) => {
   });
   const [domainName, setDomainName] = useLocalStorage("domainName", "");
   const [userInfo, setUserInfo] = useState(session);
-  const [isAccountsOpen, setIsAccountsOpen] = useLocalStorage(
-    "isAccountsOpen",
-    window.innerWidth > 1050
-  );
+  // The accounts menu is a popover opened from the header, so it starts
+  // closed on every load rather than restoring a remembered column state.
+  const [isAccountsOpen, setIsAccountsOpen] = useState(false);
+  useEffect(() => {
+    try {
+      localStorage.removeItem("isAccountsOpen");
+    } catch {
+      // Storage unavailable: nothing to clean up.
+    }
+  }, []);
   const [isWriterOpen, setIsWriterOpen] = useLocalStorage(
     "isWriterOpen",
     false
@@ -158,7 +163,12 @@ const App = ({ user: session }: Props) => {
     // Search is transient (requires a live search query + preSearchAccount ref
     // that don't survive a page reload). Restoring Category.Search would use
     // the account address as the search term, producing confusing sort order.
-    (v) => (v === Category.Search ? Category.AllMails : v)
+    // Anything that isn't a current folder — the retired "New Mails" kept by
+    // an older version — falls back to All Mails too.
+    (v) =>
+      v === Category.Search || !Object.values(Category).includes(v)
+        ? Category.AllMails
+        : v
   );
   const [newMailsTotal, setNewMailsTotal] = useState(0);
   const [density, setDensity] = useLocalStorage<Density>(
@@ -318,7 +328,7 @@ const App = ({ user: session }: Props) => {
       setSelectedCategory(Category.AllMails);
       setIsWriterOpen(false);
       setIsSettingsOpen(false);
-      setIsAccountsOpen(window.innerWidth > 1050);
+      setIsAccountsOpen(false);
       setReplyData({});
       setNewMailsTotal(0);
     } else {
@@ -388,6 +398,12 @@ const App = ({ user: session }: Props) => {
                   <Routes>
                     <Route
                       path="/"
+                      element={
+                        userInfo ? <Box /> : <Navigate to="/sign-in" replace />
+                      }
+                    />
+                    <Route
+                      path="/mail/:mailId"
                       element={
                         userInfo ? <Box /> : <Navigate to="/sign-in" replace />
                       }

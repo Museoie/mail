@@ -35,7 +35,7 @@ interface UserWithId {
 const resolveUserId = (user: MaskedUser | SignedUser): string | undefined =>
   "id" in user ? user.id : (user as UserWithId).user_id;
 
-const toMailHeaderData = (m: MailHeaderResult): MailHeaderData =>
+export const toMailHeaderData = (m: MailHeaderResult): MailHeaderData =>
   new MailHeaderData({
     id: m.mail_id,
     subject: m.subject,

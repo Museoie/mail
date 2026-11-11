@@ -120,6 +120,13 @@ beforeEach(() => {
       return { status: "success", body: [mailOne, mailTwo] };
     if (url.startsWith("/api/mails/accounts"))
       return { status: "success", body: accountsPayload };
+    if (url.startsWith("/api/mails/thread/"))
+      return { status: "success", body: [mailOne] };
+    if (url.startsWith("/api/mails/body/"))
+      return {
+        status: "success",
+        body: { id: mailOne.id, html: "<p>body</p>", messageId: "<m1@x>" }
+      };
     return { status: "success", body: [] };
   }) as typeof call.get;
 });
@@ -365,7 +372,7 @@ describe("Settings page (real App behavior)", () => {
     }
   });
 
-  it("Escape in Settings leaves the open message behind it open", async () => {
+  it("Escape in Settings leaves the open mail page behind it open", async () => {
     // Opening an unread message marks it read.
     const originalPost = call.post;
     call.post = (async () => ({ status: "success" })) as typeof call.post;
@@ -373,7 +380,8 @@ describe("Settings page (real App behavior)", () => {
     try {
       const firstCard = await mount.waitFor(() => mount.mailCards()[0] ?? null);
       await mount.click(firstCard.querySelector(".header") as Element);
-      await mount.waitFor(() => firstCard.querySelector(".actionRow"));
+      await mount.waitFor(() => mount.container.querySelector(".thread .actionRow"));
+      expect(window.location.pathname).toBe("/mail/mail-1");
 
       await mount.click(await settingsItem(mount));
       await mount.waitFor(() => mount.container.querySelector(".settings"));
@@ -387,7 +395,37 @@ describe("Settings page (real App behavior)", () => {
       });
 
       await mount.click(await settingsItem(mount));
-      expect(firstCard.querySelector(".actionRow")).not.toBeNull();
+      await mount.waitFor(() => mount.container.querySelector(".thread .actionRow"));
+      expect(window.location.pathname).toBe("/mail/mail-1");
+    } finally {
+      call.post = originalPost;
+      await mount.teardown();
+    }
+  });
+
+  it("opening a mail shows its page, and Back returns to the same list", async () => {
+    const originalPost = call.post;
+    call.post = (async () => ({ status: "success" })) as typeof call.post;
+    const mount = await mountApp();
+    // happy-dom's setURL leaves no history entry behind; give the list one
+    // so stepping back from the page has somewhere to land, as in a browser.
+    window.history.replaceState(null, "", "/");
+    try {
+      const firstCard = await mount.waitFor(() => mount.mailCards()[0] ?? null);
+      await mount.click(firstCard.querySelector(".header") as Element);
+      const back = await mount.waitFor(() =>
+        mount.container.querySelector(".thread .thread-back")
+      );
+      // The list stays mounted, hidden, under the page.
+      expect(mount.container.querySelector(".behind-settings")).not.toBeNull();
+      expect(mount.mailCards()[0]).toBe(firstCard);
+
+      await mount.click(back);
+      await mount.waitFor(() =>
+        mount.container.querySelector(".thread") ? null : document.body
+      );
+      expect(window.location.pathname).toBe("/");
+      expect(mount.mailCards()[0]).toBe(firstCard);
     } finally {
       call.post = originalPost;
       await mount.teardown();
