@@ -21,6 +21,7 @@ import {
   resetAuthFailures
 } from "./auth-rate-limit";
 import { verifyPassword } from "./verify-password";
+import { plainTextToHtml } from "./mails/text-to-html";
 import { addressToUsername, getUserDomain, isLocalAddress } from "./util";
 import { sendAlarm } from "./alarm";
 import { isPeerCertRejection } from "./peer-cert-rejection";
@@ -898,7 +899,9 @@ const onDataOutgoing = async (
       cc: cc.join(",") || undefined,
       bcc: bcc.join(",") || undefined,
       subject: parsed.subject || "",
-      html: parsed.html || parsed.text || "",
+      // A text-only submission is sent as HTML, so convert it rather than
+      // let the recipient's client collapse its line breaks.
+      html: parsed.html || (parsed.text ? plainTextToHtml(parsed.text) : ""),
       sender,
       senderFullName: parsed.from?.value?.[0]?.name || sender
     });

@@ -4,6 +4,7 @@ import {
   useEffect,
   useCallback,
   Dispatch,
+  ReactNode,
   SetStateAction
 } from "react";
 import { useQuery, useQueryClient } from "react-query";
@@ -53,7 +54,9 @@ import {
   useIsOnline,
   revalidateOnMountPolicy,
   formatDataAge,
-  isShowingStaleData
+  isShowingStaleData,
+  useFeedback,
+  useResolvedTheme
 } from "client";
 import {
   AccountsCache,
@@ -61,6 +64,12 @@ import {
   fetchAccounts
 } from "client/Box/components/Accounts";
 import { getMailsQueryUrl } from "./mailsQuery";
+import { emptyFolderState } from "./emptyState";
+import {
+  UNDO_WINDOW_MS,
+  cancelDelete,
+  scheduleDelete
+} from "./pendingDeletes";
 import {
   accountCountForCategory,
   bucketsForMail,
@@ -98,6 +107,44 @@ const ListHeader = ({ countLabel }: { countLabel: string }) => (
   <div className="list-header">
     <div className="list-header-count">{countLabel}</div>
   </div>
+);
+
+/**
+ * One icon button in a row's action box. A real <button> with a spoken
+ * label, so the row's actions are reachable and operable from the keyboard.
+ * Clicks stop at the button: the row behind it opens the mail on click.
+ */
+const RowAction = ({
+  label,
+  onClick,
+  disabled,
+  autoFocus,
+  ariaHasPopup,
+  children
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  ariaHasPopup?: boolean;
+  children: ReactNode;
+}) => (
+  <button
+    type="button"
+    className={"iconBox cursor" + (disabled ? " disabled" : "")}
+    title={label}
+    aria-label={label}
+    aria-disabled={disabled || undefined}
+    aria-haspopup={ariaHasPopup || undefined}
+    autoFocus={autoFocus}
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
+    onTouchStart={(e) => e.stopPropagation()}
+  >
+    {children}
+  </button>
 );
 
 interface RenderedMailProps {
@@ -154,7 +201,8 @@ const RenderedMail = ({
   density,
   isSent
 }: RenderedMailProps) => {
-  const { isSettingsOpen } = useContext(Context);
+  const { isSettingsOpen, theme = "system" } = useContext(Context);
+  const resolvedTheme = useResolvedTheme(theme);
   const isActive = !!activeMailId[mail.id];
 
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -162,6 +210,7 @@ const RenderedMail = ({
   const { isOnline } = useIsOnline();
 
   const queryClient = useQueryClient();
+  const { showToast } = useFeedback();
 
   const onClickClose = useCallback(() => {
     setActiveMailId((current) => {
@@ -224,13 +273,17 @@ const RenderedMail = ({
     // The shell also carries its own <meta name="referrer"> so this path no
     // longer relies on the blob: URL for Referer suppression (the inner
     // srcdoc document gets its own from processHtmlForViewer).
-    const processed = processHtmlForViewer(data.html);
+    const processed = processHtmlForViewer(data.html, { theme: resolvedTheme });
+    // The tab's own page matches the viewer's scheme and panel color, or the
+    // mail's theme-colored text would sit on a default white page.
+    const panel = resolvedTheme === "light" ? "#ffffff" : "#222222";
     // Escape for embedding in the double-quoted `srcdoc` attribute.
     const srcdoc = processed.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
     const shell =
       '<!doctype html><html><head><meta charset="utf-8" />' +
       '<meta name="referrer" content="no-referrer" />' +
-      "<style>html,body{margin:0;padding:0;height:100%}" +
+      `<style>:root{color-scheme:${resolvedTheme}}` +
+      `html,body{margin:0;padding:0;height:100%;background:${panel}}` +
       "iframe{border:0;width:100%;height:100%}</style></head>" +
       '<body><iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" ' +
       `srcdoc="${srcdoc}"></iframe></body></html>`;
@@ -283,35 +336,60 @@ const RenderedMail = ({
 
   const onClickTrash = () => {
     if (!isOnline) return;
-    if (window.confirm("Do you want to delete this mail?")) {
-      requestDeleteMail(mail);
 
-      accountsCache.set((oldData) => {
-        if (!oldData) return oldData;
-        return updateAccountInBuckets(
-          oldData,
-          bucketsForMail(selectedCategory, mail, selectedAccount),
-          selectedAccount,
-          ({ doc_count, unread_doc_count }) => ({
-            doc_count: doc_count - 1,
-            unread_doc_count:
-              !mail.read && unread_doc_count
-                ? unread_doc_count - 1
-                : unread_doc_count
-          })
-        );
+    // Snapshot the caches so Undo can put the mail back exactly where it was.
+    const mailsCache = new MailsCache(selectedAccount, selectedCategory);
+    const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory);
+    const listBefore = queryClient.getQueryData<MailHeaderData[]>(listUrl);
+    const accountsBefore = queryClient.getQueryData<AccountsGetResponse>(
+      accountsCache.key
+    );
+
+    accountsCache.set((oldData) => {
+      if (!oldData) return oldData;
+      return updateAccountInBuckets(
+        oldData,
+        bucketsForMail(selectedCategory, mail, selectedAccount),
+        selectedAccount,
+        ({ doc_count, unread_doc_count }) => ({
+          doc_count: doc_count - 1,
+          unread_doc_count:
+            !mail.read && unread_doc_count
+              ? unread_doc_count - 1
+              : unread_doc_count
+        })
+      );
+    });
+
+    mailsCache.set((oldData) => {
+      if (!oldData) return oldData;
+      const newData = oldData.filter((m) => m.id !== mail.id);
+      if (!newData.length) removeAccountFromQueryData();
+      return newData;
+    });
+
+    // No confirm: the delete waits out the undo window instead, so a slip
+    // costs one tap on Undo rather than the mail.
+    scheduleDelete(mail.id, () => {
+      requestDeleteMail(mail).finally(() => {
+        queryClient.invalidateQueries(accountsCache.key);
       });
+    });
 
-      const mailsCache = new MailsCache(selectedAccount, selectedCategory);
-
-      mailsCache.set((oldData) => {
-        if (!oldData) return oldData;
-        const newData = [...oldData];
-        newData.splice(i, 1);
-        if (!newData.length) removeAccountFromQueryData();
-        return newData;
-      });
-    }
+    showToast({
+      message: "Mail deleted.",
+      duration: UNDO_WINDOW_MS,
+      action: {
+        label: "Undo",
+        onClick: () => {
+          if (!cancelDelete(mail.id)) return;
+          if (listBefore) queryClient.setQueryData(listUrl, listBefore);
+          if (accountsBefore) {
+            queryClient.setQueryData(accountsCache.key, accountsBefore);
+          }
+        }
+      }
+    });
   };
 
   const onClickStar = () => {
@@ -573,106 +651,92 @@ const RenderedMail = ({
         }
       >
         {isKebabOpen ? (
-          <>
-            <div
-              key="star"
-              className={"iconBox cursor" + offlineClass}
-              title={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
+          <div
+            className="kebab-menu"
+            role="toolbar"
+            aria-label="Message actions"
+            onKeyDown={(e) => {
+              // Escape closes the menu and hands focus back to the row.
+              if (e.key !== "Escape") return;
+              e.stopPropagation();
+              setOpenedKebab("");
+            }}
+          >
+            <RowAction
+              label={offlineTitle ?? (mail.saved ? "Unsave" : "Save")}
+              disabled={!isOnline}
               onClick={onClickStar}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseEnter={() => setOpenedKebab(mail.id)}
+              autoFocus
             >
               {mail.saved ? (
                 <SolidStarIcon className="star" />
               ) : (
                 <EmptyStarIcon />
               )}
-            </div>
-            <div
-              key="openInNewTab"
-              className="iconBox cursor"
+            </RowAction>
+            <RowAction
+              label="Open in new tab"
               onClick={onClickOpenInNewTab}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseEnter={() => setOpenedKebab(mail.id)}
-              title="Open this email body in a new tab"
             >
               <NewTabIcon />
-            </div>
-            <div
-              key="reply"
-              className="iconBox cursor"
-              title="Reply"
-              onClick={onClickReply}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseEnter={() => setOpenedKebab(mail.id)}
-            >
+            </RowAction>
+            <RowAction label="Reply" onClick={onClickReply}>
               <ReplyIcon />
-            </div>
-            <div
-              key="share"
-              className="iconBox cursor"
-              title="Forward"
-              onClick={onClickShare}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseEnter={() => setOpenedKebab(mail.id)}
-            >
+            </RowAction>
+            <RowAction label="Forward" onClick={onClickShare}>
               <ShareIcon />
-            </div>
+            </RowAction>
             {canToggleSpam ? (
-              <div
-                key="spam"
-                className={"iconBox cursor" + offlineClass}
-                title={
+              <RowAction
+                label={
                   offlineTitle ?? (isSpamView ? "Not spam" : "Mark as spam")
                 }
+                disabled={!isOnline}
                 onClick={onClickSpam}
-                onTouchStart={(e) => e.stopPropagation()}
-                onMouseEnter={() => setOpenedKebab(mail.id)}
               >
                 {isSpamView ? <CircleCheckIcon /> : <BanIcon />}
-              </div>
+              </RowAction>
             ) : null}
-            <div
-              key="trash"
-              className={"iconBox cursor" + offlineClass}
-              title={offlineTitle ?? "Delete"}
+            <RowAction
+              label={offlineTitle ?? "Delete"}
+              disabled={!isOnline}
               onClick={onClickTrash}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseEnter={() => setOpenedKebab(mail.id)}
             >
               <TrashIcon />
-            </div>
-          </>
+            </RowAction>
+            <RowAction
+              label="Close menu"
+              onClick={() => setOpenedKebab("")}
+            >
+              <CloseIcon />
+            </RowAction>
+          </div>
         ) : (
           <>
             {summary?.length || actionItems?.length ? (
-              <div
-                key="robot"
-                className="iconBox cursor"
-                title={isSummaryOpen ? "Hide summary" : "Show summary"}
+              <RowAction
+                label={isSummaryOpen ? "Hide summary" : "Show summary"}
                 onClick={onClickRobot}
               >
                 <RobotIcon />
-              </div>
+              </RowAction>
             ) : null}
             {mail.saved ? (
-              <div
-                key="star"
-                className={"iconBox cursor" + offlineClass}
-                title={offlineTitle ?? "Unsave"}
+              <RowAction
+                label={offlineTitle ?? "Unsave"}
+                disabled={!isOnline}
                 onClick={onClickStar}
               >
                 <SolidStarIcon className="star" />
-              </div>
+              </RowAction>
             ) : null}
-            <div
-              key="kebab"
-              className="iconBox cursor"
-              title="More actions"
+            <RowAction
+              label="More actions"
+              ariaHasPopup
               onClick={() => setOpenedKebab(mail.id)}
             >
               <KebabIcon />
-            </div>
+            </RowAction>
           </>
         )}
       </div>
@@ -707,6 +771,7 @@ const RenderedMails = ({
   const {
     isWriterOpen,
     setReplyData,
+    setSelectedAccount,
     selectedAccount: contextAccount,
     selectedCategory: contextCategory,
     domainName,
@@ -968,27 +1033,34 @@ const RenderedMails = ({
     });
 
     if (!result.length) {
-      const emptyMessage = (() => {
-        switch (selectedCategory) {
-          case Category.NewMails:
-            return "All caught up! No unread emails.";
-          case Category.SavedMails:
-            return "No saved emails.";
-          case Category.SentMails:
-            return "No sent emails.";
-          case Category.SpamMails:
-            return "No spam — nice.";
-          case Category.Search:
-            return "No results found.";
-          default:
-            return "No emails in this account.";
-        }
-      })();
+      const { message, others } = emptyFolderState(
+        selectedCategory,
+        selectedAccount,
+        accountsQuery.data
+      );
       return (
         <div className={containerClass + " empty"}>
           {listHeader}
           {staleNotice}
-          <p className="empty_state">{emptyMessage}</p>
+          <p className="empty_state">{message}</p>
+          {others.length ? (
+            <div className="empty_state_others">
+              <p>Other accounts have mail here:</p>
+              <ul>
+                {others.map((a) => (
+                  <li key={a.key}>
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setSelectedAccount(a.key)}
+                    >
+                      {a.key} ({a.count})
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       );
     }

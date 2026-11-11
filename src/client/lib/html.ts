@@ -30,7 +30,67 @@ const stripRemoteCssUrls = (css: string): string =>
  * this function close the remaining vectors (CSS, <input type=image>,
  * <video poster>, <table background>, srcset).
  */
-const sanitizeEmailHtml = (html: string): string => {
+/** A URL that fetches from the network when the mail is shown. */
+const REMOTE_URL = /^\s*(https?:)?\/\//i;
+const isRemoteSrcset = (value: string): boolean =>
+  value.split(",").some((candidate) => REMOTE_URL.test(candidate.trim()));
+
+/**
+ * Attributes that load a remote image as soon as the mail renders. A remote
+ * image is how most senders learn that, when and where a mail was opened, so
+ * the viewer holds them back until the reader asks for them.
+ */
+const REMOTE_IMAGE_ATTRS = ["src", "srcset", "poster", "background"] as const;
+
+const isRemoteImageAttr = (el: Element, name: string, value: string): boolean => {
+  if (name === "srcset") return isRemoteSrcset(value);
+  if (name === "src") {
+    const tag = el.tagName.toLowerCase();
+    const isImageInput =
+      tag === "input" && (el.getAttribute("type") ?? "").toLowerCase() === "image";
+    if (tag !== "img" && tag !== "source" && !isImageInput) return false;
+  }
+  return REMOTE_URL.test(value);
+};
+
+/** How many elements of a mail load a remote image when it is shown. */
+export const countRemoteImages = (html: string): number => {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  let count = 0;
+  doc.querySelectorAll("*").forEach((el) => {
+    const remote = REMOTE_IMAGE_ATTRS.some((name) => {
+      const value = el.getAttribute(name);
+      return value !== null && isRemoteImageAttr(el, name, value);
+    });
+    if (remote) count++;
+  });
+  return count;
+};
+
+export interface ViewerOptions {
+  /**
+   * Drop every remote image reference and hide the element that carried it,
+   * so opening the mail fetches nothing from the sender. Off by default:
+   * callers opt in until the reader chooses to show images.
+   */
+  blockRemoteImages?: boolean;
+  /**
+   * The app theme the viewer sits on. CSS variables don't cross into the
+   * srcdoc document, so the default text and link colors are passed in.
+   */
+  theme?: "light" | "dark";
+}
+
+const VIEWER_COLORS = {
+  // --textBright and a link blue readable on each theme's --panel.
+  dark: { text: "#d1d1d1", link: "#6cb0f0", rule: "#555" },
+  light: { text: "#24262a", link: "#1b63c4", rule: "#c8c8cc" }
+} as const;
+
+const sanitizeEmailHtml = (
+  html: string,
+  { blockRemoteImages = false }: ViewerOptions = {}
+): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
@@ -134,6 +194,26 @@ const sanitizeEmailHtml = (html: string): string => {
     });
   });
 
+  if (blockRemoteImages) {
+    doc.querySelectorAll("*").forEach((el) => {
+      let blocked = false;
+      REMOTE_IMAGE_ATTRS.forEach((name) => {
+        const value = el.getAttribute(name);
+        if (value !== null && isRemoteImageAttr(el, name, value)) {
+          el.removeAttribute(name);
+          blocked = true;
+        }
+      });
+      // An <img> left without a source renders as a broken-image box at its
+      // declared size; hide it instead. Elements that only lost a
+      // background or poster still have content of their own.
+      const tag = el.tagName.toLowerCase();
+      if (blocked && (tag === "img" || tag === "input")) {
+        el.setAttribute("data-remote-blocked", "");
+      }
+    });
+  }
+
   // Add tracking-mitigation attributes to all <img> tags so external images load
   // without leaking the app origin as referrer and only when scrolled into view.
   doc.querySelectorAll("img").forEach((img) => {
@@ -194,13 +274,17 @@ export const processHtmlToSendMail = (html: string) => {
   return div.innerHTML;
 };
 
-export const processHtmlForViewer = (html: string) => {
+export const processHtmlForViewer = (
+  html: string,
+  options: ViewerOptions = {}
+) => {
   // Sanitize HTML as defense-in-depth before rendering in iframe.
   // The iframe has sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
   // to block script execution while allowing links to open in new tabs normally.
   // This stripping adds an extra layer against script tags, event handlers,
   // and dangerous URI schemes.
-  const sanitized = sanitizeEmailHtml(html);
+  const sanitized = sanitizeEmailHtml(html, options);
+  const colors = VIEWER_COLORS[options.theme ?? "dark"];
   // Document-scoped Referer suppression, covering <img> plus every other
   // remote-resource vector (CSS, <link>, <input type=image>, <video poster>,
   // <table background>, and anything added later). Placed first so the HTML
@@ -210,6 +294,11 @@ export const processHtmlForViewer = (html: string) => {
   // attribute is now redundant but left in place (harmless).
   return `<meta name="referrer" content="no-referrer">
 <style>
+  /* Match the app's color scheme: a frame whose scheme differs from the page
+  around it is painted on an opaque white canvas instead of the panel. */
+  :root {
+      color-scheme: ${options.theme ?? "dark"};
+  }
   body {
       margin: 0;
       overflow: hidden;
@@ -223,7 +312,37 @@ export const processHtmlForViewer = (html: string) => {
       author colors (e.g. body { color: red }). On body, author colors
       inherit through and only default text is recolored — inline styles
       and the email's own directly-targeted rules still win. */
-      color: #d1d1d1;
+      color: ${colors.text};
+  }
+  /* Keep a mail inside the reading pane instead of shrinking it: the
+  viewer scales the whole body down to fit its widest line, so one long URL
+  or a fixed-width table would otherwise make every word unreadably small on
+  a phone. */
+  body {
+      overflow-wrap: anywhere;
+  }
+  img, video {
+      max-width: 100%;
+      height: auto;
+  }
+  table {
+      max-width: 100%;
+  }
+  pre {
+      white-space: pre-wrap;
+  }
+  /* The browser's default link blue is unreadable on the dark pane. Author
+  colors on the link itself still win. */
+  a {
+      color: ${colors.link};
+  }
+  blockquote {
+      margin: 8px 0 8px 4px;
+      padding-left: 12px;
+      border-left: 3px solid ${colors.rule};
+  }
+  [data-remote-blocked] {
+      display: none !important;
   }
   * {
       font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",

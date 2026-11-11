@@ -89,3 +89,62 @@ export const folderBadgeCounts = (
     [Category.SpamMails]: sum(spam, "unread_doc_count")
   };
 };
+
+export interface Badge {
+  count: number;
+  /**
+   * Unread counts are red; a count of saved mail or search matches is not
+   * something waiting to be read, so it gets the neutral style instead of
+   * reading as "6 unread".
+   */
+  tone: "unread" | "neutral";
+  /** Spoken and hover text, e.g. "3 unread". */
+  label: string;
+}
+
+/**
+ * The badge one account row shows under `category`. Search lists the
+ * accounts that hold a match, so the badge there counts matches.
+ */
+export const accountBadge = (account: Account, category: Category): Badge => {
+  if (category === Category.Search) {
+    return {
+      count: account.doc_count,
+      tone: "neutral",
+      label: `${account.doc_count} matching`
+    };
+  }
+  if (category === Category.SavedMails) {
+    return {
+      count: account.saved_doc_count,
+      tone: "neutral",
+      label: `${account.saved_doc_count} saved`
+    };
+  }
+  return {
+    count: account.unread_doc_count,
+    tone: "unread",
+    label: `${account.unread_doc_count} unread`
+  };
+};
+
+/**
+ * The badge a folder tab shows. All Mails draws from the same unread total as
+ * New Mails, so it carries none: two tabs showing one number read as two
+ * different piles, and the second one used to appear and vanish as the
+ * current folder moved. Every other badge shows whether or not its folder is
+ * the current one, so counts never come and go on navigation.
+ */
+export const folderBadge = (
+  category: Exclude<Category, Category.Search>,
+  counts: ReturnType<typeof folderBadgeCounts>
+): Badge => {
+  if (category === Category.AllMails) {
+    return { count: 0, tone: "unread", label: "" };
+  }
+  const count = counts[category];
+  if (category === Category.SavedMails) {
+    return { count, tone: "neutral", label: `${count} saved` };
+  }
+  return { count, tone: "unread", label: `${count} unread` };
+};

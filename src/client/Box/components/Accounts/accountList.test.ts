@@ -2,10 +2,12 @@ import { describe, it, expect } from "bun:test";
 import { Account } from "common";
 import { Category } from "client";
 import {
+  accountBadge,
   accountBadgeCount,
   displayNameFor,
   duplicatedDisplayNames,
   filterAccounts,
+  folderBadge,
   folderBadgeCounts
 } from "./accountList";
 
@@ -125,6 +127,71 @@ describe("folderBadgeCounts", () => {
       [Category.SavedMails]: 0,
       [Category.SentMails]: 0,
       [Category.SpamMails]: 0
+    });
+  });
+});
+
+describe("accountBadge", () => {
+  const account = new Account({
+    key: "a@x.com",
+    updated: new Date("2026-01-01"),
+    doc_count: 9,
+    unread_doc_count: 3,
+    saved_doc_count: 2
+  });
+
+  it("shows unread in red outside Saved and Search", () => {
+    expect(accountBadge(account, Category.AllMails)).toEqual({
+      count: 3,
+      tone: "unread",
+      label: "3 unread"
+    });
+  });
+
+  it("shows saved in the neutral style for Saved", () => {
+    expect(accountBadge(account, Category.SavedMails)).toEqual({
+      count: 2,
+      tone: "neutral",
+      label: "2 saved"
+    });
+  });
+
+  it("shows the match count in the neutral style for Search", () => {
+    expect(accountBadge(account, Category.Search)).toEqual({
+      count: 9,
+      tone: "neutral",
+      label: "9 matching"
+    });
+  });
+});
+
+describe("folderBadge", () => {
+  const counts = {
+    [Category.NewMails]: 4,
+    [Category.AllMails]: 4,
+    [Category.SavedMails]: 6,
+    [Category.SentMails]: 0,
+    [Category.SpamMails]: 2
+  };
+
+  it("does not repeat New's unread total on All", () => {
+    expect(folderBadge(Category.AllMails, counts).count).toBe(0);
+    expect(folderBadge(Category.NewMails, counts)).toEqual({
+      count: 4,
+      tone: "unread",
+      label: "4 unread"
+    });
+  });
+
+  it("shows saved mail in the neutral style", () => {
+    expect(folderBadge(Category.SavedMails, counts).tone).toBe("neutral");
+  });
+
+  it("shows spam as unread", () => {
+    expect(folderBadge(Category.SpamMails, counts)).toEqual({
+      count: 2,
+      tone: "unread",
+      label: "2 unread"
     });
   });
 });

@@ -8,8 +8,7 @@ import {
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { Category } from "client";
 
-// Header (design doc §4/§9): the unread count pill next to the title, and
-// the search trigger that opens the center-column search box.
+// Header (design doc §4/§9): the title and the unread count pill next to it.
 beforeAll(() => {
   GlobalRegistrator.register();
   (
@@ -22,6 +21,9 @@ type MountOptions = {
   newMailsTotal?: number;
   userInfo?: { username: string } | undefined;
   selectedAccount?: string;
+  selectedCategory?: Category;
+  isSettingsOpen?: boolean;
+  accounts?: unknown;
 };
 
 const mountHeader = async (options: MountOptions = {}) => {
@@ -35,7 +37,12 @@ const mountHeader = async (options: MountOptions = {}) => {
   const { createElement, act } = await import("react");
   const { createRoot } = await import("react-dom/client");
   const { Context } = await import("client");
+  const { QueryClient, QueryClientProvider } = await import("react-query");
   const Header = (await import("./index")).default;
+  const queryClient = new QueryClient();
+  if (options.accounts) {
+    queryClient.setQueryData("/api/mails/accounts", options.accounts);
+  }
 
   const enterSearchCalls: number[] = [];
 
@@ -52,8 +59,10 @@ const mountHeader = async (options: MountOptions = {}) => {
     setReplyData: () => {},
     selectedAccount,
     setSelectedAccount: () => {},
-    selectedCategory: Category.AllMails,
+    selectedCategory: options.selectedCategory ?? Category.AllMails,
     setSelectedCategory: () => {},
+    isSettingsOpen: options.isSettingsOpen ?? false,
+    setIsSettingsOpen: () => {},
     newMailsTotal,
     setNewMailsTotal: () => {},
     preSearchAccount: { current: "" },
@@ -77,7 +86,11 @@ const mountHeader = async (options: MountOptions = {}) => {
       createElement(
         Context.Provider,
         { value: contextValue as never },
-        createElement(Header)
+        createElement(
+          QueryClientProvider,
+          { client: queryClient },
+          createElement(Header)
+        )
       )
     );
   });
@@ -92,20 +105,75 @@ const mountHeader = async (options: MountOptions = {}) => {
   };
 };
 
+const account = (key: string, unread: number) => ({
+  key,
+  updated: "2026-01-01T00:00:00.000Z",
+  doc_count: 5,
+  unread_doc_count: unread,
+  saved_doc_count: 0
+});
+
 describe("header unread count", () => {
-  it("shows the total unread count next to the title", async () => {
-    const mount = await mountHeader({ newMailsTotal: 4 });
+  it("shows the selected account's own unread count next to its name", async () => {
+    const mount = await mountHeader({
+      newMailsTotal: 27,
+      selectedAccount: "maple@example.com",
+      accounts: {
+        received: [account("maple@example.com", 3), account("fern@example.com", 24)],
+        sent: [],
+        spam: []
+      }
+    });
+    try {
+      const pill = mount.container.querySelector(".header-unread-count");
+      expect(mount.container.querySelector("h1")?.textContent).toBe(
+        "maple@example.com"
+      );
+      expect(pill?.textContent).toBe("3");
+      expect(pill?.getAttribute("title")).toBe("3 unread in maple@example.com");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("shows the all-accounts total when no account is selected", async () => {
+    const mount = await mountHeader({ newMailsTotal: 4, selectedAccount: "" });
     try {
       const pill = mount.container.querySelector(".header-unread-count");
       expect(pill?.textContent).toBe("4");
-      expect(pill?.getAttribute("title")).toBe("4 unread");
+      expect(pill?.getAttribute("title")).toBe("4 unread in all accounts");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("titles search by its mode, not by the search term", async () => {
+    const mount = await mountHeader({
+      newMailsTotal: 4,
+      selectedAccount: "invoice",
+      selectedCategory: Category.Search
+    });
+    try {
+      expect(mount.container.querySelector("h1")?.textContent).toBe("Search");
+      expect(
+        mount.container.querySelector(".header-unread-count")?.getAttribute("title")
+      ).toBe("4 unread in all accounts");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("titles the Settings page Settings", async () => {
+    const mount = await mountHeader({ isSettingsOpen: true });
+    try {
+      expect(mount.container.querySelector("h1")?.textContent).toBe("Settings");
     } finally {
       await mount.teardown();
     }
   });
 
   it("shows no pill when nothing is unread", async () => {
-    const mount = await mountHeader({ newMailsTotal: 0 });
+    const mount = await mountHeader({ newMailsTotal: 0, selectedAccount: "" });
     try {
       expect(
         mount.container.querySelector(".header-unread-count")
@@ -118,6 +186,7 @@ describe("header unread count", () => {
   it("shows no pill before sign-in", async () => {
     const mount = await mountHeader({
       newMailsTotal: 4,
+      selectedAccount: "",
       userInfo: undefined
     });
     try {
@@ -130,32 +199,16 @@ describe("header unread count", () => {
   });
 });
 
-describe("header search trigger", () => {
-  it("clicking the search trigger enters search", async () => {
+describe("header controls", () => {
+  // Search and Compose are always on screen in the rail (the bottom bar on
+  // a phone), so the header does not repeat them.
+  it("has no second search or compose trigger", async () => {
     const mount = await mountHeader();
     try {
-      const trigger = mount.container.querySelector(
-        '.menu.right [aria-label="Search"]'
-      ) as HTMLElement;
-      expect(trigger).not.toBeNull();
-      const { act } = await import("react");
-      await act(async () => {
-        trigger.click();
-      });
-      expect(mount.enterSearchCalls.length).toBe(1);
-    } finally {
-      await mount.teardown();
-    }
-  });
-
-  it("the compose trigger still works alongside the search trigger", async () => {
-    const mount = await mountHeader();
-    try {
-      const triggers = mount.container.querySelectorAll(".menu.right .cursor");
-      expect(triggers.length).toBe(2);
+      expect(mount.container.querySelector('[aria-label="Search"]')).toBeNull();
       expect(
-        (triggers[1] as HTMLElement).getAttribute("aria-label")
-      ).toBe("Compose new mail");
+        mount.container.querySelector('[aria-label="Compose new mail"]')
+      ).toBeNull();
     } finally {
       await mount.teardown();
     }

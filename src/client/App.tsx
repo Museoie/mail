@@ -21,6 +21,7 @@ import {
   Box,
   SignUp,
   ErrorBoundary,
+  NotFound,
   OfflineBanner,
   IsOnlineProvider,
   useLocalStorage,
@@ -28,7 +29,11 @@ import {
   call,
   callUser,
   queryClient,
-  registerServiceWorker
+  registerServiceWorker,
+  FeedbackProvider,
+  ThemeSetting,
+  sanitizeThemeSetting,
+  applyThemeSetting
 } from "client";
 
 export enum Category {
@@ -111,6 +116,9 @@ export interface ContextType {
   /** The address From is filled with on a new message when no mailbox is selected. */
   defaultFrom: string;
   setDefaultFrom: Dispatch<SetStateAction<ContextType["defaultFrom"]>>;
+  /** Light, dark, or follow the device. */
+  theme: ThemeSetting;
+  setTheme: Dispatch<SetStateAction<ContextType["theme"]>>;
   /** Whether the compose form currently holds an unsent draft. */
   hasDraft: boolean;
   setHasDraft: Dispatch<SetStateAction<ContextType["hasDraft"]>>;
@@ -158,6 +166,12 @@ const App = ({ user: session }: Props) => {
     "comfortable",
     (v) => (v === "compact" ? "compact" : "comfortable")
   );
+  const [theme, setTheme] = useLocalStorage<ThemeSetting>(
+    "theme",
+    "system",
+    sanitizeThemeSetting
+  );
+  useEffect(() => applyThemeSetting(theme), [theme]);
   const [includeOriginal, setIncludeOriginal] = useLocalStorage(
     "includeOriginal",
     true
@@ -347,6 +361,8 @@ const App = ({ user: session }: Props) => {
     exitSearch,
     density,
     setDensity,
+    theme,
+    setTheme,
     signature,
     setSignature,
     includeOriginal,
@@ -364,38 +380,41 @@ const App = ({ user: session }: Props) => {
       <QueryClientProvider client={queryClient}>
         <Context.Provider value={contextValue}>
           <IsOnlineProvider>
-            <BrowserRouter>
-              <ErrorBoundary>
-                <OfflineBanner />
-                <Header />
-                <Routes>
-                  <Route
-                    path="/"
-                    element={
-                      userInfo ? <Box /> : <Navigate to="/sign-in" replace />
-                    }
-                  />
-                  <Route
-                    path="/sign-in"
-                    element={
-                      userInfo ? <Navigate to="/" replace /> : <SignIn />
-                    }
-                  />
-                  <Route
-                    path="/set-info"
-                    element={
-                      userInfo ? <Navigate to="/" replace /> : <SignUp />
-                    }
-                  />
-                  <Route
-                    path="/set-info/:email"
-                    element={
-                      userInfo ? <Navigate to="/" replace /> : <SignUp />
-                    }
-                  />
-                </Routes>
-              </ErrorBoundary>
-            </BrowserRouter>
+            <FeedbackProvider>
+              <BrowserRouter>
+                <ErrorBoundary>
+                  <OfflineBanner />
+                  <Header />
+                  <Routes>
+                    <Route
+                      path="/"
+                      element={
+                        userInfo ? <Box /> : <Navigate to="/sign-in" replace />
+                      }
+                    />
+                    <Route
+                      path="/sign-in"
+                      element={
+                        userInfo ? <Navigate to="/" replace /> : <SignIn />
+                      }
+                    />
+                    <Route
+                      path="/set-info"
+                      element={
+                        userInfo ? <Navigate to="/" replace /> : <SignUp />
+                      }
+                    />
+                    <Route
+                      path="/set-info/:email"
+                      element={
+                        userInfo ? <Navigate to="/" replace /> : <SignUp />
+                      }
+                    />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ErrorBoundary>
+              </BrowserRouter>
+            </FeedbackProvider>
           </IsOnlineProvider>
         </Context.Provider>
       </QueryClientProvider>

@@ -1,10 +1,20 @@
 .writer {
-  height: calc(100% - 10px);
+  /* A column: fields at the top, the editor takes the remaining height, the
+   * buttons stay at the bottom. */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  /* At least the pane's height, so the editor fills it; taller when the
+   * fields need more room, and the pane scrolls (see Box/index.scss) so
+   * Send is always reachable. */
+  min-height: calc(100% - 10px);
   margin-top: 5px;
-  padding-top: 1rem;
+  padding-top: 0.75rem;
   padding-right: 1rem;
+  padding-bottom: 0.75rem;
 
-  span {
+  .helper-text,
+  .attachment span {
     white-space: nowrap;
   }
 
@@ -43,82 +53,172 @@
     }
   }
 
+  /* Title row: what is being written, and a close button that keeps the
+   * draft. */
+  .writer-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+
+    .writer-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--textBrighter);
+    }
+
+    .writer-close {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: none;
+      color: var(--textDim);
+      cursor: pointer;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      &:hover {
+        background-color: var(--surfaceRaised);
+        color: var(--textBright);
+      }
+    }
+  }
+
+  .writer-field {
+    margin-bottom: 0.6rem;
+  }
+
   .fieldName {
     display: flex;
     justify-content: space-between;
-    font-size: 16px;
-    height: 20px;
+    align-items: center;
+    min-height: 24px;
+    margin-bottom: 4px;
+    font-size: 14px;
+    color: var(--textSoft);
   }
 
   /* Labeled Cc/Bcc toggles next to To (design doc §7), with a visible
    * pressed state. */
   .cc-bcc-toggles {
     display: flex;
-    gap: 2px;
+    gap: 4px;
+  }
+
+  .small-button {
+    min-width: 36px;
+    min-height: 32px;
+    padding: 0 10px;
   }
 
   /* Formatting toolbar above the editor (design doc §7); the pressed
-   * state follows the selection. */
-  .format-toolbar {
+   * state follows the selection. Attach sits at the row's end. */
+  .writer-toolbar {
     display: flex;
-    gap: 2px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 0.3rem;
   }
 
+  .format-toolbar {
+    display: flex;
+    gap: 4px;
+  }
+
+  .attach-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
   .helper-text {
-    font-size: 16px;
+    font-size: 15px;
+    color: var(--textSoft);
+  }
+
+  /* From: the name and the sending account side by side, both left-aligned,
+   * with the domain after the account. */
+  .from-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
   .from_address {
-    margin: 0.2rem 0;
-    display: inline-block;
-    min-width: 210px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  input.writer-short,
+  input.writer-long {
+    box-sizing: border-box;
+    height: 36px;
+    padding: 0 10px;
+    /* 16px: iOS zooms the page into any focused field smaller than that. */
+    font-size: 16px;
+    text-align: left;
   }
 
   input.writer-short {
-    width: max(90px, 20vw);
-    max-width: 200px;
+    width: 160px;
+    max-width: 100%;
   }
 
   input.writer-long {
     width: 100%;
-    text-align: left;
-    transition: 150ms;
   }
 
-  input.writer-long.hide {
-    display: block;
-    width: 0;
-  }
-
-  .inputBox-flex {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-
-    > :nth-child(2) {
-      margin-left: 0.5rem;
-      margin-right: 0.5rem;
-    }
+  .writer-errors {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem 0.5rem 1.75rem;
+    border-left: 3px solid var(--orange);
+    border-radius: 4px;
+    background-color: var(--surfaceRaised);
+    color: var(--textBrighter);
+    font-size: 14px;
+    white-space: normal;
   }
 
   .writer-body {
-    height: calc(100% - 16rem);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 220px;
 
     .writer-content-wrap {
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-height: 0;
       width: 100%;
-      height: calc(100% - 0.5rem - 20px);
 
       .writer-content {
         padding: 0 0.5rem;
-        height: 100%;
+        /* Fill the space the fields leave; the pane scrolls past that. */
+        flex: 1;
+        min-height: 200px;
         border-radius: 3px;
         position: relative;
-        height: 100%;
         cursor: text;
-        overflow-y: scroll;
+        overflow-y: auto;
 
         .editor_container_bottom_padding {
           min-height: 100%;
@@ -147,6 +247,7 @@
              * for every element inside it would otherwise override. */
             .quote-remove {
               flex-shrink: 0;
+              border: 1px solid var(--divider);
               background: transparent;
               color: var(--textDim);
 
@@ -160,22 +261,39 @@
              * outside the editor document: the editor's schema drops
              * images, links and tables, so round-tripping the quote
              * through it would strip the original. */
+            /* The original's subject, as a plain line at the top of the
+             * quote — not a bold heading competing with the reply. */
             .quote-subject {
-              border-left: 1px solid #cccccc;
-              padding: 0.5rem 0 0.5rem 0.5rem;
+              border-left: 1px solid var(--divider);
+              padding: 0.5rem 0 0 0.5rem;
               margin: 0.5rem 0 0 0.5rem;
-              font-weight: 600;
-              color: var(--textBright);
+              font-weight: normal;
+              color: var(--textDim);
               overflow-wrap: break-word;
             }
 
+            /* Wide mail (fixed-width tables, big images) stays inside the
+             * editor: scale media down and let anything wider scroll
+             * inside the quote rather than off the pane's edge. */
             .original_message_body {
               padding: 0.5rem 0 0.5rem 0.5rem;
               margin-left: 0.5rem;
               overflow-wrap: break-word;
+              overflow-x: auto;
+              max-width: 100%;
+
+              img,
+              video {
+                max-width: 100%;
+                height: auto;
+              }
+
+              table {
+                max-width: 100%;
+              }
 
               blockquote {
-                border-left: 1px solid #cccccc;
+                border-left: 1px solid var(--divider);
                 padding: 0.5rem 0 0.5rem 0.5rem;
                 margin-left: 0.5rem;
                 overflow-wrap: break-word;
@@ -187,17 +305,24 @@
     }
   }
 
+  /* Send is the primary action at the trailing edge; Discard sits apart
+   * from it on the leading edge so a slip doesn't hit the wrong one. */
   .writer-buttons {
     display: flex;
-    justify-content: center;
-    width: 100%;
+    justify-content: space-between;
+    /* Not 100%: the shared blockquote rule indents every child by 1rem,
+     * and a full width on top of that pushes Send off the pane. */
+    width: auto;
     margin-top: 1rem;
 
     button {
-      margin: 0 0.5rem;
+      min-width: 96px;
+      min-height: 40px;
+      padding: 0 16px;
       display: inline-flex;
       justify-content: center;
       align-items: center;
+      font-size: 15px;
 
       svg {
         margin-right: 0.5rem;
@@ -241,7 +366,7 @@
     blockquote {
       margin: 10px 0 10px 0;
       padding: 0 0 0 0.5rem;
-      border-left: 5px solid #888;
+      border-left: 4px solid var(--divider);
     }
 
     h1,
@@ -254,14 +379,14 @@
     }
 
     code {
-      background-color: #eee;
-      color: #c50;
+      background-color: var(--surface);
+      color: var(--orange);
       border-radius: 2px;
     }
 
     pre {
-      background-color: #444;
-      color: #fff;
+      background-color: var(--surfaceRaised);
+      color: var(--textBrighter);
       border-radius: 3px;
       padding: 0.5rem;
       white-space: pre-wrap;
@@ -274,11 +399,38 @@
     }
 
     p.is-editor-empty:first-child::before {
-      color: #adb5bd;
+      color: var(--textDim);
       content: attr(data-placeholder);
       float: left;
       height: 0;
       pointer-events: none;
+    }
+  }
+}
+
+/* Phone: full-size touch targets for the toolbar, toggles and fields. */
+@media (max-width: 750px) {
+  .writer {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+
+    input.writer-short,
+    input.writer-long {
+      height: 44px;
+    }
+
+    input.writer-short {
+      width: auto;
+      flex: 1 1 140px;
+    }
+
+    .small-button {
+      min-width: 44px;
+      min-height: 40px;
+    }
+
+    .writer-buttons button {
+      min-height: 44px;
     }
   }
 }

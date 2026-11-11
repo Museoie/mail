@@ -150,19 +150,55 @@
       margin-left: 0.5rem;
     }
 
+    /* One full-width row per account. The name truncates on one line (the
+     * full address is the row's tooltip) and the count sits at the row's
+     * end, so a long name can't wrap into a block or slide under the badge. */
     .tag {
-      font-size: 18px;
-      display: inline-block;
-      position: relative;
-      max-width: 240px;
-      padding: 0.5rem 1rem;
-      margin: 0 0 0.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: calc(100% - 0.5rem);
+      min-height: 40px;
+      box-sizing: border-box;
+      padding: 0.4rem 0.75rem;
+      margin: 0 0 4px 0;
+      border: none;
+      border-left: 3px solid transparent;
       border-radius: 5px;
-      overflow-wrap: break-word;
-      vertical-align: bottom;
+      background: none;
+      color: var(--textBright);
+      font: inherit;
+      font-size: 17px;
+      text-align: start;
+
+      &:hover {
+        background-color: var(--surface);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: -2px;
+      }
+
+      /* The selected account reads as selected: raised, brighter, and
+       * marked on its leading edge. */
+      &.clicked {
+        background-color: var(--surfaceRaised);
+        border-left-color: var(--blue);
+        color: var(--textBrighter);
+        font-weight: 600;
+      }
+
+      .tag-text {
+        flex: 1;
+        min-width: 0;
+      }
 
       .account-name {
         display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       /* Second line, shown only when the display name is duplicated in the
@@ -171,9 +207,37 @@
       .account-address {
         display: block;
         font-size: 13px;
+        font-weight: normal;
         line-height: 1.3;
         color: var(--textDim);
-        overflow-wrap: anywhere;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .count-badge {
+        flex-shrink: 0;
+        min-width: 22px;
+        padding: 0 7px;
+        border-radius: 11px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 22px;
+        text-align: center;
+
+        &.unread {
+          background-color: var(--red);
+          color: white;
+        }
+
+        &.neutral {
+          background-color: var(--surfaceRaised);
+          color: var(--textBright);
+        }
+      }
+
+      &.clicked .count-badge.neutral {
+        background-color: var(--hover);
       }
     }
 
@@ -251,7 +315,16 @@
       input {
         flex: 1;
         min-width: 0;
-        height: 24px;
+        height: 34px;
+        padding: 0 10px;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+
+      .clear-button {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
       }
     }
 
@@ -296,14 +369,40 @@
         }
       }
 
+      /* The sort controls are buttons; drop the default button chrome. */
+      .sort_icon,
+      .sort_current,
+      .sort_option {
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+
+        &:focus-visible {
+          outline: 2px solid var(--blue);
+          outline-offset: -2px;
+        }
+      }
+
+      .sort_icon {
+        padding: 0;
+        height: 30px;
+      }
+
       .sort_text {
         flex: 1;
       }
 
       .sort_current {
+        min-height: 32px;
         padding-left: 0.5rem;
         line-height: 27px;
         border-radius: 5px;
+
+        &:hover {
+          background-color: var(--surface);
+        }
       }
 
       .sort_select {
@@ -315,8 +414,15 @@
         box-shadow: 0px 2px 2px 4px rgba(0, 0, 0, 0.05);
 
         .sort_option {
-          margin: 0.5rem 0;
-          padding: 0.5rem 1rem;
+          display: block;
+          width: 100%;
+          margin: 0.25rem 0;
+          padding: 0.6rem 1rem;
+          border-radius: 6px;
+
+          &[aria-selected="true"] {
+            font-weight: 600;
+          }
         }
       }
     }
@@ -334,20 +440,6 @@
       color: var(--textDim);
     }
 
-    .numberBall {
-      min-width: 20px;
-      top: -5px;
-      right: -10px;
-      font-size: 16px;
-      padding-left: 6px;
-      padding-right: 6px;
-      padding-bottom: 1px;
-      text-align: center;
-      line-height: 19px;
-      border-radius: 10px;
-      background-color: var(--red);
-      color: white;
-    }
   }
 }
 
@@ -423,6 +515,13 @@
   border-radius: 4px;
   background-color: var(--red);
   color: white;
+
+  /* A count that isn't unread mail (saved mail) — gray, so it can't be
+   * mistaken for "N unread". */
+  &.neutral {
+    background-color: var(--surfaceRaised);
+    color: var(--textBright);
+  }
 }
 
 @keyframes rail-spin {

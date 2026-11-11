@@ -109,6 +109,16 @@ describe("searchMail", () => {
     expect(result.map((m) => m.sent)).toEqual([true, false]);
   });
 
+  it("flags spam matches and leaves the flag off everything else", async () => {
+    mockSearchMails.mockResolvedValue([
+      { mail_id: "m-spam", subject: "s", date: "2024-01-01T00:00:00Z", read: false, saved: false, sent: false, is_spam: true },
+      { mail_id: "m-ham", subject: "h", date: "2024-01-01T00:00:00Z", read: false, saved: false, sent: false, is_spam: false },
+    ] as never);
+    const result = await searchMail(mockUser, "q");
+    expect(result[0].spam).toBe(true);
+    expect("spam" in result[1]).toBe(false);
+  });
+
   it("should map cc and bcc addresses when present", async () => {
     const mockMailModel = {
       mail_id: "mail-cc",

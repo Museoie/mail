@@ -40,6 +40,7 @@ const mountSettings = async (
     includeOriginal?: boolean;
     defaultFrom?: string;
     notificationsEnabled?: boolean;
+    userInfo?: { id: string; username: string; email: string };
   } = {}
 ) => {
   const { createElement, act } = await import("react");
@@ -68,7 +69,8 @@ const mountSettings = async (
     setDefaultFrom: (value: string) => composeCalls.push(["defaultFrom", value]),
     notificationsEnabled: compose.notificationsEnabled ?? true,
     setNotificationsEnabled: (value: boolean) =>
-      composeCalls.push(["notificationsEnabled", value])
+      composeCalls.push(["notificationsEnabled", value]),
+    userInfo: compose.userInfo
   };
 
   const container = document.createElement("div");
@@ -375,6 +377,61 @@ describe("Settings › Notifications", () => {
       expect(toggle.checked).toBe(false);
       expect(toggle.disabled).toBe(true);
       expect(notificationsDescription(mount.container)).toContain("blocked");
+    } finally {
+      await mount.teardown();
+    }
+  });
+});
+
+describe("Settings account section", () => {
+  const user = { id: "u1", username: "maple", email: "maple@elsewhere.example" };
+
+  it("shows who is signed in", async () => {
+    const mount = await mountSettings("comfortable", { userInfo: user });
+    try {
+      const text = mount.container.textContent ?? "";
+      expect(text).toContain("Signed in as maple");
+      expect(text).toContain("maple@elsewhere.example");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("sends a password reset link to the account's email", async () => {
+    const originalPost = call.post;
+    const posts: [string, unknown][] = [];
+    call.post = (async (url: string, body: unknown) => {
+      posts.push([url, body]);
+      return { status: "success" };
+    }) as typeof call.post;
+    const mount = await mountSettings("comfortable", { userInfo: user });
+    try {
+      const { act } = await import("react");
+      const button = Array.from(
+        mount.container.querySelectorAll("button")
+      ).find((b) => b.textContent === "Send reset link") as HTMLButtonElement;
+      await act(async () => {
+        button.click();
+      });
+      expect(posts).toEqual([
+        ["/api/users/token", { email: "maple@elsewhere.example" }]
+      ]);
+    } finally {
+      call.post = originalPost;
+      await mount.teardown();
+    }
+  });
+
+  it("offers no reset link for admin, whose password is configured", async () => {
+    const mount = await mountSettings("comfortable", {
+      userInfo: { id: "a", username: "admin", email: "admin@example.com" }
+    });
+    try {
+      const buttons = Array.from(mount.container.querySelectorAll("button")).map(
+        (b) => b.textContent
+      );
+      expect(buttons).not.toContain("Send reset link");
+      expect(mount.container.textContent).toContain("ADMIN_PASSWORD");
     } finally {
       await mount.teardown();
     }

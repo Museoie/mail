@@ -11,6 +11,8 @@ import "./index.scss";
 export type SheetFolder = {
   category: Exclude<Category, Category.Search>;
   count: number;
+  /** Saved counts use the neutral badge, not the unread red. */
+  tone?: "unread" | "neutral";
 };
 
 const folderIcons: Record<
@@ -76,7 +78,7 @@ const FoldersSheet = ({
           </button>
         </header>
         <ul className="folders-sheet-list">
-          {folders.map(({ category, count }) => {
+          {folders.map(({ category, count, tone }) => {
             const Icon = folderIcons[category];
             const classes = ["folders-sheet-row"];
             if (selectedCategory === category) classes.push("clicked");
@@ -99,7 +101,13 @@ const FoldersSheet = ({
                   <Icon />
                   <span className="folders-sheet-label">{category}</span>
                   {count ? (
-                    <div className="numberBall">{count}</div>
+                    <div
+                      className={
+                        "numberBall" + (tone === "neutral" ? " neutral" : "")
+                      }
+                    >
+                      {count}
+                    </div>
                   ) : null}
                 </div>
               </li>

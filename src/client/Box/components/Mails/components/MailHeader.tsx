@@ -31,7 +31,13 @@ const AddressList = ({
   const [expanded, setExpanded] = useState(false);
   const raw = address?.value;
   const values = (Array.isArray(raw) ? raw : raw ? [raw] : [])
-    .map((e) => e?.name || e?.address)
+    .map((e) =>
+      // Show the address next to the name: a display name alone can't tell
+      // the reader who actually sent the mail, or which mailbox it went to.
+      e?.name && e?.address && e.name !== e.address
+        ? `${e.name} <${e.address}>`
+        : e?.name || e?.address
+    )
     .filter((e): e is string => !!e);
   if (!values.length) return <></>;
   const shown =
@@ -97,6 +103,7 @@ const MailHeader = (props: MailHeaderProps) => {
           <span className="mailcard-date">{duration}</span>
         </div>
         <div className="mailcard-subject content">
+          {mail.spam ? <span className="spam-tag">Spam</span> : null}
           {mail.subject || <span className="no-subject">(No Subject)</span>}
         </div>
         {showSnippet && (
@@ -115,9 +122,8 @@ const MailHeader = (props: MailHeaderProps) => {
       onKeyDown={onClick ? onKeyboardActivate(onClick) : undefined}
       onMouseLeave={onMouseLeave}
     >
-      <div className="mailcard-small content">{duration}</div>
-      <div className="mailcard-small content">
-        {date}, {time}
+      <div className="mailcard-subject content">
+        {mail.subject || <span className="no-subject">(No Subject)</span>}
       </div>
       <AddressList label="from" address={mail.from} />
       <AddressList label="to" address={mail.to} />
@@ -127,8 +133,11 @@ const MailHeader = (props: MailHeaderProps) => {
       ) : (
         <></>
       )}
-      <div className="mailcard-subject content">
-        {mail.subject || <span className="no-subject">(No Subject)</span>}
+      <div className="mailcard-small content">
+        <time dateTime={new Date(mail.date).toISOString()}>
+          {date}, {time}
+        </time>{" "}
+        ({duration})
       </div>
     </div>
   );

@@ -55,7 +55,16 @@
       input {
         flex: 1;
         min-width: 0;
-        height: 24px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+
+      .clear-button {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
       }
     }
   }
@@ -73,6 +82,50 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+  }
+
+  .empty_state {
+    padding: 0 10px;
+  }
+
+  /* An empty folder lists the accounts that do have mail in it. */
+  .empty_state_others {
+    padding: 0 10px;
+    color: var(--textDim);
+    font-size: 14px;
+
+    ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .text-button {
+      max-width: 100%;
+      min-height: 36px;
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--divider);
+      border-radius: 6px;
+      background: none;
+      color: var(--textBright);
+      font: inherit;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--surface);
+      }
     }
   }
 
@@ -98,12 +151,56 @@
       display: inline-flex;
       justify-content: center;
       align-items: center;
+      gap: 0.4rem;
       margin-right: 0.4rem;
-      padding: 0.4rem;
-      font-size: 16px;
+      padding: 0.4rem 0.6rem;
+      border: 1px solid var(--divider);
+      border-radius: 6px;
+      background: none;
+      color: var(--textBright);
+      font: inherit;
+      font-size: 15px;
 
-      svg {
-        margin-right: 0.3rem;
+      &:hover {
+        background-color: var(--surfaceRaised);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 1px;
+      }
+
+      .attachment-size {
+        color: var(--textDim);
+        font-size: 13px;
+      }
+    }
+  }
+
+  /* Shown above a mail whose remote images were held back. */
+  .remote-images-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0.4rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background-color: var(--surfaceRaised);
+    color: var(--textSoft);
+    font-size: 14px;
+
+    .text-button {
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--divider);
+      border-radius: 6px;
+      background: none;
+      color: var(--blue);
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        background-color: var(--surface);
       }
     }
   }
@@ -196,10 +293,10 @@
 
     .mail-close {
       position: absolute;
-      top: 12px;
-      right: 10px;
-      width: 24px;
-      height: 24px;
+      top: 6px;
+      right: 4px;
+      width: 36px;
+      height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -231,8 +328,8 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        height: 24px;
-        padding: 0 8px;
+        min-height: 32px;
+        padding: 0 10px;
         border: none;
         border-radius: 3px;
         background-color: var(--surface);
@@ -354,6 +451,20 @@
       .no-subject {
         color: var(--textDim);
       }
+
+      /* A search result that sits in the spam folder. */
+      .spam-tag {
+        display: inline-block;
+        margin-right: 6px;
+        padding: 0 6px;
+        border: 1px solid var(--orange);
+        border-radius: 4px;
+        color: var(--orange);
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 18px;
+        vertical-align: 2px;
+      }
     }
 
     // Unread rows: bold sender + bold subject (the dot is in the markup).
@@ -405,8 +516,40 @@
       width: auto;
       height: 40px;
 
+      /* The open "•••" menu: an opaque pill over the row's top line, so the
+       * icons cover the date cleanly instead of being drawn on top of it. */
+      .kebab-menu {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        height: 40px;
+        margin-top: 4px;
+        padding: 0 6px;
+        border-radius: 8px;
+        background-color: var(--surfaceRaised);
+        box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+      }
+
       .iconBox {
-        width: 30px;
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: none;
+        color: var(--textBright);
+
+        &:hover {
+          background-color: var(--hover);
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--blue);
+          outline-offset: -2px;
+        }
 
         svg {
           width: 20px;
@@ -443,6 +586,10 @@
     }
 
     @media only screen and (max-width: 750px) {
+      .actionRow .actionButton {
+        min-height: 40px;
+      }
+
       .actionBox {
         &.open {
           padding-top: 20px;
@@ -458,21 +605,30 @@
           height: 100%;
           width: 100%;
 
+          /* On a phone the open menu covers the whole row instead, with
+           * large targets; the row's own blur is its backing. */
+          .kebab-menu {
+            gap: 4px;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            background: none;
+            box-shadow: none;
+          }
+
+          /* Seven 44px targets fit a 320px-wide phone. */
           .iconBox {
-            width: 50px;
+            width: 44px;
+            height: 44px;
             svg {
-              width: 40px;
-              height: 40px;
+              width: 26px;
+              height: 26px;
             }
 
-            &:hover > svg {
-              width: 48px;
-              height: 48px;
-            }
-
+            &:hover > svg,
             &:active > svg {
-              width: 44px;
-              height: 44px;
+              width: 28px;
+              height: 28px;
             }
           }
         }
@@ -524,7 +680,7 @@
 
         em {
           color: var(--orange);
-          background-color: rgba(255, 255, 255, 0.1);
+          background-color: color-mix(in srgb, var(--orange) 15%, transparent);
         }
       }
     }

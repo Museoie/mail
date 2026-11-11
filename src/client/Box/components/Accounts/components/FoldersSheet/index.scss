@@ -90,6 +90,12 @@
           border-radius: 10px;
           background-color: var(--red);
           color: white;
+
+          /* Saved count: gray, not the unread red. */
+          &.neutral {
+            background-color: var(--hover);
+            color: var(--textBright);
+          }
         }
 
         &:hover {

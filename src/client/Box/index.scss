@@ -98,7 +98,8 @@
     bottom: 0;
     width: min(600px, 100%);
     z-index: 28;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     background-color: var(--panel);
     opacity: 0;
     visibility: hidden;

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   /* Neutrals (dark → light) — used for backgrounds, borders, and text.
    * Near-duplicates were collapsed: `#1d1d1d` / `#202020` → `--bg`;
    * `#4a4a4a` → `--divider`; `#aaa` → `--textDim`. */
@@ -21,4 +22,50 @@
   --headerHeight: 50px;
   --bottomBarHeight: 72px;
   --maxWidth: 950px;
+}
+
+/* Light theme. Followed from the system setting unless the reader picked a
+ * theme in Settings, which sets `data-theme` on <html>. The two blocks hold
+ * the same values: one applies the system preference, one the explicit
+ * choice. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #f3f3f4;
+    --bgOverlay: #f3f3f4ee;
+    --panel: #ffffff;
+    --surface: #ececee;
+    --surfaceRaised: #e1e1e4;
+    --hover: #dadadd;
+    --divider: #d3d3d7;
+    --textDim: #5c6066;
+    --textSoft: #474a50;
+    --textBright: #24262a;
+    --textBrighter: #111214;
+    --red: #d42a1f;
+    --orange: #b8430e;
+    --blue: #1b63c4;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f3f3f4;
+  --bgOverlay: #f3f3f4ee;
+  --panel: #ffffff;
+  --surface: #ececee;
+  --surfaceRaised: #e1e1e4;
+  --hover: #dadadd;
+  --divider: #d3d3d7;
+  --textDim: #5c6066;
+  --textSoft: #474a50;
+  --textBright: #24262a;
+  --textBrighter: #111214;
+  --red: #d42a1f;
+  --orange: #b8430e;
+  --blue: #1b63c4;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }

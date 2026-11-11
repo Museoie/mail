@@ -41,7 +41,8 @@ import {
   clearCachedQueries,
   unregisterServiceWorker,
   getLocalStorageItem,
-  useIsOnline
+  useIsOnline,
+  useFeedback
 } from "client";
 import { MailsSynchronizer } from "client/Box";
 import {
@@ -49,10 +50,11 @@ import {
   categoryForAccount
 } from "./selectableAccounts";
 import {
-  accountBadgeCount,
+  accountBadge,
   displayNameFor,
   duplicatedDisplayNames,
   filterAccounts,
+  folderBadge,
   folderBadgeCounts
 } from "./accountList";
 import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
@@ -124,6 +126,7 @@ const Accounts = ({
   } = useContext(Context);
 
   const { isOnline } = useIsOnline();
+  const { confirm } = useFeedback();
 
   const getAccounts = async () => {
     isFetched = false;
@@ -244,7 +247,7 @@ const Accounts = ({
 
     const renderAccount = (data: Account, i: number) => {
       const accountName = data.key;
-      const badgeCount = accountBadgeCount(data, selectedCategory);
+      const badge = accountBadge(data, selectedCategory);
       const displayName = displayNameFor(accountName);
       const onClickAccount = () => {
         // A found account in the search side-tab jumps to the category that
@@ -271,28 +274,38 @@ const Accounts = ({
         }
       };
 
-      const classes = ["tag"];
-      if (selectedAccount === accountName) classes.push("clicked");
-      else classes.push("cursor");
+      const isSelected = selectedAccount === accountName;
+      const classes = ["tag", "cursor"];
+      if (isSelected) classes.push("clicked");
 
+      // One full-width row per account: the name truncates instead of
+      // wrapping, and the count sits at the row's end rather than over its
+      // corner, so long names and big counts never collide.
       return (
-        <div key={i}>
-          <div
-            className={classes.join(" ")}
-            role="button"
-            tabIndex={0}
-            onClick={onClickAccount}
-            onKeyDown={onKeyboardActivate(onClickAccount)}
-          >
+        <button
+          key={i}
+          type="button"
+          className={classes.join(" ")}
+          aria-current={isSelected ? "true" : undefined}
+          title={accountName}
+          onClick={onClickAccount}
+        >
+          <span className="tag-text">
             <span className="account-name">{displayName}</span>
             {duplicatedNames.has(displayName) ? (
               <span className="account-address">{accountName}</span>
             ) : null}
-            {badgeCount ? (
-              <div className="numberBall">{badgeCount}</div>
-            ) : null}
-          </div>
-        </div>
+          </span>
+          {badge.count ? (
+            <span
+              className={"count-badge " + badge.tone}
+              aria-label={badge.label}
+              title={badge.label}
+            >
+              {badge.count}
+            </span>
+          ) : null}
+        </button>
       );
     };
 
@@ -393,9 +406,11 @@ const Accounts = ({
       // folder-level totals from the accounts payload. The highlighted tab
       // shows no badge.
       type FolderCategory = Exclude<Category, Category.Search>;
-      const badgeCount =
-        e === Category.Search ? 0 : folderCounts[e as FolderCategory];
-      const showBadge = e !== currentFolder && badgeCount > 0;
+      const badge =
+        e === Category.Search
+          ? undefined
+          : folderBadge(e as FolderCategory, folderCounts);
+      const showBadge = !!badge && badge.count > 0;
 
       return (
         <div
@@ -404,13 +419,21 @@ const Accounts = ({
           role="tab"
           tabIndex={0}
           aria-selected={currentFolder === e}
+          aria-label={
+            showBadge ? `${e}, ${badge.label}` : e
+          }
           onClick={() => onClickCategory(e)}
           onKeyDown={onKeyboardActivate(() => onClickCategory(e))}
         >
           <Icon />
           <span className="rail-label">{e.split(" ")[0]}</span>
           {showBadge ? (
-            <div className="numberBall">{badgeCount}</div>
+            <div
+              className={"numberBall" + (badge.tone === "neutral" ? " neutral" : "")}
+              aria-hidden="true"
+            >
+              {badge.count}
+            </div>
           ) : null}
         </div>
       );
@@ -427,14 +450,18 @@ const Accounts = ({
       };
 
       return (
-        <div
+        <button
           key={i}
+          type="button"
           className="sort_option cursor"
+          role="option"
+          aria-selected={e === sortBy}
+          autoFocus={e === sortBy}
           onClick={onClickSortOption}
           onTouchStart={(e) => e.stopPropagation()}
         >
           {e}
-        </div>
+        </button>
       );
     });
 
@@ -465,7 +492,11 @@ const Accounts = ({
     };
 
     const onClickLogout = async () => {
-      const confirmed = window.confirm("Are you sure you want to log out?");
+      const confirmed = await confirm({
+        title: "Log out?",
+        message: "Drafts and cached mail on this device are cleared.",
+        confirmLabel: "Log out"
+      });
       if (!confirmed) return;
       // Drop the server-side push subscription while the session is still live —
       // the unsubscribe route is authenticated, so this must run before the
@@ -508,14 +539,14 @@ const Accounts = ({
         Category.SentMails,
         Category.SpamMails
       ] as const
-    ).map((category) => ({
-      category,
-      count: folderCounts[category]
-    }));
+    ).map((category) => {
+      const badge = folderBadge(category, folderCounts);
+      return { category, count: badge.count, tone: badge.tone };
+    });
 
     return (
       <div className="tab-holder">
-        <div className="categories">
+        <nav className="categories" aria-label="Folders">
           <div>
             <div
               className="rail-item folders-rail-item"
@@ -533,10 +564,17 @@ const Accounts = ({
             </div>
             {categoryComponents}
             <div
-              className="rail-item"
+              className={"rail-item" + (isWriterOpen ? " clicked" : "")}
               role="button"
               tabIndex={0}
               aria-pressed={isWriterOpen}
+              aria-label={
+                isWriterOpen
+                  ? "Close compose"
+                  : hasDraft
+                    ? "Compose new mail (draft saved)"
+                    : "Compose new mail"
+              }
               onClick={onClickCompose}
               onKeyDown={onKeyboardActivate(onClickCompose)}
             >
@@ -571,7 +609,7 @@ const Accounts = ({
               <span className="rail-label">Refresh</span>
             </div>
           </div>
-        </div>
+        </nav>
         {isFoldersSheetOpen ? (
           <FoldersSheet
             folders={sheetFolders}
@@ -580,7 +618,7 @@ const Accounts = ({
             onClose={() => setIsFoldersSheetOpen(false)}
           />
         ) : null}
-        <div className="accounts">
+        <aside className="accounts" aria-label="Accounts">
           <div className="accounts_header">
             <div className="filter_box">
               <input
@@ -609,31 +647,48 @@ const Accounts = ({
             {showSortOptions ? (
               <></>
             ) : (
-              <div
+              <button
+                type="button"
                 className="sort_icon cursor"
+                aria-label={
+                  sortAscending ? "Sort ascending" : "Sort descending"
+                }
+                title={
+                  sortAscending
+                    ? "Ascending — click for descending"
+                    : "Descending — click for ascending"
+                }
                 onClick={() => setSortAscending(!sortAscending)}
               >
                 <div>
                   <SortDownIcon className={sortAscending ? "" : "highlight"} />
                   <SortUpIcon className={sortAscending ? "highlight" : ""} />
                 </div>
-              </div>
+              </button>
             )}
             <div className="sort_text">
               {showSortOptions ? (
                 <></>
               ) : (
-                <div
+                <button
+                  type="button"
                   className="sort_current cursor"
+                  aria-haspopup="listbox"
+                  aria-expanded={false}
                   onClick={() => setShowSortOptions(true)}
                 >
-                  {sortBy.split(" ").pop()}
-                </div>
+                  {sortBy}
+                </button>
               )}
               {showSortOptions ? (
                 <div
                   className="sort_select"
+                  role="listbox"
+                  aria-label="Sort accounts by"
                   onMouseLeave={() => setShowSortOptions(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setShowSortOptions(false);
+                  }}
                 >
                   {sortOptionComponents}
                 </div>
@@ -669,7 +724,7 @@ const Accounts = ({
               <span>Logout</span>
             </button>
           </div>
-        </div>
+        </aside>
       </div>
     );
   }

@@ -27,6 +27,9 @@ export interface MailHeaderDataType {
   // One-line body preview for list rows (design doc §5), quote-stripped.
   // Absent when the body has no unquoted content to show.
   snippet?: string;
+  // Set on search results only: search spans the spam folder, so a spam
+  // match is labelled in the result list rather than passing as inbox mail.
+  spam?: boolean;
 }
 
 export class MailHeaderData
@@ -49,6 +52,7 @@ export class MailHeaderData
     text?: string[];
   };
   declare snippet?: string;
+  declare spam?: boolean;
 
   constructor(data?: Partial<MailHeaderData>) {
     super(data);

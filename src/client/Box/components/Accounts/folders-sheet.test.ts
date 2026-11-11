@@ -269,7 +269,8 @@ describe("Folders entry opens the sheet", () => {
         ])
       );
       expect(byLabel.get("New Mails")).toBe("3");
-      expect(byLabel.get("All Mails")).toBe("3");
+      // All does not repeat New's unread total.
+      expect(byLabel.get("All Mails")).toBeUndefined();
       expect(byLabel.get("Saved Mails")).toBe("1");
       expect(byLabel.get("Sent Mails")).toBe("1");
       expect(byLabel.get("Spam Mails")).toBe("3");
