@@ -38,6 +38,22 @@ const headerOptions = (
 const headersSql = (overrides: Partial<GetMailHeadersOptions> = {}) =>
   buildMailHeadersQuery(USER, ADDRESS, headerOptions(overrides)).sql;
 
+describe("buildMailHeadersQuery — threading ids", () => {
+  it("selects the ids the list groups conversations by", () => {
+    const sql = headersSql();
+    expect(sql).toContain("message_id");
+    expect(sql).toContain("in_reply_to");
+  });
+
+  it("trims References to its first and last two entries", () => {
+    const sql = headersSql();
+    expect(sql).toContain("jsonb_array_length(reference_ids) > 3");
+    expect(sql).toContain(
+      "jsonb_build_array(reference_ids->0, reference_ids->-2, reference_ids->-1)"
+    );
+  });
+});
+
 describe("buildHeaderAddressCondition", () => {
   it("unions envelope_to with to/cc/bcc on the received branch", () => {
     const condition = buildHeaderAddressCondition({ sent: false, saved: false });
