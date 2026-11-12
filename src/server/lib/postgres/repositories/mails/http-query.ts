@@ -92,10 +92,10 @@ export const buildMailHeadersQuery = (
     BCC_ADDRESS, BCC_TEXT,
     READ, SAVED, SENT, IS_SPAM, INSIGHT,
     `left(${TEXT}, 400) AS text_prefix`,
-    // Threading ids, so the list can group a folder into conversations
-    // (client: Mails/conversations.ts). References is trimmed to its root
-    // and its last two entries: the root is shared by every message in a
-    // conversation, so the full chain would only grow the payload.
+    // Threading ids, so the list can group a folder into conversations.
+    // References keeps its first entry (usually the conversation's root) and
+    // its last two (the messages it answers): enough to link a message to
+    // the ones before it without sending the whole chain on every row.
     MESSAGE_ID, IN_REPLY_TO,
     `CASE WHEN jsonb_array_length(${REFERENCE_IDS}) > 3
       THEN jsonb_build_array(${REFERENCE_IDS}->0, ${REFERENCE_IDS}->-2, ${REFERENCE_IDS}->-1)

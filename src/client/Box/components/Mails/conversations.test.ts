@@ -61,17 +61,15 @@ describe("groupConversations", () => {
     expect(ids(rows)).toEqual(["b,a"]);
   });
 
-  it("keeps apart two vendors' same-subject replies to one mailbox", () => {
+  it("keeps apart two vendors' same-subject replies that share only the user", () => {
     const rows = groupConversations(
       [
         mail("a", 2, {
           subject: "Re: Invoice",
-          inReplyTo: "<q1@inbox.test>",
           from: { value: [{ address: "billing@vendor-a.com" }], text: "" }
         }),
         mail("b", 1, {
           subject: "RE: invoice",
-          inReplyTo: "<q2@inbox.test>",
           from: { value: [{ address: "ar@vendor-b.com" }], text: "" }
         })
       ],

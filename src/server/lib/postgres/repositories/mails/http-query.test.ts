@@ -45,9 +45,7 @@ describe("buildMailHeadersQuery — threading ids", () => {
     expect(sql).toContain("in_reply_to");
   });
 
-  // The root and the last two References are enough to link a message to
-  // its conversation; the full chain would only grow the list payload.
-  it("trims References to its root and last two entries", () => {
+  it("trims References to its first and last two entries", () => {
     const sql = headersSql();
     expect(sql).toContain("jsonb_array_length(reference_ids) > 3");
     expect(sql).toContain(
