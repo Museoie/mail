@@ -116,6 +116,8 @@ const mountAccounts = async (online = true, hasDraft = false) => {
     },
     selectedCategory: Category.AllMails,
     setSelectedCategory: () => {},
+    isAllAccounts: false,
+    setIsAllAccounts: () => {},
     newMailsTotal: 0,
     setNewMailsTotal: () => {},
     preSearchAccount: { current: "" },

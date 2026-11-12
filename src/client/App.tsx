@@ -72,6 +72,17 @@ export interface ContextType {
   setSelectedCategory: Dispatch<
     SetStateAction<ContextType["selectedCategory"]>
   >;
+  /**
+   * Whether the list shows the unified "All accounts" view (design doc §8,
+   * Phase 2 item 10): received mail across every alias, unread-then-recent.
+   * A view flag, not an account — it never touches `selectedAccount`, so
+   * leaving the view restores the previous account and folder exactly, and
+   * a reload restores the view with the parked account still in place.
+   * Only meaningful with `selectedCategory` All Mails; folder navigation and
+   * picking an account both clear it.
+   */
+  isAllAccounts: boolean;
+  setIsAllAccounts: Dispatch<SetStateAction<ContextType["isAllAccounts"]>>;
   newMailsTotal: number;
   setNewMailsTotal: Dispatch<SetStateAction<ContextType["newMailsTotal"]>>;
   /**
@@ -148,6 +159,10 @@ const App = ({ user: session }: Props) => {
   const [selectedAccount, setSelectedAccount] = useLocalStorage(
     "selectedAccount",
     ""
+  );
+  const [isAllAccounts, setIsAllAccounts] = useLocalStorage(
+    "isAllAccounts",
+    false
   );
   const [selectedCategory, setSelectedCategory] = useLocalStorage(
     "selectedCategory",
@@ -355,6 +370,8 @@ const App = ({ user: session }: Props) => {
     setSelectedAccount,
     selectedCategory,
     setSelectedCategory,
+    isAllAccounts,
+    setIsAllAccounts,
     newMailsTotal,
     setNewMailsTotal,
     preSearchAccount,

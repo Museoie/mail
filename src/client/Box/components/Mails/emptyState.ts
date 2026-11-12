@@ -24,10 +24,18 @@ const MAX_OTHERS = 5;
 export const emptyFolderState = (
   category: Category,
   account: string,
-  accounts: AccountsGetResponse | undefined
+  accounts: AccountsGetResponse | undefined,
+  allAccounts = false
 ): EmptyFolderState => {
   if (category === Category.Search) {
     return { message: "No results found.", others: [] };
+  }
+
+  // The unified view already spans every account, so there are no "other
+  // accounts" left to list — and the message names the view, not the parked
+  // account behind it.
+  if (allAccounts) {
+    return { message: "No mail in all accounts.", others: [] };
   }
 
   const where = account ? ` in ${account}` : "";

@@ -1,6 +1,6 @@
 /**
  * Tests for mails route handlers:
- *   get-headers, get-accounts, get-body, delete, post-mark,
+ *   get-headers, get-unified-headers, get-accounts, get-body, delete, post-mark,
  *   get-search, get-domain, get-allowlist, post-allowlist,
  *   delete-allowlist, post-send, post-spam-mark, get-attachment
  */
@@ -26,6 +26,8 @@ import type { HttpRequest } from "../../request";
 
 const mockGetMailHeaders = mock(async () => []);
 const mockGetMailHeadersDelta = mock(async () => ({ as_of: "", headers: [], expunged_ids: [] }));
+const mockGetUnifiedMailHeaders = mock(async () => []);
+const mockGetUnifiedMailHeadersDelta = mock(async () => ({ as_of: "", headers: [], expunged_ids: [] }));
 const mockGetAccounts = mock(async () => ({ received: [], sent: [] }));
 const mockGetMailBody = mock(async () => null as unknown);
 // Matches the real `deleteMail(): Promise<boolean>` — a stub resolving
@@ -56,6 +58,8 @@ class MockMailSendingError extends Error {}
 mock.module("server", () => ({
   getMailHeaders: mockGetMailHeaders,
   getMailHeadersDelta: mockGetMailHeadersDelta,
+  getUnifiedMailHeaders: mockGetUnifiedMailHeaders,
+  getUnifiedMailHeadersDelta: mockGetUnifiedMailHeadersDelta,
   getAccounts: mockGetAccounts,
   getMailBody: mockGetMailBody,
   deleteMail: mockDeleteMail,
@@ -311,6 +315,140 @@ describe("getHeadersRoute", () => {
     expect((result as ApiResponse<unknown>).status).toBe("failed");
     expect(mockGetMailHeadersDelta).not.toHaveBeenCalled();
     expect(mockGetMailHeaders).not.toHaveBeenCalled();
+  });
+});
+
+// ── get-unified-headers route ─────────────────────────────────────────────────
+describe("getUnifiedHeadersRoute", () => {
+  beforeEach(() => {
+    mockGetUnifiedMailHeaders.mockClear();
+    mockGetUnifiedMailHeadersDelta.mockClear();
+    mockGetAccounts.mockClear();
+  });
+
+  const receivedAccounts = {
+    received: [{ key: "a@example.com" }, { key: "b@example.com" }],
+    sent: [],
+    spam: [],
+  };
+
+  it("returns success with unified headers for valid user", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    const fakeMails = [{ id: "m1", subject: "Hello" }];
+    mockGetAccounts.mockResolvedValueOnce(receivedAccounts as never);
+    mockGetUnifiedMailHeaders.mockResolvedValueOnce(fakeMails as never);
+
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: {},
+    });
+
+    const result = await getUnifiedHeadersRoute.callback(req);
+    expect((result as ApiResponse<unknown>).status).toBe("success");
+    expect((result as ApiResponse<unknown>).body).toEqual(fakeMails);
+  });
+
+  it("passes the received account keys as the address set", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    mockGetAccounts.mockResolvedValueOnce(receivedAccounts as never);
+    mockGetUnifiedMailHeaders.mockResolvedValueOnce([] as never);
+
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: {},
+    });
+
+    await getUnifiedHeadersRoute.callback(req);
+
+    expect(mockGetAccounts).toHaveBeenCalledTimes(1);
+    const callArgs = mockGetUnifiedMailHeaders.mock.calls[0];
+    expect(callArgs[1]).toEqual(["a@example.com", "b@example.com"]);
+  });
+
+  it("passes an empty address set when the user has no received accounts", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    mockGetAccounts.mockResolvedValueOnce({ received: [], sent: [], spam: [] } as never);
+    mockGetUnifiedMailHeaders.mockResolvedValueOnce([] as never);
+
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: {},
+    });
+
+    await getUnifiedHeadersRoute.callback(req);
+
+    const callArgs = mockGetUnifiedMailHeaders.mock.calls[0];
+    expect(callArgs[1]).toEqual([]);
+  });
+
+  it("without ?since= falls back to the full-list path (backwards-compat)", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    mockGetAccounts.mockResolvedValueOnce(receivedAccounts as never);
+    mockGetUnifiedMailHeaders.mockResolvedValueOnce([{ id: "m1" }] as never);
+
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: {},
+    });
+
+    const result = await getUnifiedHeadersRoute.callback(req);
+    expect((result as ApiResponse<unknown>).status).toBe("success");
+    expect(mockGetUnifiedMailHeaders).toHaveBeenCalledTimes(1);
+    expect(mockGetUnifiedMailHeadersDelta).not.toHaveBeenCalled();
+  });
+
+  it("with a valid ?since= returns the delta shape via getUnifiedMailHeadersDelta", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    const delta = { as_of: "2024-02-01T00:00:00.000Z", headers: [{ id: "m9" }], expunged_ids: ["x"] };
+    mockGetAccounts.mockResolvedValueOnce(receivedAccounts as never);
+    mockGetUnifiedMailHeadersDelta.mockResolvedValueOnce(delta as never);
+
+    const since = "2024-01-01T00:00:00.000Z";
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: { since },
+    });
+
+    const result = await getUnifiedHeadersRoute.callback(req);
+    expect((result as ApiResponse<unknown>).status).toBe("success");
+    expect((result as ApiResponse<unknown>).body).toEqual(delta);
+    expect(mockGetUnifiedMailHeaders).not.toHaveBeenCalled();
+    const callArgs = mockGetUnifiedMailHeadersDelta.mock.calls[0];
+    expect(callArgs[1]).toEqual(["a@example.com", "b@example.com"]);
+    expect(callArgs[2]).toBe(since);
+  });
+
+  it("rejects a malformed ?since= at the boundary instead of full-fetching or hitting SQL", async () => {
+    const { getUnifiedHeadersRoute } = await import("./get-unified-headers");
+
+    mockGetAccounts.mockResolvedValueOnce(receivedAccounts as never);
+
+    const req = makeReq({
+      method: "GET",
+      session: { user: makeUser("alice") },
+      params: {},
+      query: { since: "not-a-date" },
+    });
+
+    const result = await getUnifiedHeadersRoute.callback(req);
+    expect((result as ApiResponse<unknown>).status).toBe("failed");
+    expect(mockGetUnifiedMailHeadersDelta).not.toHaveBeenCalled();
+    expect(mockGetUnifiedMailHeaders).not.toHaveBeenCalled();
   });
 });
 

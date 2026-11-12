@@ -3,6 +3,8 @@ import { Account, MailHeaderData } from "common";
 import { Category } from "client";
 import {
   accountCountForCategory,
+  accountForMail,
+  allAccountsCount,
   bucketsForMail,
   evictAccountFromCategory,
   removeAccountFromBucket,
@@ -406,9 +408,14 @@ describe("the optimistic account edits in Mails", () => {
     const stripped = source.replace(/\s+/g, "");
 
     const call = "updateAccountInBuckets(";
+    // The account is the mail's own (`mailAccount`, resolved from its
+    // recipient headers) — in the single-account views that is the selected
+    // account; in the unified view it is whichever account the mail came
+    // from. The key argument and the buckets argument must name the same
+    // account, or the edit lands on the wrong account's counters.
     const expected =
       "updateAccountInBuckets(oldData,bucketsForMail(selectedCategory,mail," +
-      "selectedAccount),selectedAccount,";
+      "mailAccount),mailAccount,";
 
     const sites: string[] = [];
     for (
@@ -422,5 +429,51 @@ describe("the optimistic account edits in Mails", () => {
     // Removing a row (delete and spam share one helper), marking read, and
     // marking saved.
     expect(sites).toEqual([expected, expected, expected]);
+  });
+});
+
+describe("accountForMail", () => {
+  it("finds the receiving account from the recipient headers", () => {
+    expect(
+      accountForMail(
+        mail({ to: addresses("other@x.com"), from: addresses("s@x.com") }),
+        data()
+      )
+    ).toBe("other@x.com");
+  });
+
+  it("matches cc and bcc as well as to", () => {
+    expect(
+      accountForMail(
+        mail({ to: addresses("s@x.com"), cc: addresses("me@x.com") }),
+        data()
+      )
+    ).toBe("me@x.com");
+    expect(
+      accountForMail(
+        mail({ to: addresses("s@x.com"), bcc: addresses("other@x.com") }),
+        data()
+      )
+    ).toBe("other@x.com");
+  });
+
+  it("returns null when no header names a receiving account", () => {
+    // Delivered by envelope only (BCC): no header column carries the
+    // account, so the caller falls back to the parked selection rather
+    // than guessing.
+    expect(
+      accountForMail(mail({ to: addresses("stranger@x.com") }), data())
+    ).toBeNull();
+    expect(accountForMail(mail({ to: addresses("me@x.com") }), undefined)).toBeNull();
+  });
+});
+
+describe("allAccountsCount", () => {
+  it("sums unread across every receiving account", () => {
+    expect(allAccountsCount(data())).toEqual({ count: 4, noun: "unread" });
+  });
+
+  it("returns null before the accounts payload loads", () => {
+    expect(allAccountsCount(undefined)).toBeNull();
   });
 });

@@ -24,4 +24,24 @@ describe("getMailsQueryUrl", () => {
       "/api/mails/search/a%20b%40x.com"
     );
   });
+
+  it("routes the unified view to /unified, naming no account", () => {
+    expect(getMailsQueryUrl("alice@x.com", Category.AllMails, true)).toBe(
+      "/api/mails/unified"
+    );
+  });
+
+  it("keeps Search per-account even from the unified view", () => {
+    // Search stays per-account (design doc §8): the search branch wins over
+    // the flag, so entering search parks the account as usual.
+    expect(getMailsQueryUrl("alice@x.com", Category.Search, true)).toBe(
+      "/api/mails/search/alice%40x.com"
+    );
+  });
+
+  it("keeps the other folders per-account when the flag is off", () => {
+    expect(getMailsQueryUrl("alice@x.com", Category.AllMails, false)).toBe(
+      "/api/mails/headers/alice@x.com"
+    );
+  });
 });

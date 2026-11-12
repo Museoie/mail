@@ -5,13 +5,24 @@ const mockGetMailHeaders = mock(() => Promise.resolve([]));
 const mockGetMailHeadersDelta = mock(() =>
   Promise.resolve({ as_of: "2024-01-02T00:00:00.000Z", headers: [], expunged_ids: [] })
 );
+const mockGetUnifiedMailHeaders = mock(() => Promise.resolve([]));
+const mockGetUnifiedMailHeadersDelta = mock(() =>
+  Promise.resolve({ as_of: "2024-01-02T00:00:00.000Z", headers: [], expunged_ids: [] })
+);
 
 mock.module("../postgres/repositories/mails", () => ({
   getMailHeaders: mockGetMailHeaders,
   getMailHeadersDelta: mockGetMailHeadersDelta,
+  getUnifiedMailHeaders: mockGetUnifiedMailHeaders,
+  getUnifiedMailHeadersDelta: mockGetUnifiedMailHeadersDelta,
 }));
 
-import { getMailHeaders, getMailHeadersDelta } from "./headers";
+import {
+  getMailHeaders,
+  getMailHeadersDelta,
+  getUnifiedMailHeaders,
+  getUnifiedMailHeadersDelta,
+} from "./headers";
 
 const makeUser = (overrides: Partial<SignedUser> = {}) => new SignedUser({
   id: "user-123",
@@ -315,5 +326,106 @@ describe("getMailHeadersDelta", () => {
     expect(result.headers[0].id).toBe("mail-delta");
     expect(result.headers[0].subject).toBe("Changed");
     expect(result.headers[0].from).toBeDefined();
+  });
+});
+
+describe("getUnifiedMailHeaders", () => {
+  const ADDRESSES = ["a@example.com", "b@example.com"];
+
+  beforeEach(() => {
+    mockGetUnifiedMailHeaders.mockClear();
+    mockGetUnifiedMailHeaders.mockResolvedValue([]);
+  });
+
+  it("should return empty array when user has no id", async () => {
+    const user = { username: "noId" };
+    const result = await getUnifiedMailHeaders(user, ADDRESSES, {});
+    expect(result).toEqual([]);
+    expect(mockGetUnifiedMailHeaders).not.toHaveBeenCalled();
+  });
+
+  it("should call pgGetUnifiedMailHeaders with the user id and the address set", async () => {
+    const user = makeUser();
+    await getUnifiedMailHeaders(user, ADDRESSES, {});
+    expect(mockGetUnifiedMailHeaders).toHaveBeenCalledWith(
+      "user-123",
+      ADDRESSES,
+      expect.objectContaining({ from: 0, size: 10000 })
+    );
+  });
+
+  it("should pass pagination options correctly", async () => {
+    const user = makeUser();
+    const pagination = new Pagination();
+    pagination.from = 20;
+    pagination.size = 10;
+
+    await getUnifiedMailHeaders(user, ADDRESSES, { pagination });
+
+    expect(mockGetUnifiedMailHeaders).toHaveBeenCalledWith(
+      "user-123",
+      ADDRESSES,
+      expect.objectContaining({ from: 20, size: 10 })
+    );
+  });
+
+  it("should map mail models to MailHeaderData", async () => {
+    const mailModel = {
+      mail_id: "mail-unified",
+      subject: "Unified",
+      date: "2024-01-15T10:00:00Z",
+      from_address: [{ address: "sender@example.com", name: "Sender" }],
+      from_text: "Sender <sender@example.com>",
+      to_address: [{ address: "b@example.com", name: "B" }],
+      to_text: "B <b@example.com>",
+      cc_address: null,
+      cc_text: null,
+      bcc_address: null,
+      bcc_text: null,
+      read: false,
+      saved: false,
+      sent: false,
+      insight: null,
+      text_prefix: "Hello from the other account.",
+    };
+    mockGetUnifiedMailHeaders.mockResolvedValue([mailModel]);
+
+    const user = makeUser();
+    const result = await getUnifiedMailHeaders(user, ADDRESSES, {});
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("mail-unified");
+    expect(result[0].subject).toBe("Unified");
+    expect(result[0].snippet).toBe("Hello from the other account.");
+  });
+});
+
+describe("getUnifiedMailHeadersDelta", () => {
+  const since = "2024-01-01T00:00:00.000Z";
+  const ADDRESSES = ["a@example.com", "b@example.com"];
+
+  beforeEach(() => {
+    mockGetUnifiedMailHeadersDelta.mockClear();
+    mockGetUnifiedMailHeadersDelta.mockResolvedValue({
+      as_of: "2024-01-02T00:00:00.000Z",
+      headers: [],
+      expunged_ids: [],
+    });
+  });
+
+  it("returns an empty delta that echoes `since` when user has no id", async () => {
+    const user = { username: "noId" };
+    const result = await getUnifiedMailHeadersDelta(user, ADDRESSES, since);
+    expect(result).toEqual({ as_of: since, headers: [], expunged_ids: [] });
+    expect(mockGetUnifiedMailHeadersDelta).not.toHaveBeenCalled();
+  });
+
+  it("passes the address set and since to the repository", async () => {
+    const user = makeUser();
+    await getUnifiedMailHeadersDelta(user, ADDRESSES, since);
+    expect(mockGetUnifiedMailHeadersDelta).toHaveBeenCalledWith(
+      "user-123",
+      ADDRESSES,
+      since
+    );
   });
 });

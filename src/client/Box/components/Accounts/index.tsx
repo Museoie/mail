@@ -113,12 +113,15 @@ const Accounts = ({
     setSelectedAccount,
     selectedCategory,
     setSelectedCategory,
+    isAllAccounts,
+    setIsAllAccounts,
     isAccountsOpen,
     setIsAccountsOpen,
     isWriterOpen,
     setIsWriterOpen,
     isSettingsOpen,
     setIsSettingsOpen,
+    newMailsTotal,
     setNewMailsTotal,
     preSearchAccount,
     enterSearch,
@@ -142,7 +145,11 @@ const Accounts = ({
     setNewMailsTotal(newMails);
 
     if (!isFetched) {
-      const sync = new MailsSynchronizer(selectedAccount, selectedCategory);
+      const sync = new MailsSynchronizer(
+        selectedAccount,
+        selectedCategory,
+        isAllAccounts
+      );
       if (sync.difference > 0) sync.refetchMails();
       isFetched = true;
     }
@@ -263,6 +270,9 @@ const Accounts = ({
             categoryForAccount(accountName, { received, sent, spam })
           );
           setSelectedAccount(accountName);
+          // Picking an account leaves the unified view: the list is that
+          // account's folder, not all accounts.
+          setIsAllAccounts(false);
           setIsAccountsOpen(false);
           return;
         }
@@ -271,6 +281,9 @@ const Accounts = ({
           setPage(1);
           setSelectedAccount(accountName);
         }
+        // Picking an account leaves the unified view: the list is that
+        // account's folder, not all accounts.
+        setIsAllAccounts(false);
         // Picking an account is the menu's job done.
         setIsAccountsOpen(false);
       };
@@ -366,7 +379,8 @@ const Accounts = ({
         // Entering search parks the current account and folder and starts
         // from an empty term (design doc §9). The search box lives in the
         // center column, so the accounts menu stays closed — it would cover
-        // the box.
+        // the box. The unified flag is untouched: search parks it with the
+        // account, and clearing the search returns to the view.
         enterSearch();
         return;
       }
@@ -375,6 +389,10 @@ const Accounts = ({
       // so leaving it open would hide the view the tap just switched to.
       setIsWriterOpen(false);
       setIsSettingsOpen(false);
+
+      // Folder navigation is per-account: switching folders leaves the
+      // unified view (the "All accounts" entry below is the way back in).
+      setIsAllAccounts(false);
 
       // Leaving search restores the pre-search account (selectedAccount
       // currently holds the search term, so we can't read it here).
@@ -394,6 +412,30 @@ const Accounts = ({
           category
         )
       );
+    };
+
+    // The "All accounts" entry (design doc §8, Phase 2 item 10): the unified
+    // view is a view, not an account — picking it never touches
+    // `selectedAccount`, so leaving it restores the previous account and
+    // folder exactly. Picking it is the menu's job done, like picking an
+    // account: the panel closes rather than staying open for a next pick.
+    const onClickAllAccounts = () => {
+      if (isAllAccounts && selectedCategory === Category.AllMails) {
+        setIsAccountsOpen(false);
+        return;
+      }
+      setIsWriterOpen(false);
+      setIsSettingsOpen(false);
+      // Leaving search restores the pre-search account into the parked
+      // selection, like onClickCategory does — the unified view keeps it
+      // parked behind the flag.
+      if (selectedCategory === Category.Search && preSearchAccount.current) {
+        setSelectedAccount(preSearchAccount.current);
+      }
+      setPage(1);
+      setSelectedCategory(Category.AllMails);
+      setIsAllAccounts(true);
+      setIsAccountsOpen(false);
     };
 
     // While Settings is open no folder is the current view.
@@ -624,6 +666,41 @@ const Accounts = ({
         ) : null}
         <aside className="accounts" id="accounts-menu" aria-label="Accounts">
           <div className="accounts_header">
+            {/* The unified "All accounts" entry (design doc §8, Phase 2 item
+             * 10): received mail across every alias, unread-then-recent.
+             * It sits in the sticky header — always at the top of the
+             * column, above the filter — and reuses the account row's shape
+             * and unread badge. It is a view, not an account: picking it
+             * never changes the selected account. */}
+            <button
+              type="button"
+              className={
+                "tag cursor" +
+                (isAllAccounts && selectedCategory === Category.AllMails
+                  ? " clicked"
+                  : "")
+              }
+              aria-current={
+                isAllAccounts && selectedCategory === Category.AllMails
+                  ? "true"
+                  : undefined
+              }
+              title="All accounts"
+              onClick={onClickAllAccounts}
+            >
+              <span className="tag-text">
+                <span className="account-name">All accounts</span>
+              </span>
+              {newMailsTotal ? (
+                <span
+                  className="count-badge unread"
+                  aria-label={`${newMailsTotal} unread`}
+                  title={`${newMailsTotal} unread`}
+                >
+                  {newMailsTotal}
+                </span>
+              ) : null}
+            </button>
             <div className="filter_box">
               <input
                 type="search"

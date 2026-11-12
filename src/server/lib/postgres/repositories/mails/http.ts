@@ -3,16 +3,19 @@ import { pool } from "../../client";
 import { MailModel } from "../../models";
 import {
   GetMailHeadersOptions,
+  UnifiedMailHeadersOptions,
   buildAccountStatsQuery,
   buildDeltaAsOfQuery,
   buildDeltaEvictionQuery,
   buildMailHeadersQuery,
   buildSearchAccountStatsQuery,
   buildSearchMailsQuery,
+  buildUnifiedDeltaEvictionQuery,
+  buildUnifiedMailHeadersQuery,
   buildUnreadNotificationsQuery,
 } from "./http-query";
 
-export type { GetMailHeadersOptions };
+export type { GetMailHeadersOptions, UnifiedMailHeadersOptions };
 
 /**
  * Represents the subset of mail fields returned by getMailHeaders.
@@ -52,6 +55,25 @@ export const getMailHeaders = async (
   options: GetMailHeadersOptions
 ): Promise<MailHeaderResult[]> => {
   const { sql, values } = buildMailHeadersQuery(user_id, address, options);
+  const result = await pool.query(sql, values);
+  return result.rows as MailHeaderResult[];
+};
+
+// Cross-account list for the "All accounts" view (design doc §8): one
+// server-side query over the union of the user's receiving addresses —
+// no per-account fan-out — ordered unread-then-recent. `addresses` is the
+// user's receiving-address set (the accounts route's `received` keys); an
+// empty set returns an empty list.
+export const getUnifiedMailHeaders = async (
+  user_id: string,
+  addresses: string[],
+  options: UnifiedMailHeadersOptions
+): Promise<MailHeaderResult[]> => {
+  const { sql, values } = buildUnifiedMailHeadersQuery(
+    user_id,
+    addresses,
+    options
+  );
   const result = await pool.query(sql, values);
   return result.rows as MailHeaderResult[];
 };
@@ -117,6 +139,43 @@ export const getMailHeadersDelta = async (
     logger.error("Failed to get mail headers delta", {}, error);
     // Echo `since` back as as_of so a failed call doesn't advance the client's
     // cursor past unseen mutations.
+    return { as_of: since, headers: [], expunged_ids: [] };
+  }
+};
+
+// Delta variant of getUnifiedMailHeaders: the same as_of-first ordering and
+// failure echo as the per-account delta, over the unified address set.
+// The unified view has no sent/saved/spam variant, so there is no options
+// argument to thread through — the delta list is `{ since }` alone.
+export const getUnifiedMailHeadersDelta = async (
+  user_id: string,
+  addresses: string[],
+  since: string
+): Promise<MailHeadersDeltaResult> => {
+  try {
+    const asOf = buildDeltaAsOfQuery();
+    const asOfResult = await pool.query<{ as_of: string }>(
+      asOf.sql,
+      asOf.values
+    );
+    const as_of = asOfResult.rows[0].as_of;
+
+    const eviction = buildUnifiedDeltaEvictionQuery(user_id, addresses, since);
+
+    const [headers, expungedResult] = await Promise.all([
+      // Delta never paginates — the changed set is small and the client needs
+      // every changed row, so from/size are deliberately omitted.
+      getUnifiedMailHeaders(user_id, addresses, { since }),
+      pool.query<{ mail_id: string }>(eviction.sql, eviction.values),
+    ]);
+
+    return {
+      as_of,
+      headers,
+      expunged_ids: expungedResult.rows.map((r) => r.mail_id),
+    };
+  } catch (error) {
+    logger.error("Failed to get unified mail headers delta", {}, error);
     return { as_of: since, headers: [], expunged_ids: [] };
   }
 };

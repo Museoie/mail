@@ -72,6 +72,31 @@ const RECEIVED_ADDRESS_EXPANSION = `jsonb_array_elements(
 )->>'address' as address`;
 const RECEIVED_ADDRESS_NOT_NULL = `(to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)`;
 
+// Select only columns needed for mail headers — excludes html/attachments
+// and full text bodies to avoid loading them into memory for every
+// concurrent request. The one exception is a bounded prefix of the plain
+// text body, which the list snippet is built from (design doc §5); it is
+// capped at 400 chars so the headers payload stays small. Shared by the
+// per-account and unified list queries so the two views can never drift
+// apart on a column the list (or its conversation grouping) needs.
+const headerColumns = [
+  MAIL_ID, USER_ID, SUBJECT, DATE,
+  FROM_ADDRESS, FROM_TEXT,
+  TO_ADDRESS, TO_TEXT,
+  CC_ADDRESS, CC_TEXT,
+  BCC_ADDRESS, BCC_TEXT,
+  READ, SAVED, SENT, IS_SPAM, INSIGHT,
+  `left(${TEXT}, 400) AS text_prefix`,
+  // Threading ids, so the list can group a folder into conversations.
+  // References keeps its first entry (usually the conversation's root) and
+  // its last two (the messages it answers): enough to link a message to
+  // the ones before it without sending the whole chain on every row.
+  MESSAGE_ID, IN_REPLY_TO,
+  `CASE WHEN jsonb_array_length(${REFERENCE_IDS}) > 3
+    THEN jsonb_build_array(${REFERENCE_IDS}->0, ${REFERENCE_IDS}->-2, ${REFERENCE_IDS}->-1)
+    ELSE ${REFERENCE_IDS} END AS ${REFERENCE_IDS}`,
+].join(", ");
+
 export const buildMailHeadersQuery = (
   user_id: string,
   address: string,
@@ -79,28 +104,6 @@ export const buildMailHeadersQuery = (
 ): { sql: string; values: ParamValue[] } => {
   const addressJson = JSON.stringify([{ address }]);
   const addressCondition = buildHeaderAddressCondition(options);
-  // Select only columns needed for mail headers — excludes html/attachments
-  // and full text bodies to avoid loading them into memory for every
-  // concurrent request. The one exception is a bounded prefix of the plain
-  // text body, which the list snippet is built from (design doc §5); it is
-  // capped at 400 chars so the headers payload stays small.
-  const headerColumns = [
-    MAIL_ID, USER_ID, SUBJECT, DATE,
-    FROM_ADDRESS, FROM_TEXT,
-    TO_ADDRESS, TO_TEXT,
-    CC_ADDRESS, CC_TEXT,
-    BCC_ADDRESS, BCC_TEXT,
-    READ, SAVED, SENT, IS_SPAM, INSIGHT,
-    `left(${TEXT}, 400) AS text_prefix`,
-    // Threading ids, so the list can group a folder into conversations.
-    // References keeps its first entry (usually the conversation's root) and
-    // its last two (the messages it answers): enough to link a message to
-    // the ones before it without sending the whole chain on every row.
-    MESSAGE_ID, IN_REPLY_TO,
-    `CASE WHEN jsonb_array_length(${REFERENCE_IDS}) > 3
-      THEN jsonb_build_array(${REFERENCE_IDS}->0, ${REFERENCE_IDS}->-2, ${REFERENCE_IDS}->-1)
-      ELSE ${REFERENCE_IDS} END AS ${REFERENCE_IDS}`,
-  ].join(", ");
   let sql = `
     SELECT ${headerColumns} FROM mails 
     WHERE user_id = $1 
@@ -179,6 +182,88 @@ export const buildDeltaEvictionQuery = (
         AND updated > $3
     `;
   return { sql: expungedSql, values: [user_id, addressJson, since] };
+};
+
+/** Paging / cursor options for the unified list. The unified view is the All
+ * Mails view only — received mail across accounts — so it takes no
+ * sent/saved/spam variant: those folders stay per-account. */
+export interface UnifiedMailHeadersOptions {
+  from?: number;
+  size?: number;
+  since?: string;
+}
+
+// One `[{address}]` jsonb value per address, bound as a single jsonb[] — the
+// same single-address shape the per-account condition binds, so each `@>`
+// probe keeps the per-account form.
+const toAddressJsons = (addresses: string[]): string[] =>
+  addresses.map((address) => JSON.stringify([{ address }]));
+
+/**
+ * The cross-account ("All accounts") list condition: a mail belongs to the
+ * unified view when any of its recipient headers names one of the user's
+ * receiving addresses. The union of the per-account All Mails views — a mail
+ * the user sent to someone else is out, a mail they sent to themselves is in
+ * (their own address is a recipient). An empty address set matches nothing,
+ * so a user with no received mail gets an empty list rather than an error.
+ */
+export const buildUnifiedAddressCondition = (paramIndex = 2): string =>
+  `(${TO_ADDRESS} @> ANY($${paramIndex}::jsonb[]) OR cc_address @> ANY($${paramIndex}::jsonb[]) OR bcc_address @> ANY($${paramIndex}::jsonb[]) OR envelope_to @> ANY($${paramIndex}::jsonb[]))`;
+
+export const buildUnifiedMailHeadersQuery = (
+  user_id: string,
+  addresses: string[],
+  options: UnifiedMailHeadersOptions
+): { sql: string; values: ParamValue[] } => {
+  const addressCondition = buildUnifiedAddressCondition();
+  let sql = `
+    SELECT ${headerColumns} FROM mails 
+    WHERE user_id = $1 
+      AND ${addressCondition}
+      AND expunged = FALSE
+      AND draft = FALSE
+      AND is_spam = FALSE
+  `;
+  const values: ParamValue[] = [user_id, toAddressJsons(addresses)];
+  let paramIdx = 3;
+
+  if (options.since !== undefined) {
+    sql += ` AND updated > $${paramIdx++}`;
+    values.push(options.since);
+  }
+
+  // Unread-then-recent (design doc §8): unread mail first, newest first
+  // within each read state — the per-account list is date-only.
+  sql += ` ORDER BY read ASC, date DESC`;
+
+  if (options.size !== undefined) {
+    sql += ` LIMIT $${paramIdx++}`;
+    values.push(options.size);
+  }
+
+  if (options.from !== undefined) {
+    sql += ` OFFSET $${paramIdx}`;
+    values.push(options.from);
+  }
+  return { sql, values };
+};
+
+export const buildUnifiedDeltaEvictionQuery = (
+  user_id: string,
+  addresses: string[],
+  since: string
+): { sql: string; values: ParamValue[] } => {
+  const addressCondition = buildUnifiedAddressCondition();
+  // The unified view is a non-spam view: a row leaves it on expunge OR by
+  // being marked spam, mirroring the per-account eviction's non-spam branch.
+  const expungedSql = `
+      SELECT ${MAIL_ID} FROM mails
+      WHERE user_id = $1
+        AND ${addressCondition}
+        AND (expunged = TRUE OR is_spam = TRUE)
+        AND updated > $3
+    `;
+  return { sql: expungedSql, values: [user_id, toAddressJsons(addresses), since] };
 };
 
 export const buildSearchMailsQuery = (

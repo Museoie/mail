@@ -14,11 +14,11 @@ export const Thread = lazy(() => import("./Thread"));
 export { default as FileIcon } from "./FileIcon";
 
 export class MailsSynchronizer {
-  constructor(account: string, category: Category) {
+  constructor(account: string, category: Category, allAccounts = false) {
     const accountsCache = new AccountsCache();
     this.accountsKey = accountsCache.key;
 
-    const mailsCache = new MailsCache(account, category);
+    const mailsCache = new MailsCache(account, category, allAccounts);
     this.mailsKey = mailsCache.key;
 
     if (account) {
@@ -26,6 +26,17 @@ export class MailsSynchronizer {
       const mails = mailsCache.get();
 
       if (!accounts || !mails) return;
+
+      // The unified list holds received mail from every account, so the
+      // expected count is the received total — not the parked account's.
+      if (allAccounts) {
+        const countInAccounts = accounts.received.reduce(
+          (acc, e) => acc + e.doc_count,
+          0
+        );
+        this.difference = countInAccounts - mails.length;
+        return;
+      }
 
       const accountsKey = category === Category.SentMails ? "sent" : "received";
       const accountData = accounts[accountsKey].find((e) => e.key === account);

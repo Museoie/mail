@@ -91,6 +91,8 @@ type MountOptions = {
   accountsOpen?: boolean;
   category?: Category;
   selectedAccount?: string;
+  allAccounts?: boolean;
+  newMailsTotal?: number;
 };
 
 const mountAccounts = async (options: MountOptions = {}) => {
@@ -100,7 +102,9 @@ const mountAccounts = async (options: MountOptions = {}) => {
     settingsOpen = false,
     accountsOpen = true,
     category = Category.AllMails,
-    selectedAccount = ""
+    selectedAccount = "",
+    allAccounts = false,
+    newMailsTotal = 0
   } = options;
 
   const { createElement, act } = await import("react");
@@ -120,6 +124,7 @@ const mountAccounts = async (options: MountOptions = {}) => {
   const accountsOpenCalls: boolean[] = [];
   const categoryCalls: Category[] = [];
   const selectedAccountCalls: string[] = [];
+  const allAccountsCalls: boolean[] = [];
   const enterSearchCalls: number[] = [];
 
   // Minimum context `Accounts` reads.
@@ -150,7 +155,11 @@ const mountAccounts = async (options: MountOptions = {}) => {
     setSelectedCategory: (value: Category) => {
       categoryCalls.push(value);
     },
-    newMailsTotal: 0,
+    isAllAccounts: allAccounts,
+    setIsAllAccounts: (value: boolean) => {
+      allAccountsCalls.push(value);
+    },
+    newMailsTotal,
     setNewMailsTotal: () => {},
     preSearchAccount: { current: "" },
     preSearchCategory: { current: Category.AllMails },
@@ -242,6 +251,31 @@ const mountAccounts = async (options: MountOptions = {}) => {
     throw new Error(`Account row ${name} never rendered`);
   };
 
+  // The unified "All accounts" entry lives in the sticky accounts header,
+  // above the filter box — not among the account rows.
+  const clickAllAccounts = async () => {
+    for (let i = 0; i < 100; i++) {
+      const entry = container.querySelector(
+        ".accounts_header .tag"
+      ) as HTMLElement | null;
+      if (entry) {
+        await act(async () => {
+          entry.click();
+        });
+        for (let j = 0; j < 5; j++) {
+          await act(async () => {
+            await new Promise((r) => setTimeout(r, 0));
+          });
+        }
+        return;
+      }
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
+    throw new Error("All accounts entry never rendered");
+  };
+
   return {
     container,
     writerOpenCalls,
@@ -249,10 +283,12 @@ const mountAccounts = async (options: MountOptions = {}) => {
     accountsOpenCalls,
     categoryCalls,
     selectedAccountCalls,
+    allAccountsCalls,
     enterSearchCalls,
     waitForRail,
     clickRailItem,
     clickAccountRow,
+    clickAllAccounts,
     teardown: async () => {
       await act(async () => root.unmount());
       container.remove();
@@ -623,6 +659,97 @@ describe("Folder changes and the accounts menu", () => {
       expect(accountsOpenCalls).toEqual([false]);
     } finally {
       await teardown();
+    }
+  });
+});
+
+describe("All accounts entry", () => {
+  it("renders at the top of the accounts column with the unread total", async () => {
+    const { container, teardown } = await mountAccounts({
+      newMailsTotal: 4
+    });
+    try {
+      const entry = container.querySelector(
+        ".accounts_header .tag"
+      ) as HTMLElement | null;
+      expect(entry).not.toBeNull();
+      expect(entry!.textContent).toContain("All accounts");
+      expect(entry!.querySelector(".count-badge")?.textContent).toBe("4");
+      // First child of the sticky header, above the filter box.
+      expect(
+        container.querySelector(".accounts_header")?.firstElementChild
+      ).toBe(entry);
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("hides the badge when nothing is unread", async () => {
+    const { container, teardown } = await mountAccounts({
+      newMailsTotal: 0
+    });
+    try {
+      const entry = container.querySelector(
+        ".accounts_header .tag"
+      ) as HTMLElement | null;
+      expect(entry).not.toBeNull();
+      expect(entry!.querySelector(".count-badge")).toBeNull();
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("marks the entry selected while the unified view is open", async () => {
+    const { container, teardown } = await mountAccounts({
+      allAccounts: true
+    });
+    try {
+      const entry = container.querySelector(
+        ".accounts_header .tag"
+      ) as HTMLElement | null;
+      expect(entry).not.toBeNull();
+      expect(entry!.classList.contains("clicked")).toBe(true);
+      expect(entry!.getAttribute("aria-current")).toBe("true");
+    } finally {
+      await teardown();
+    }
+  });
+
+  it("picking it enters the unified view without touching the selected account", async () => {
+    const mounted = await mountAccounts({
+      selectedAccount: "maple@example.com"
+    });
+    try {
+      await mounted.clickAllAccounts();
+      expect(mounted.allAccountsCalls).toContain(true);
+      expect(mounted.categoryCalls).toContain(Category.AllMails);
+      // The parked account is untouched: leaving the view restores it.
+      expect(mounted.selectedAccountCalls).toEqual([]);
+    } finally {
+      await mounted.teardown();
+    }
+  });
+
+  it("picking an account leaves the unified view", async () => {
+    const mounted = await mountAccounts({
+      allAccounts: true,
+      selectedAccount: "maple@example.com"
+    });
+    try {
+      await mounted.clickAccountRow("fern");
+      expect(mounted.allAccountsCalls).toContain(false);
+    } finally {
+      await mounted.teardown();
+    }
+  });
+
+  it("switching folders leaves the unified view", async () => {
+    const mounted = await mountAccounts({ allAccounts: true });
+    try {
+      await mounted.clickRailItem("Saved");
+      expect(mounted.allAccountsCalls).toContain(false);
+    } finally {
+      await mounted.teardown();
     }
   });
 });
