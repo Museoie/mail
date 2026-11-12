@@ -144,6 +144,8 @@ const mountAccounts = async (options: MountOptions = {}) => {
     setSelectedCategory: (value: Category) => {
       categoryCalls.push(value);
     },
+    isAllAccounts: false,
+    setIsAllAccounts: () => {},
     newMailsTotal: 3,
     setNewMailsTotal: () => {},
     preSearchAccount: { current: "" },

@@ -17,6 +17,7 @@ import "./index.scss";
 export const headerTitleAndCount = ({
   selectedAccount,
   selectedCategory,
+  isAllAccounts,
   isSettingsOpen,
   isNarrow,
   fullEmailHostName,
@@ -25,6 +26,7 @@ export const headerTitleAndCount = ({
 }: {
   selectedAccount: string;
   selectedCategory: Category;
+  isAllAccounts: boolean;
   isSettingsOpen: boolean;
   isNarrow: boolean;
   fullEmailHostName: string;
@@ -39,6 +41,11 @@ export const headerTitleAndCount = ({
   // In search `selectedAccount` holds the search term, not an account.
   if (selectedCategory === Category.Search) {
     return { title: "Search", fullTitle: "Search", ...total };
+  }
+  // The unified view names the view, with the all-accounts total — the
+  // parked account behind the flag is not the title.
+  if (isAllAccounts) {
+    return { title: "All accounts", fullTitle: "All accounts", ...total };
   }
   if (!selectedAccount) {
     const name = "@" + fullEmailHostName;
@@ -62,6 +69,7 @@ const Header = () => {
     userInfo,
     selectedAccount,
     selectedCategory,
+    isAllAccounts,
     isSettingsOpen,
     newMailsTotal,
     isAccountsOpen,
@@ -87,6 +95,7 @@ const Header = () => {
   const { title, fullTitle, count, countLabel } = headerTitleAndCount({
     selectedAccount,
     selectedCategory,
+    isAllAccounts: !!isAllAccounts,
     isSettingsOpen: !!isSettingsOpen,
     isNarrow: viewSize.width <= 750,
     fullEmailHostName,

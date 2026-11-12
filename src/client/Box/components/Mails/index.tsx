@@ -79,6 +79,8 @@ import {
 } from "./pendingDeletes";
 import {
   accountCountForCategory,
+  accountForMail,
+  allAccountsCount,
   bucketsForMail,
   evictAccountFromCategory,
   updateAccountInBuckets
@@ -101,8 +103,8 @@ const GettingStarted = () => {
 };
 
 export class MailsCache extends QueryCache<MailHeaderData[]> {
-  constructor(account: string, category: Category) {
-    super(getMailsQueryUrl(account, category));
+  constructor(account: string, category: Category, allAccounts = false) {
+    super(getMailsQueryUrl(account, category, allAccounts));
   }
 }
 
@@ -180,6 +182,15 @@ interface RenderedMailProps {
   setOpenedKebab: Dispatch<SetStateAction<string>>;
   density: Density;
   isSent: boolean;
+  /**
+   * Whether this row renders in the unified "All accounts" list. The row's
+   * mail may belong to any account there, so the handlers below resolve the
+   * mail's own account for bucket edits and the list cache is the unified
+   * one, not the parked account's.
+   */
+  unified: boolean;
+  /** The accounts payload, for resolving a mail to its own account. */
+  accountsData: AccountsGetResponse | undefined;
 }
 
 const RenderedMail = ({
@@ -198,8 +209,16 @@ const RenderedMail = ({
   openedKebab,
   setOpenedKebab,
   density,
-  isSent
+  isSent,
+  unified,
+  accountsData
 }: RenderedMailProps) => {
+  // The account a mail in this list belongs to. In the unified view that is
+  // the mail's own account, not the parked selection; everywhere else the
+  // derivation finds the selected account (or falls back to it for a mail
+  // delivered by envelope only).
+  const resolveMailAccount = (mail: MailHeaderData) =>
+    accountForMail(mail, accountsData) ?? selectedAccount;
   const mail = conversation.latest;
   const mails = conversation.mails;
   const { theme = "system" } = useContext(Context);
@@ -248,29 +267,35 @@ const RenderedMail = ({
     const ids = new Set(removed.map((m) => m.id));
     accountsCache.set((oldData) => {
       if (!oldData) return oldData;
-      return removed.reduce(
-        (oldData, mail) =>
-          updateAccountInBuckets(
-            oldData,
-            bucketsForMail(selectedCategory, mail, selectedAccount),
-            selectedAccount,
-            ({ doc_count, unread_doc_count }) => ({
-              doc_count: doc_count - 1,
-              unread_doc_count:
-                !mail.read && unread_doc_count
-                  ? unread_doc_count - 1
-                  : unread_doc_count
-            })
-          ),
-        oldData
-      );
+      return removed.reduce((oldData, mail) => {
+        const mailAccount = resolveMailAccount(mail);
+        return updateAccountInBuckets(
+          oldData,
+          bucketsForMail(selectedCategory, mail, mailAccount),
+          mailAccount,
+          ({ doc_count, unread_doc_count }) => ({
+            doc_count: doc_count - 1,
+            unread_doc_count:
+              !mail.read && unread_doc_count
+                ? unread_doc_count - 1
+                : unread_doc_count
+          })
+        );
+      }, oldData);
     });
-    new MailsCache(selectedAccount, selectedCategory).set((oldData) => {
-      if (!oldData) return oldData;
-      const newData = oldData.filter((m) => !ids.has(m.id));
-      if (!newData.length) removeAccountFromQueryData();
-      return newData;
-    });
+    // The unified cache is the list itself, whatever account the row came
+    // from; the per-account cache is the parked account's only in the
+    // single-account views.
+    new MailsCache(selectedAccount, selectedCategory, unified).set(
+      (oldData) => {
+        if (!oldData) return oldData;
+        const newData = oldData.filter((m) => !ids.has(m.id));
+        // Emptying the unified list means every account is empty here, not
+        // that the parked account left its bucket — never evict it.
+        if (!newData.length && !unified) removeAccountFromQueryData();
+        return newData;
+      }
+    );
   };
 
   // Deletes every message of the conversation in this list.
@@ -278,7 +303,7 @@ const RenderedMail = ({
     if (!isOnline) return;
 
     // Snapshot the caches so Undo can put the row back exactly where it was.
-    const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory);
+    const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory, unified);
     const listBefore = queryClient.getQueryData<MailHeaderData[]>(listUrl);
     const accountsBefore = queryClient.getQueryData<AccountsGetResponse>(
       accountsCache.key
@@ -335,12 +360,18 @@ const RenderedMail = ({
     // marks as spam. Either way the mail leaves the current list.
     const nextIsSpam = !isSpamView;
 
-    const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory);
+    const listUrl = getMailsQueryUrl(selectedAccount, selectedCategory, unified);
     // Where the mail lands: the Spam view when marking, the All Mails view
     // when un-marking. Refreshing it on navigation avoids a stale destination.
-    const destUrl = getMailsQueryUrl(
-      selectedAccount,
-      nextIsSpam ? Category.SpamMails : Category.AllMails
+    // In the unified view a conversation can span accounts, so each mail's
+    // destination is its own account's view.
+    const destUrls = new Set(
+      spamTargets.map((m) =>
+        getMailsQueryUrl(
+          resolveMailAccount(m),
+          nextIsSpam ? Category.SpamMails : Category.AllMails
+        )
+      )
     );
 
     Promise.all(spamTargets.map((m) => requestMarkSpam(m, nextIsSpam)))
@@ -349,7 +380,9 @@ const RenderedMail = ({
         if (failed) throw new Error(failed.message);
         // The mail moved buckets — refresh the destination list so it shows
         // up fresh instead of relying on whatever was cached there.
-        queryClient.invalidateQueries(destUrl);
+        destUrls.forEach((destUrl) =>
+          queryClient.invalidateQueries(destUrl)
+        );
       })
       .catch(() => {
         // The optimistic removal below already took the row out of the view.
@@ -577,12 +610,17 @@ const RenderedMails = ({
     setSelectedAccount,
     selectedAccount: contextAccount,
     selectedCategory: contextCategory,
+    isAllAccounts: contextAllAccounts,
     domainName,
     density,
     userInfo
   } = useContext(Context);
   const selectedAccount = accountProp ?? contextAccount;
   const selectedCategory = categoryProp ?? contextCategory;
+  // The unified view is All Mails across accounts only; entering search
+  // keeps the flag but the search branch owns the URL there.
+  const unified =
+    contextAllAccounts && selectedCategory === Category.AllMails;
 
   const [openedKebab, setOpenedKebab] = useState("");
 
@@ -609,7 +647,7 @@ const RenderedMails = ({
     };
   }, []);
 
-  const queryUrl = getMailsQueryUrl(selectedAccount, selectedCategory);
+  const queryUrl = getMailsQueryUrl(selectedAccount, selectedCategory, unified);
 
   const getMails = async () => {
     const { status, body, message } = await call.get<
@@ -711,9 +749,14 @@ const RenderedMails = ({
 
   const markReadInQueryData = (mail: MailHeaderData) => {
     const mailId = mail.id;
+    // In the unified view the mail belongs to its own account, not the
+    // parked selection — the per-account caches and the bucket edit land
+    // there, and the unified cache gets the same edit below.
+    const mailAccount =
+      accountForMail(mail, accountsQuery.data) ?? selectedAccount;
 
     Object.values(Category).forEach((e) => {
-      const mailsCache = new MailsCache(selectedAccount, e);
+      const mailsCache = new MailsCache(mailAccount, e);
 
       mailsCache.set((oldData) => {
         if (!oldData) return oldData;
@@ -726,12 +769,24 @@ const RenderedMails = ({
       });
     });
 
+    if (unified) {
+      new MailsCache(mailAccount, Category.AllMails, true).set((oldData) => {
+        if (!oldData) return oldData;
+
+        const newData = [...oldData];
+        const foundData = newData.find((e) => e.id === mailId);
+        if (foundData) foundData.read = true;
+
+        return newData;
+      });
+    }
+
     accountsCache.set((oldData) => {
       if (!oldData) return oldData;
       return updateAccountInBuckets(
         oldData,
-        bucketsForMail(selectedCategory, mail, selectedAccount),
-        selectedAccount,
+        bucketsForMail(selectedCategory, mail, mailAccount),
+        mailAccount,
         ({ unread_doc_count }) => ({
           unread_doc_count: unread_doc_count ? unread_doc_count - 1 : 0
         })
@@ -741,12 +796,14 @@ const RenderedMails = ({
 
   const markSavedInQueryData = (mail: MailHeaderData, save: boolean) => {
     const mailId = mail.id;
+    const mailAccount =
+      accountForMail(mail, accountsQuery.data) ?? selectedAccount;
     accountsCache.set((oldData) => {
       if (!oldData) return oldData;
       return updateAccountInBuckets(
         oldData,
-        bucketsForMail(selectedCategory, mail, selectedAccount),
-        selectedAccount,
+        bucketsForMail(selectedCategory, mail, mailAccount),
+        mailAccount,
         ({ saved_doc_count }) => ({
           saved_doc_count: save ? saved_doc_count + 1 : saved_doc_count - 1
         })
@@ -754,7 +811,7 @@ const RenderedMails = ({
     });
 
     Object.values(Category).forEach((e) => {
-      const mailsCache = new MailsCache(selectedAccount, e);
+      const mailsCache = new MailsCache(mailAccount, e);
 
       mailsCache.set((oldData) => {
         if (!oldData) return oldData;
@@ -780,6 +837,19 @@ const RenderedMails = ({
         return newData;
       });
     });
+
+    if (unified) {
+      // The unified list is an All Mails view: a save only flips the star,
+      // the row stays — unlike the per-account Saved cache above, which
+      // splices the row in or out.
+      new MailsCache(mailAccount, Category.AllMails, true).set((oldData) => {
+        if (!oldData) return oldData;
+        const newData = [...oldData];
+        const foundData = newData.find((e) => e.id === mailId);
+        if (foundData) foundData.saved = save;
+        return newData;
+      });
+    }
   };
 
   // Paired with the error guard above: gating on isSuccess alone would blank
@@ -803,21 +873,25 @@ const RenderedMails = ({
 
     // Search shows the loaded result count; every folder shows the selected
     // account's count from the accounts buckets (null until they load, in
-    // which case the header is the category name alone).
+    // which case the header is the category name alone). The unified view
+    // sums unread across every account instead.
+    const viewName = unified ? "All accounts" : selectedCategory;
     const accountCount =
       selectedCategory === Category.Search
         ? null
-        : accountCountForCategory(
-            accountsQuery.data,
-            selectedCategory,
-            selectedAccount
-          );
+        : unified
+          ? allAccountsCount(accountsQuery.data)
+          : accountCountForCategory(
+              accountsQuery.data,
+              selectedCategory,
+              selectedAccount
+            );
     const countLabel =
       selectedCategory === Category.Search
         ? `${mails.length} ${mails.length === 1 ? "result" : "results"}`
         : accountCount
-          ? `${selectedCategory} · ${accountCount.count} ${accountCount.noun}`
-          : selectedCategory;
+          ? `${viewName} · ${accountCount.count} ${accountCount.noun}`
+          : viewName;
     const listHeader = <ListHeader countLabel={countLabel} />;
 
     const result = pagedRows.map((conversation) => {
@@ -840,6 +914,8 @@ const RenderedMails = ({
           setOpenedKebab={setOpenedKebab}
           density={density}
           isSent={isSent(conversation.latest)}
+          unified={unified}
+          accountsData={accountsQuery.data}
         />
       );
     });
@@ -848,7 +924,8 @@ const RenderedMails = ({
       const { message, others } = emptyFolderState(
         selectedCategory,
         selectedAccount,
-        accountsQuery.data
+        accountsQuery.data,
+        unified
       );
       return (
         <div className={containerClass + " empty"}>

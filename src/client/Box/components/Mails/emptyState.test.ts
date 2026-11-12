@@ -69,4 +69,16 @@ describe("emptyFolderState", () => {
       others: []
     });
   });
+
+  it("names the unified view and offers no other accounts there", () => {
+    // The unified view already spans every account, so there are no
+    // "other accounts" left to list — and the message names the view,
+    // not the parked account behind it.
+    expect(
+      emptyFolderState(Category.AllMails, "shop@x.com", accounts, true)
+    ).toEqual({
+      message: "No mail in all accounts.",
+      others: []
+    });
+  });
 });

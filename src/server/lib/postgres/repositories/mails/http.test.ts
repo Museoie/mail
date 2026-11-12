@@ -47,3 +47,38 @@ describe("getMailHeadersDelta — cursor safety (#457)", () => {
     expect(fnSource).toMatch(/return\s*\{\s*as_of:\s*since/);
   });
 });
+
+describe("getUnifiedMailHeadersDelta — cursor safety (#457)", () => {
+  let fnSource: string;
+
+  beforeAll(async () => {
+    const fs = await import("fs/promises");
+    const path = await import("path");
+    const source = await fs.readFile(
+      path.join(import.meta.dir, "http.ts"),
+      "utf8"
+    );
+    const fnMatch = source.match(
+      /export const getUnifiedMailHeadersDelta[\s\S]*?\n};/
+    );
+    if (!fnMatch)
+      throw new Error("getUnifiedMailHeadersDelta not found in http.ts");
+    fnSource = fnMatch[0].replace(/^\s*\/\/.*$/gm, "");
+  });
+
+  it("reads as_of before the data queries", () => {
+    const asOfIdx = fnSource.indexOf("buildDeltaAsOfQuery(");
+    const headersIdx = fnSource.indexOf("getUnifiedMailHeaders(");
+    expect(asOfIdx).toBeGreaterThanOrEqual(0);
+    expect(headersIdx).toBeGreaterThanOrEqual(0);
+    expect(asOfIdx).toBeLessThan(headersIdx);
+  });
+
+  it("awaits as_of rather than racing it against the data queries", () => {
+    expect(fnSource).toMatch(/await pool\.query[\s\S]*?asOf\.sql[\s\S]*?Promise\.all/);
+  });
+
+  it("echoes `since` as as_of on failure so the cursor cannot advance", () => {
+    expect(fnSource).toMatch(/return\s*\{\s*as_of:\s*since/);
+  });
+});

@@ -22,6 +22,7 @@ type MountOptions = {
   userInfo?: { username: string } | undefined;
   selectedAccount?: string;
   selectedCategory?: Category;
+  isAllAccounts?: boolean;
   isSettingsOpen?: boolean;
   accounts?: unknown;
   isAccountsOpen?: boolean;
@@ -65,6 +66,8 @@ const mountHeader = async (options: MountOptions = {}) => {
     setSelectedAccount: () => {},
     selectedCategory: options.selectedCategory ?? Category.AllMails,
     setSelectedCategory: () => {},
+    isAllAccounts: options.isAllAccounts ?? false,
+    setIsAllAccounts: () => {},
     isSettingsOpen: options.isSettingsOpen ?? false,
     setIsSettingsOpen: () => {},
     newMailsTotal,
@@ -146,6 +149,30 @@ describe("header unread count", () => {
       const pill = mount.container.querySelector(".header-unread-count");
       expect(pill?.textContent).toBe("4");
       expect(pill?.getAttribute("title")).toBe("4 unread in all accounts");
+    } finally {
+      await mount.teardown();
+    }
+  });
+
+  it("titles the unified view All accounts, with the all-accounts total", async () => {
+    const mount = await mountHeader({
+      newMailsTotal: 27,
+      selectedAccount: "maple@example.com",
+      isAllAccounts: true,
+      accounts: {
+        received: [account("maple@example.com", 3), account("fern@example.com", 24)],
+        sent: [],
+        spam: []
+      }
+    });
+    try {
+      // The parked account behind the flag is not the title.
+      expect(mount.container.querySelector("h1 .title-text")?.textContent).toBe(
+        "All accounts"
+      );
+      const pill = mount.container.querySelector(".header-unread-count");
+      expect(pill?.textContent).toBe("27");
+      expect(pill?.getAttribute("title")).toBe("27 unread in all accounts");
     } finally {
       await mount.teardown();
     }

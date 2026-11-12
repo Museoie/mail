@@ -57,6 +57,31 @@ export const bucketsForMail = (
 };
 
 /**
+ * The receiving account a mail belongs to, from the recipient headers
+ * against the accounts payload — or `null` when no header names one.
+ * The unified list shows mail from every account, so an action taken there
+ * cannot assume the mail belongs to the parked `selectedAccount`; the
+ * bucket and cache edits have to land on the mail's own account. A mail
+ * delivered by envelope only (BCC) names no account in any header column —
+ * `envelope_to` is not a header field — so that case returns `null` and the
+ * caller falls back to the parked account rather than guessing.
+ */
+export const accountForMail = (
+  mail: MailHeaderData,
+  accounts: AccountsGetResponse | undefined
+): string | null => {
+  const keys = accounts?.received.map((a) => a.key) ?? [];
+  for (const key of keys) {
+    if (
+      [mail.to, mail.cc, mail.bcc].some((e) => holdsAddress(e, key))
+    ) {
+      return key;
+    }
+  }
+  return null;
+};
+
+/**
  * The list `category` shows whole, or `null` when it shows a filtered view of
  * one — the test for whether an emptied sidebar list means the account left a
  * bucket.
@@ -144,6 +169,23 @@ export const accountCountForCategory = (
     default:
       return { count: account.doc_count, noun: "emails" };
   }
+};
+
+/**
+ * The unified list header's count (design doc §5): unread across every
+ * receiving account, summed from the accounts payload already in hand —
+ * the same unread total the header pill carries. Returns `null` when the
+ * accounts payload has not loaded yet, so the header renders the view name
+ * alone instead of a stale zero.
+ */
+export const allAccountsCount = (
+  data: AccountsGetResponse | undefined
+): { count: number; noun: "unread" } | null => {
+  if (!data) return null;
+  return {
+    count: data.received.reduce((acc, a) => acc + a.unread_doc_count, 0),
+    noun: "unread",
+  };
 };
 
 /**

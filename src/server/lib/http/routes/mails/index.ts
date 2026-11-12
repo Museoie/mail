@@ -4,6 +4,7 @@ import { parseUploads, removeTempFiles } from "../../upload";
 import { getDomainRoute } from "./get-domain";
 import { getAccountsRoute } from "./get-accounts";
 import { getHeadersRoute } from "./get-headers";
+import { getUnifiedHeadersRoute } from "./get-unified-headers";
 import { getBodyRoute } from "./get-body";
 import { getThreadRoute } from "./get-thread";
 import { getAttachmentRoute } from "./get-attachment";
@@ -21,6 +22,7 @@ const routes = [
   getDomainRoute,
   getAccountsRoute,
   getHeadersRoute,
+  getUnifiedHeadersRoute,
   getBodyRoute,
   getThreadRoute,
   getAttachmentRoute,
@@ -59,6 +61,7 @@ export default handleMails;
 export * from "./get-domain";
 export * from "./get-accounts";
 export * from "./get-headers";
+export * from "./get-unified-headers";
 export * from "./get-body";
 export * from "./get-thread";
 export * from "./get-attachment";

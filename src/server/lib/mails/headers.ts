@@ -9,6 +9,8 @@ import {
 import {
   getMailHeaders as pgGetMailHeaders,
   getMailHeadersDelta as pgGetMailHeadersDelta,
+  getUnifiedMailHeaders as pgGetUnifiedMailHeaders,
+  getUnifiedMailHeadersDelta as pgGetUnifiedMailHeadersDelta,
   GetMailHeadersOptions,
   MailHeaderResult,
 } from "../postgres/repositories/mails";
@@ -18,6 +20,16 @@ export interface GetMailsOptions {
   sent: boolean;
   saved: boolean;
   spam: boolean;
+  pagination?: Pagination;
+}
+
+/**
+ * Options for the unified list. The unified view is the All Mails view
+ * only, so there are no sent/saved/spam variants to pass — only paging.
+ * `addresses` is the user's receiving-address set, resolved by the caller
+ * from the accounts payload (the route's `received` keys).
+ */
+export interface GetUnifiedMailsOptions {
   pagination?: Pagination;
 }
 
@@ -105,6 +117,38 @@ export const getMailHeadersDelta = async (
     pgOptions,
     since
   );
+
+  return { as_of, headers: headers.map(toMailHeaderData), expunged_ids };
+};
+
+export const getUnifiedMailHeaders = async (
+  user: MaskedUser | SignedUser,
+  addresses: string[],
+  options: GetUnifiedMailsOptions
+): Promise<MailHeaderData[]> => {
+  const userId = resolveUserId(user);
+  if (!userId) return [];
+
+  const { from, size } = options.pagination || new Pagination();
+
+  const mailModels = await pgGetUnifiedMailHeaders(userId, addresses, {
+    from,
+    size,
+  });
+
+  return mailModels.map(toMailHeaderData);
+};
+
+export const getUnifiedMailHeadersDelta = async (
+  user: MaskedUser | SignedUser,
+  addresses: string[],
+  since: string
+): Promise<MailHeadersDelta> => {
+  const userId = resolveUserId(user);
+  if (!userId) return { as_of: since, headers: [], expunged_ids: [] };
+
+  const { as_of, headers, expunged_ids } =
+    await pgGetUnifiedMailHeadersDelta(userId, addresses, since);
 
   return { as_of, headers: headers.map(toMailHeaderData), expunged_ids };
 };

@@ -20,8 +20,12 @@ import {
   buildMailHeadersQuery,
   buildSearchAccountStatsQuery,
   buildSearchMailsQuery,
+  buildUnifiedAddressCondition,
+  buildUnifiedDeltaEvictionQuery,
+  buildUnifiedMailHeadersQuery,
   buildUnreadNotificationsQuery,
   type GetMailHeadersOptions,
+  type UnifiedMailHeadersOptions,
 } from "./http-query";
 
 const USER = "11111111-1111-1111-1111-111111111111";
@@ -233,6 +237,120 @@ describe("buildDeltaEvictionQuery", () => {
       USER,
       JSON.stringify([{ address: ADDRESS }]),
       "2026-01-01T00:00:00.000Z",
+    ]);
+  });
+});
+
+describe("buildUnifiedAddressCondition", () => {
+  it("matches a mail addressed to any of the user's receiving addresses", () => {
+    const condition = buildUnifiedAddressCondition();
+    expect(condition).toContain("to_address @> ANY($2::jsonb[])");
+    expect(condition).toContain("cc_address @> ANY($2::jsonb[])");
+    expect(condition).toContain("bcc_address @> ANY($2::jsonb[])");
+    expect(condition).toContain("envelope_to @> ANY($2::jsonb[])");
+  });
+
+  it("numbers the placeholder from the given index", () => {
+    expect(buildUnifiedAddressCondition(4)).toContain("@> ANY($4::jsonb[])");
+  });
+});
+
+describe("buildUnifiedMailHeadersQuery", () => {
+  const ADDRESSES = ["a@example.com", "b@example.com"];
+  const unifiedSql = (
+    options: UnifiedMailHeadersOptions = {},
+    addresses: string[] = ADDRESSES
+  ) => buildUnifiedMailHeadersQuery(USER, addresses, options).sql;
+
+  it("selects the same columns as the per-account list", () => {
+    // The two views render the same rows and group the same conversations;
+    // a column missing here breaks the unified list, not the per-account one.
+    expect(unifiedSql()).toContain("left(text, 400) AS text_prefix");
+    expect(unifiedSql()).toContain("message_id");
+    expect(unifiedSql()).toContain("in_reply_to");
+    expect(unifiedSql()).not.toContain("SELECT *");
+  });
+
+  it("hides drafts, expunged rows, and spam from the unified view", () => {
+    // The unified list is the All Mails view per account: spam, sent, and
+    // saved stay per-account, so the view is received, non-spam mail only.
+    const sql = unifiedSql();
+    expect(sql).toContain("AND draft = FALSE");
+    expect(sql).toContain("AND expunged = FALSE");
+    expect(sql).toContain("AND is_spam = FALSE");
+    expect(sql).not.toContain("is_spam = TRUE");
+  });
+
+  it("orders unread-then-recent", () => {
+    expect(unifiedSql()).toContain("ORDER BY read ASC, date DESC");
+  });
+
+  it("binds user and the address set in the order the placeholders name", () => {
+    const { values } = buildUnifiedMailHeadersQuery(USER, ADDRESSES, {});
+    expect(values).toEqual([
+      USER,
+      [JSON.stringify([{ address: "a@example.com" }]), JSON.stringify([{ address: "b@example.com" }])],
+    ]);
+  });
+
+  it("binds an empty address set as an empty array, matching nothing", () => {
+    const { sql, values } = buildUnifiedMailHeadersQuery(USER, [], {});
+    expect(values).toEqual([USER, []]);
+    expect(sql).toContain("@> ANY($2::jsonb[])");
+  });
+
+  it("filters on `updated >` only when a cursor is supplied", () => {
+    expect(unifiedSql()).not.toContain("updated >");
+    expect(
+      unifiedSql({ since: "2026-01-01T00:00:00.000Z" })
+    ).toContain("AND updated > $3");
+  });
+
+  it("numbers since/size/from placeholders in step with the bound values", () => {
+    const { sql, values } = buildUnifiedMailHeadersQuery(USER, ADDRESSES, {
+      since: "2026-01-01T00:00:00.000Z",
+      size: 10,
+      from: 5,
+    });
+    expect(values).toEqual([
+      USER,
+      [JSON.stringify([{ address: "a@example.com" }]), JSON.stringify([{ address: "b@example.com" }])],
+      "2026-01-01T00:00:00.000Z",
+      10,
+      5,
+    ]);
+    expect(sql).toContain("AND updated > $3");
+    expect(sql).toContain("LIMIT $4");
+    expect(sql).toContain("OFFSET $5");
+  });
+});
+
+describe("buildUnifiedDeltaEvictionQuery", () => {
+  const SINCE = "2026-01-01T00:00:00.000Z";
+  const ADDRESSES = ["a@example.com", "b@example.com"];
+
+  it("tombstones expunged rows over the cursor window", () => {
+    const { sql } = buildUnifiedDeltaEvictionQuery(USER, ADDRESSES, SINCE);
+    expect(sql).toContain("expunged = TRUE");
+    expect(sql).toContain("AND updated > $3");
+  });
+
+  it("evicts a mail from the unified view when it becomes spam", () => {
+    const { sql } = buildUnifiedDeltaEvictionQuery(USER, ADDRESSES, SINCE);
+    expect(sql).toContain("(expunged = TRUE OR is_spam = TRUE)");
+  });
+
+  it("scopes tombstones to the same addresses the headers query lists", () => {
+    const { sql } = buildUnifiedDeltaEvictionQuery(USER, ADDRESSES, SINCE);
+    expect(sql).toContain(buildUnifiedAddressCondition());
+  });
+
+  it("binds user, address set and cursor in the order the placeholders name", () => {
+    const { values } = buildUnifiedDeltaEvictionQuery(USER, ADDRESSES, SINCE);
+    expect(values).toEqual([
+      USER,
+      [JSON.stringify([{ address: "a@example.com" }]), JSON.stringify([{ address: "b@example.com" }])],
+      SINCE,
     ]);
   });
 });

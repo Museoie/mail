@@ -20,6 +20,8 @@ export { push } from "./push";
 export {
   getMailHeaders,
   getMailHeadersDelta,
+  getUnifiedMailHeaders,
+  getUnifiedMailHeadersDelta,
   getMailBody,
   searchMail,
   markRead,
@@ -45,7 +47,7 @@ export {
   markSpam,
   getThread,
 } from "./mails";
-export type { AccountsGetResponse, GetMailsOptions, MailHeadersDelta, ValidationResult, SaveMailHandlerOptions } from "./mails";
+export type { AccountsGetResponse, GetMailsOptions, GetUnifiedMailsOptions, MailHeadersDelta, ValidationResult, SaveMailHandlerOptions } from "./mails";
 
 // Spam filter
 export * from "./spam";

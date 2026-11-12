@@ -28,7 +28,8 @@ const Box = () => {
     setIsWriterOpen,
     isSettingsOpen,
     selectedAccount,
-    selectedCategory
+    selectedCategory,
+    isAllAccounts
   } = useContext(Context);
 
   // `/mail/:mailId` shows that mail's conversation over the list, which
@@ -38,7 +39,9 @@ const Box = () => {
   const location = useLocation();
 
   // Switching account or folder while reading is navigation to that list.
-  const listKey = `${selectedCategory}|${selectedAccount}`;
+  // Entering or leaving the unified view is the same: the list behind the
+  // open message changed even though the account and folder did not.
+  const listKey = `${selectedCategory}|${selectedAccount}|${isAllAccounts}`;
   const lastListKey = useRef(listKey);
   useEffect(() => {
     if (lastListKey.current === listKey) return;
