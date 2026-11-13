@@ -19,6 +19,11 @@ export interface MailHeaderDataType {
   to?: MailAddressType;
   cc?: MailAddressType;
   bcc?: MailAddressType;
+  // The SMTP envelope recipient the mail was delivered to. A BCC delivery
+  // names no account in to/cc/bcc, so without this the client cannot tell
+  // which account a unified-list row belongs to and falls back to the parked
+  // account. Absent on rows from older caches.
+  envelopeTo?: MailAddressType;
   insight?: Insight;
   highlight?: {
     subject?: string[];
@@ -51,6 +56,7 @@ export class MailHeaderData
   declare to?: MailAddressType;
   declare cc?: MailAddressType;
   declare bcc?: MailAddressType;
+  declare envelopeTo?: MailAddressType;
   declare insight?: Insight;
   declare highlight?: {
     subject?: string[];

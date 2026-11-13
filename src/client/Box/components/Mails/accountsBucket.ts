@@ -30,9 +30,10 @@ const holdsAddress = (
  *
  * The category answers only what the payload cannot. `is_spam` is not a header
  * field and a spam mail is counted in `spam` alone. `envelope_to` is one of the
- * columns the received condition matches on and no header column carries it, so
- * for a mail the account also sent, the received side is settled by the query
- * that returned the row: a category listing received mail proves it matched.
+ * columns the received condition matches on, and the headers payload carries
+ * it, so a mail the account also sent is counted in `received` when the
+ * envelope names it; a category listing received mail is the remaining proof,
+ * for rows from older caches that predate the field.
  */
 export const bucketsForMail = (
   category: Category,
@@ -48,7 +49,9 @@ export const bucketsForMail = (
   const isRecipient =
     listedByRecipientCondition ||
     !isSender ||
-    [mail.to, mail.cc, mail.bcc].some((e) => holdsAddress(e, accountKey));
+    [mail.to, mail.cc, mail.bcc, mail.envelopeTo].some((e) =>
+      holdsAddress(e, accountKey)
+    );
 
   const buckets: AccountsBucket[] = [];
   if (isRecipient) buckets.push("received");
@@ -58,13 +61,14 @@ export const bucketsForMail = (
 
 /**
  * The receiving account a mail belongs to, from the recipient headers
- * against the accounts payload — or `null` when no header names one.
+ * against the accounts payload — or `null` when no recipient field names one.
  * The unified list shows mail from every account, so an action taken there
  * cannot assume the mail belongs to the parked `selectedAccount`; the
  * bucket and cache edits have to land on the mail's own account. A mail
- * delivered by envelope only (BCC) names no account in any header column —
- * `envelope_to` is not a header field — so that case returns `null` and the
- * caller falls back to the parked account rather than guessing.
+ * delivered by envelope only (BCC) names its account in `envelopeTo`, which
+ * the headers payload carries; `null` is only for a row that carries no
+ * recipient naming an account (e.g. from an older cache), and then the caller
+ * falls back to the parked account rather than guessing.
  */
 export const accountForMail = (
   mail: MailHeaderData,
@@ -73,7 +77,9 @@ export const accountForMail = (
   const keys = accounts?.received.map((a) => a.key) ?? [];
   for (const key of keys) {
     if (
-      [mail.to, mail.cc, mail.bcc].some((e) => holdsAddress(e, key))
+      [mail.to, mail.cc, mail.bcc, mail.envelopeTo].some((e) =>
+        holdsAddress(e, key)
+      )
     ) {
       return key;
     }

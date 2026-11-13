@@ -20,6 +20,12 @@ describe("buildThreadSeedQuery", () => {
     expect(sql).toContain("user_id = $1 AND mail_id = $2");
     expect(sql).toContain("expunged = FALSE");
   });
+
+  it("selects envelope_to so a thread row carries its account", () => {
+    // A thread opened from an envelope-only (BCC) delivery resolves its
+    // account from the envelope recipient, like the list rows do.
+    expect(buildThreadSeedQuery("u1", "m1").sql).toContain("envelope_to");
+  });
 });
 
 describe("buildThreadCandidatesQuery", () => {

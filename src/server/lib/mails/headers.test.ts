@@ -220,6 +220,64 @@ describe("getMailHeaders", () => {
     expect(results[0].bcc).toBeDefined();
   });
 
+  it("should map envelope_to when present", async () => {
+    // A BCC delivery names no account in to/cc/bcc; the envelope recipient
+    // is the only evidence of which account the row belongs to.
+    const mailModel = {
+      mail_id: "mail-envelope",
+      subject: "BCC Email",
+      date: "2024-01-15T10:00:00Z",
+      from_address: [{ address: "sender@example.com" }],
+      from_text: "sender@example.com",
+      to_address: [{ address: "list@example.com" }],
+      to_text: "list@example.com",
+      cc_address: null,
+      cc_text: null,
+      bcc_address: null,
+      bcc_text: null,
+      envelope_to: [{ address: "b@example.com" }],
+      read: false,
+      saved: false,
+      sent: false,
+      insight: null,
+    };
+    mockGetMailHeaders.mockResolvedValue([mailModel]);
+
+    const user = makeUser();
+    const results = await getMailHeaders(user, "b@example.com", defaultOptions);
+    expect(results[0].envelopeTo).toBeDefined();
+    expect(results[0].envelopeTo?.value).toEqual([
+      { address: "b@example.com" },
+    ]);
+  });
+
+  it("should leave envelopeTo absent when the row carries none", async () => {
+    // Rows from older caches predate the field; the key stays absent rather
+    // than present-but-undefined, like the threading ids.
+    const mailModel = {
+      mail_id: "mail-no-envelope",
+      subject: "Old Row",
+      date: "2024-01-15T10:00:00Z",
+      from_address: null,
+      from_text: null,
+      to_address: null,
+      to_text: null,
+      cc_address: null,
+      cc_text: null,
+      bcc_address: null,
+      bcc_text: null,
+      read: false,
+      saved: false,
+      sent: false,
+      insight: null,
+    };
+    mockGetMailHeaders.mockResolvedValue([mailModel]);
+
+    const user = makeUser();
+    const results = await getMailHeaders(user, "inbox@example.com", defaultOptions);
+    expect("envelopeTo" in results[0]).toBe(false);
+  });
+
   it("should pass sent=true option", async () => {
     const user = makeUser();
     await getMailHeaders(user, "sent@example.com", { ...defaultOptions, sent: true });

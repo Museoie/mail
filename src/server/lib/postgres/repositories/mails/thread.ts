@@ -21,6 +21,9 @@ const THREAD_COLUMNS = [
   "cc_text",
   "bcc_address",
   "bcc_text",
+  // The envelope recipient, so a thread opened from an envelope-only (BCC)
+  // delivery carries the same account resolution as the list rows.
+  "envelope_to",
   "read",
   "saved",
   "sent",
@@ -44,6 +47,7 @@ export interface ThreadRow {
   cc_text: string | null;
   bcc_address: object | null;
   bcc_text: string | null;
+  envelope_to: object | null;
   read: boolean;
   saved: boolean;
   sent: boolean;

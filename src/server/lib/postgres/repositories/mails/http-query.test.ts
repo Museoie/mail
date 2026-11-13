@@ -42,6 +42,19 @@ const headerOptions = (
 const headersSql = (overrides: Partial<GetMailHeadersOptions> = {}) =>
   buildMailHeadersQuery(USER, ADDRESS, headerOptions(overrides)).sql;
 
+describe("buildMailHeadersQuery — envelope recipient", () => {
+  it("selects envelope_to so the client can resolve an envelope-only delivery", () => {
+    // The received condition matches on envelope_to, so a BCC delivery
+    // reaches the list without naming any account in to/cc/bcc. Without
+    // this column the client falls back to the parked account and the
+    // bucket edit lands there. Assert on the SELECT list, not the whole
+    // statement — the WHERE clause mentions envelope_to either way.
+    const selectList = headersSql().match(/SELECT ([\s\S]*?) FROM mails/);
+    expect(selectList).not.toBeNull();
+    expect(selectList![1]).toContain("envelope_to");
+  });
+});
+
 describe("buildMailHeadersQuery — threading ids", () => {
   it("selects the ids the list groups conversations by", () => {
     const sql = headersSql();
@@ -269,6 +282,14 @@ describe("buildUnifiedMailHeadersQuery", () => {
     expect(unifiedSql()).toContain("message_id");
     expect(unifiedSql()).toContain("in_reply_to");
     expect(unifiedSql()).not.toContain("SELECT *");
+  });
+
+  it("selects envelope_to so the client can resolve an envelope-only delivery", () => {
+    // Same SELECT-list assertion as the per-account query — the WHERE
+    // clause mentions envelope_to either way.
+    const selectList = unifiedSql().match(/SELECT ([\s\S]*?) FROM mails/);
+    expect(selectList).not.toBeNull();
+    expect(selectList![1]).toContain("envelope_to");
   });
 
   it("hides drafts, expunged rows, and spam from the unified view", () => {

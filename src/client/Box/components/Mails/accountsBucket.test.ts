@@ -164,6 +164,21 @@ describe("bucketsForMail", () => {
     ).toEqual(["received"]);
   });
 
+  // A mail the account sent and was BCC'd on is counted in both lists: the
+  // server groups `received` by the recipient headers including envelope_to,
+  // and the payload carries the envelope recipient.
+  it("counts a self-sent mail its envelope names in both lists", () => {
+    const selfBcc = mail({
+      from: addresses("me@x.com"),
+      to: addresses("them@y.com"),
+      envelopeTo: addresses("me@x.com")
+    });
+    expect(bucketsForMail(Category.SavedMails, selfBcc, "me@x.com")).toEqual([
+      "received",
+      "sent"
+    ]);
+  });
+
   // The header component repairs cc and bcc in place during render, so a click
   // handler reading the same object sees an array only because an unrelated
   // component ran first.
@@ -457,10 +472,25 @@ describe("accountForMail", () => {
     ).toBe("other@x.com");
   });
 
-  it("returns null when no header names a receiving account", () => {
-    // Delivered by envelope only (BCC): no header column carries the
-    // account, so the caller falls back to the parked selection rather
-    // than guessing.
+  it("resolves an envelope-only delivery through envelopeTo", () => {
+    // Delivered by envelope only (BCC): no header column names the account,
+    // so the envelope recipient is the only evidence — without it the caller
+    // falls back to the parked account and the bucket edit lands there.
+    expect(
+      accountForMail(
+        mail({
+          to: addresses("stranger@x.com"),
+          envelopeTo: addresses("other@x.com")
+        }),
+        data()
+      )
+    ).toBe("other@x.com");
+  });
+
+  it("returns null when no recipient field names a receiving account", () => {
+    // No header and no envelope recipient names an account — e.g. a row from
+    // an older cache — so the caller falls back to the parked selection
+    // rather than guessing.
     expect(
       accountForMail(mail({ to: addresses("stranger@x.com") }), data())
     ).toBeNull();

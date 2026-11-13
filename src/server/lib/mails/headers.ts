@@ -63,6 +63,16 @@ export const toMailHeaderData = (m: MailHeaderResult): MailHeaderData =>
     bcc: m.bcc_address
       ? { value: m.bcc_address as MailAddressValueType[], text: m.bcc_text || "" }
       : undefined,
+    // No envelope text column exists — the envelope recipient is an SMTP-time
+    // value, never rendered, only read for account resolution.
+    ...(m.envelope_to
+      ? {
+          envelopeTo: {
+            value: m.envelope_to as MailAddressValueType[],
+            text: "",
+          },
+        }
+      : {}),
     read: m.read,
     saved: m.saved,
     sent: m.sent,
