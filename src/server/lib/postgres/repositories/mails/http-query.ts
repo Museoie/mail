@@ -26,6 +26,7 @@ import {
   CC_TEXT,
   BCC_ADDRESS,
   BCC_TEXT,
+  ENVELOPE_TO,
   SENT,
   IS_SPAM,
   INSIGHT,
@@ -85,6 +86,10 @@ const headerColumns = [
   TO_ADDRESS, TO_TEXT,
   CC_ADDRESS, CC_TEXT,
   BCC_ADDRESS, BCC_TEXT,
+  // The envelope recipient the received condition also matches on: without
+  // this column the client cannot tell which account an envelope-only (BCC)
+  // delivery belongs to and falls back to the parked account.
+  ENVELOPE_TO,
   READ, SAVED, SENT, IS_SPAM, INSIGHT,
   `left(${TEXT}, 400) AS text_prefix`,
   // Threading ids, so the list can group a folder into conversations.

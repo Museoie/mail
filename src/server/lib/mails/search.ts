@@ -34,6 +34,16 @@ export const searchMail = async (
       bcc: m.bcc_address
         ? { value: m.bcc_address as MailAddressValueType[], text: m.bcc_text || "" }
         : undefined,
+      // Search rows come from SELECT *, so the envelope recipient is on the
+      // row; carry it the same way the headers payload does.
+      ...(m.envelope_to
+        ? {
+            envelopeTo: {
+              value: m.envelope_to as MailAddressValueType[],
+              text: "",
+            },
+          }
+        : {}),
       highlight: m.highlight,
       snippet: buildSnippet(m.text),
       // Search spans the spam folder; the row says so.

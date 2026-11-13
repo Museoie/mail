@@ -35,6 +35,10 @@ export interface MailHeaderResult {
   cc_text: string | null;
   bcc_address: object | null;
   bcc_text: string | null;
+  // The SMTP envelope recipient the received condition matches on. Optional:
+  // a row built from a narrower select (or an older cache) may not carry it;
+  // the mapper treats a missing value as no envelope recipient.
+  envelope_to?: object | null;
   read: boolean;
   saved: boolean;
   sent: boolean;

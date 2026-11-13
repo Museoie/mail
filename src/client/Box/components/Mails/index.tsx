@@ -215,8 +215,8 @@ const RenderedMail = ({
 }: RenderedMailProps) => {
   // The account a mail in this list belongs to. In the unified view that is
   // the mail's own account, not the parked selection; everywhere else the
-  // derivation finds the selected account (or falls back to it for a mail
-  // delivered by envelope only).
+  // derivation finds the selected account (or falls back to it when the row
+  // carries no recipient naming an account, e.g. from an older cache).
   const resolveMailAccount = (mail: MailHeaderData) =>
     accountForMail(mail, accountsData) ?? selectedAccount;
   const mail = conversation.latest;

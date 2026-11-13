@@ -74,6 +74,39 @@ describe("searchMail", () => {
     expect(results[0].highlight).toBe("Test <em>Subject</em>");
   });
 
+  it("should map envelope_to when present", async () => {
+    // Search rows come from SELECT *, so the envelope recipient is on the
+    // row; a BCC delivery's search hit resolves its account the same way
+    // the list rows do.
+    const mockMailModel = {
+      mail_id: "mail-envelope",
+      subject: "BCC Email",
+      date: "2024-01-01T00:00:00Z",
+      from_address: [{ address: "sender@example.com", name: "Sender" }],
+      from_text: "Sender <sender@example.com>",
+      to_address: [{ address: "list@example.com", name: "List" }],
+      to_text: "List <list@example.com>",
+      cc_address: null,
+      cc_text: null,
+      bcc_address: null,
+      bcc_text: null,
+      envelope_to: [{ address: "b@example.com" }],
+      read: false,
+      saved: false,
+      sent: false,
+      is_spam: false,
+      insight: null,
+      highlight: undefined,
+    };
+    mockSearchMails.mockResolvedValue([mockMailModel]);
+
+    const results = await searchMail(mockUser, "subject");
+    expect(results).toHaveLength(1);
+    expect(results[0].envelopeTo?.value).toEqual([
+      { address: "b@example.com" },
+    ]);
+  });
+
   it("should handle null from/to addresses gracefully", async () => {
     const mockMailModel = {
       mail_id: "mail-xyz",
