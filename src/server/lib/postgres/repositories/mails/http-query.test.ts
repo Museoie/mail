@@ -388,7 +388,43 @@ describe("buildSearchMailsQuery", () => {
     expect(sql).toContain("search_vector @@ plainto_tsquery('english', $2)");
     expect(values).toEqual([USER, "needle"]);
   });
+
+  it("selects the list's header columns, never the stored bodies", () => {
+    const { sql } = buildSearchMailsQuery(USER, "needle");
+    const headerList = buildMailHeadersQuery(USER, ADDRESS, headerOptions())
+      .sql.match(/SELECT ([\s\S]*?) FROM mails/)![1];
+    const searchList = sql.match(/SELECT ([\s\S]*?) FROM mails/)![1];
+    const headerItems = topLevelItems(headerList);
+    const items = topLevelItems(searchList);
+    expect(items).toHaveLength(headerItems.length + 3);
+    expect(items.slice(0, headerItems.length)).toEqual(headerItems);
+    expect(items.slice(headerItems.length).map(alias)).toEqual([
+      "rank",
+      "subject_highlight",
+      "text_highlight",
+    ]);
+  });
 });
+
+const alias = (item: string): string => item.match(/\bas (\w+)$/i)?.[1] ?? item;
+
+const topLevelItems = (selectList: string): string[] => {
+  const items: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of selectList) {
+    if (ch === "(") depth++;
+    if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
+      items.push(current.trim().replace(/\s+/g, " "));
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  items.push(current.trim().replace(/\s+/g, " "));
+  return items;
+};
 
 describe("buildAccountStatsQuery", () => {
   const statsSql = (sent: boolean, spamOnly = false, domain?: string) =>

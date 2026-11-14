@@ -78,8 +78,9 @@ const RECEIVED_ADDRESS_NOT_NULL = `(to_address IS NOT NULL OR cc_address IS NOT 
 // concurrent request. The one exception is a bounded prefix of the plain
 // text body, which the list snippet is built from (design doc §5); it is
 // capped at 400 chars so the headers payload stays small. Shared by the
-// per-account and unified list queries so the two views can never drift
-// apart on a column the list (or its conversation grouping) needs.
+// per-account list, the unified list and search, so the three views can
+// never drift apart on a column a list row (or its conversation grouping)
+// needs.
 const headerColumns = [
   MAIL_ID, USER_ID, SUBJECT, DATE,
   FROM_ADDRESS, FROM_TEXT,
@@ -278,7 +279,7 @@ export const buildSearchMailsQuery = (
   // Use PostgreSQL full-text search with ranking and highlights
   const sql = `
       SELECT 
-        *,
+        ${headerColumns},
         ts_rank(search_vector, plainto_tsquery('english', $2)) as rank,
         ts_headline('english', subject, plainto_tsquery('english', $2), 
           'StartSel=<em>, StopSel=</em>, MaxWords=50, MinWords=10') as subject_highlight,
