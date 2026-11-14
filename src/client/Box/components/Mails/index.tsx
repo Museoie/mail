@@ -246,8 +246,11 @@ const RenderedMail = ({
         .filter((m) => !m.read)
         .forEach((m) => {
           requestMarkRead(m);
+          // The cache edit is the source of truth for the row's read state:
+          // the conversation's mail objects ARE the cached ones, so setting
+          // `m.read` here would mutate the cache in place and leave the
+          // rows memo stale — the same in-place class the edit above avoids.
           markReadInQueryData(m);
-          m.read = true;
         });
     }
     navigate(mailPagePath(mail.id), { state: FROM_LIST_STATE });
@@ -762,8 +765,19 @@ const RenderedMails = ({
         if (!oldData) return oldData;
 
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.read = true;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place: react-query's structural sharing
+          // hands back the previous `data` reference when every element is
+          // reference-equal, so an in-place `read` edit reaches the cache
+          // but notifies no observer — and the row keeps its unread dot
+          // until a refetch. (Same class as the accounts-bucket copy in
+          // accountsBucket.ts, which is why the counts already dropped.)
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            read: true
+          });
+        }
 
         return newData;
       });
@@ -774,8 +788,14 @@ const RenderedMails = ({
         if (!oldData) return oldData;
 
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.read = true;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place — see above.
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            read: true
+          });
+        }
 
         return newData;
       });
@@ -816,17 +836,20 @@ const RenderedMails = ({
       mailsCache.set((oldData) => {
         if (!oldData) return oldData;
         const newData = [...oldData];
-        let foundIndex;
-        newData.find((e, i) => {
-          if (e.id === mailId) {
-            foundIndex = i;
-            e.saved = save;
-            return true;
-          }
-          return false;
-        });
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place: react-query's structural sharing
+          // hands back the previous `data` reference when every element is
+          // reference-equal, so an in-place `saved` edit reaches the cache
+          // but notifies no observer — the row's star would not flip until
+          // a refetch. (Same class as the read edit above.)
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            saved: save
+          });
+        }
         if (e === Category.SavedMails) {
-          if (foundIndex !== undefined) newData.splice(foundIndex, 1);
+          if (foundIndex !== -1) newData.splice(foundIndex, 1);
           else {
             let i = 0;
             while (new Date(newData[i]?.date) > new Date(mail.date)) i++;
@@ -845,8 +868,14 @@ const RenderedMails = ({
       new MailsCache(mailAccount, Category.AllMails, true).set((oldData) => {
         if (!oldData) return oldData;
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.saved = save;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place — see above.
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            saved: save
+          });
+        }
         return newData;
       });
     }

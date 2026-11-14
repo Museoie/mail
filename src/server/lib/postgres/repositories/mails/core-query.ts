@@ -30,6 +30,42 @@ export const buildMarkMailSpamQuery = (
   values: [is_spam, mail_id, user_id, modseq],
 });
 
+/**
+ * `read IS DISTINCT FROM $1` makes a re-mark of an already-read mail match
+ * no row, so the reserved mod-sequence goes unused and a CONDSTORE client is
+ * not told a mail changed when nothing did. A read is a flag change like the
+ * spam flip, so it has to stamp `modseq` or the client reads an unchanged
+ * HIGHESTMODSEQ and never resyncs the \Seen flag.
+ */
+export const buildMarkMailReadQuery = (
+  user_id: string,
+  mail_id: string,
+  modseq: number
+): { sql: string; values: ParamValue[] } => ({
+  sql: `UPDATE mails SET read = $1, updated = NOW(), modseq = $4
+       WHERE mail_id = $2 AND user_id = $3 AND read IS DISTINCT FROM $1
+       RETURNING mail_id`,
+  values: [true, mail_id, user_id, modseq],
+});
+
+/**
+ * `saved IS DISTINCT FROM $1` makes a re-save of an already-saved mail match
+ * no row, so the reserved mod-sequence goes unused. A star is a flag change
+ * like the spam flip, so it has to stamp `modseq` or the client reads an
+ * unchanged HIGHESTMODSEQ and never resyncs the \Flagged flag.
+ */
+export const buildMarkMailSavedQuery = (
+  user_id: string,
+  mail_id: string,
+  saved: boolean,
+  modseq: number
+): { sql: string; values: ParamValue[] } => ({
+  sql: `UPDATE mails SET saved = $1, updated = NOW(), modseq = $4
+       WHERE mail_id = $2 AND user_id = $3 AND saved IS DISTINCT FROM $1
+       RETURNING mail_id`,
+  values: [saved, mail_id, user_id, modseq],
+});
+
 /** Distinguishes "no such mail" from "the update matched nothing". */
 export const buildMailExistsQuery = (
   user_id: string,

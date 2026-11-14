@@ -20,6 +20,8 @@ import {
 } from "./counters";
 import {
   buildMailExistsQuery,
+  buildMarkMailReadQuery,
+  buildMarkMailSavedQuery,
   buildMarkMailSpamQuery,
 } from "./core-query";
 import {
@@ -485,12 +487,19 @@ export const markMailRead = async (
   user_id: string,
   mail_id: string
 ): Promise<boolean> => {
-  const rows = await mailsTable.updateWhere(
-    { [MAIL_ID]: mail_id, [USER_ID]: user_id },
-    { read: true, updated: DB_NOW },
-    [MAIL_ID]
+  const update = buildMarkMailReadQuery(
+    user_id,
+    mail_id,
+    await getNextModseq(user_id)
   );
-  return rows.length > 0;
+  const result = await pool.query(update.sql, update.values);
+  if ((result.rowCount ?? 0) > 0) return true;
+  // The update matched no row: either the mail is already read (the guard
+  // above) or there is no such mail. A re-mark stays a success, as before —
+  // only a missing mail fails.
+  const probe = buildMailExistsQuery(user_id, mail_id);
+  const exists = await pool.query(probe.sql, probe.values);
+  return (exists.rowCount ?? 0) > 0;
 };
 
 export const markMailSaved = async (
@@ -498,12 +507,24 @@ export const markMailSaved = async (
   mail_id: string,
   saved: boolean
 ): Promise<boolean> => {
-  const rows = await mailsTable.updateWhere(
-    { [MAIL_ID]: mail_id, [USER_ID]: user_id },
-    { saved, updated: DB_NOW },
-    [MAIL_ID]
+  const update = buildMarkMailSavedQuery(
+    user_id,
+    mail_id,
+    saved,
+    await getNextModseq(user_id)
   );
-  if (rows.length === 0) return false;
+  const result = await pool.query(update.sql, update.values);
+  if ((result.rowCount ?? 0) > 0) {
+    await syncMailboxPivot(user_id, "Starred", mail_id, saved);
+    return true;
+  }
+  // No row matched: either the flag already holds the requested value or
+  // there is no such mail. The pivot sync ran on every re-save before the
+  // guard, so run it for an existing mail and stay a success; a missing
+  // mail stays a failure, as before.
+  const probe = buildMailExistsQuery(user_id, mail_id);
+  const exists = await pool.query(probe.sql, probe.values);
+  if ((exists.rowCount ?? 0) === 0) return false;
   await syncMailboxPivot(user_id, "Starred", mail_id, saved);
   return true;
 };
