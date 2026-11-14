@@ -850,10 +850,19 @@ const RenderedMails = ({
         }
         if (e === Category.SavedMails) {
           if (foundIndex !== -1) newData.splice(foundIndex, 1);
-          else {
+          else if (save) {
+            // Splice in only when saving: an unstar must never insert a row
+            // into the Saved list. The inserted row must carry the new
+            // value — spreading `mail` alone keeps the pre-click value,
+            // which is wrong now that the AllMails edit above copy-replaces
+            // instead of mutating the shared object in place.
             let i = 0;
             while (new Date(newData[i]?.date) > new Date(mail.date)) i++;
-            newData.splice(i, 0, new MailHeaderData({ ...mail }));
+            newData.splice(
+              i,
+              0,
+              new MailHeaderData({ ...mail, saved: save })
+            );
           }
         }
 
