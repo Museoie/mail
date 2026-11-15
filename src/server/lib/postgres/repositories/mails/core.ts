@@ -20,8 +20,6 @@ import {
 } from "./counters";
 import {
   buildMailExistsQuery,
-  buildMarkMailReadQuery,
-  buildMarkMailSavedQuery,
   buildMarkMailSpamQuery,
 } from "./core-query";
 import {
@@ -487,19 +485,32 @@ export const markMailRead = async (
   user_id: string,
   mail_id: string
 ): Promise<boolean> => {
-  const update = buildMarkMailReadQuery(
-    user_id,
-    mail_id,
-    await getNextModseq(user_id)
+  // Probe the current flag before reserving a mod-sequence, so a re-mark of
+  // an already-read mail costs one SELECT and reserves nothing: no counter
+  // lock, no burnt modseq. The guarded update below still carries the
+  // `read = false` filter, so a flag flip between probe and update can only
+  // land as a zero-row match — never as a write to a row that already holds
+  // the target value.
+  const current = await mailsTable.queryOne({
+    [MAIL_ID]: mail_id,
+    [USER_ID]: user_id,
+  });
+  if (!current) return false;
+  if (current.read) return true;
+  const rows = await mailsTable.updateWhere(
+    { [MAIL_ID]: mail_id, [USER_ID]: user_id, read: false },
+    { read: true, updated: DB_NOW, [MODSEQ]: await getNextModseq(user_id) },
+    [MAIL_ID]
   );
-  const result = await pool.query(update.sql, update.values);
-  if ((result.rowCount ?? 0) > 0) return true;
-  // The update matched no row: either the mail is already read (the guard
-  // above) or there is no such mail. A re-mark stays a success, as before —
-  // only a missing mail fails.
-  const probe = buildMailExistsQuery(user_id, mail_id);
-  const exists = await pool.query(probe.sql, probe.values);
-  return (exists.rowCount ?? 0) > 0;
+  if (rows.length > 0) return true;
+  // The update matched no row after the probe said unread: the flag flipped
+  // between the two calls. Re-probe to decide per the route contract — a
+  // re-mark of an existing mail stays a success, only a missing mail fails.
+  const after = await mailsTable.queryOne({
+    [MAIL_ID]: mail_id,
+    [USER_ID]: user_id,
+  });
+  return after !== null;
 };
 
 export const markMailSaved = async (
@@ -507,24 +518,35 @@ export const markMailSaved = async (
   mail_id: string,
   saved: boolean
 ): Promise<boolean> => {
-  const update = buildMarkMailSavedQuery(
-    user_id,
-    mail_id,
-    saved,
-    await getNextModseq(user_id)
-  );
-  const result = await pool.query(update.sql, update.values);
-  if ((result.rowCount ?? 0) > 0) {
+  // Same probe-before-reservation shape as markMailRead: a re-save of a mail
+  // that already holds the requested value costs one SELECT, reserves
+  // nothing, and still runs the pivot sync for the existing mail.
+  const current = await mailsTable.queryOne({
+    [MAIL_ID]: mail_id,
+    [USER_ID]: user_id,
+  });
+  if (!current) return false;
+  if (current.saved === saved) {
     await syncMailboxPivot(user_id, "Starred", mail_id, saved);
     return true;
   }
-  // No row matched: either the flag already holds the requested value or
-  // there is no such mail. The pivot sync ran on every re-save before the
-  // guard, so run it for an existing mail and stay a success; a missing
-  // mail stays a failure, as before.
-  const probe = buildMailExistsQuery(user_id, mail_id);
-  const exists = await pool.query(probe.sql, probe.values);
-  if ((exists.rowCount ?? 0) === 0) return false;
+  const rows = await mailsTable.updateWhere(
+    { [MAIL_ID]: mail_id, [USER_ID]: user_id, saved: !saved },
+    { saved, updated: DB_NOW, [MODSEQ]: await getNextModseq(user_id) },
+    [MAIL_ID]
+  );
+  if (rows.length > 0) {
+    await syncMailboxPivot(user_id, "Starred", mail_id, saved);
+    return true;
+  }
+  // Zero-row match after the probe said the flag differed: the flag flipped
+  // between the two calls. Re-probe — an existing mail keeps the pivot sync
+  // and stays a success, a missing mail fails.
+  const after = await mailsTable.queryOne({
+    [MAIL_ID]: mail_id,
+    [USER_ID]: user_id,
+  });
+  if (!after) return false;
   await syncMailboxPivot(user_id, "Starred", mail_id, saved);
   return true;
 };

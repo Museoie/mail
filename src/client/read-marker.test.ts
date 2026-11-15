@@ -1,10 +1,3 @@
-// Opening a mail left its red unread dot on the row until the page was
-// refreshed. The list's own mark-read edit copied the array but mutated the
-// mail object in place, so react-query's structural sharing handed back the
-// previous data reference, the rows memo never re-derived, and the dot
-// stayed — even though the server had marked the mail read (a refresh
-// fetched fresh objects and the dot cleared).
-//
 // These tests mount the real App (same harness shape as
 // search-reentry.test.ts, with `call.get`/`call.post` mocked) and drive a
 // row open and back. The thread mock mirrors the server: the mark POST
@@ -376,9 +369,6 @@ describe("starring updates the Saved cache without a refetch", () => {
       );
       await mount.click(saveButton);
 
-      // The spliced row must carry the new value: at the head it arrived
-      // as saved: false (the spread kept the pre-click value), so the row
-      // rendered an empty star and a "Save" label until a refetch.
       const spliced = savedCache().find((m) => m.id === "mail-1");
       expect(spliced).toBeDefined();
       expect(spliced!.saved).toBe(true);

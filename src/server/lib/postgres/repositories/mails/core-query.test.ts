@@ -6,8 +6,6 @@
 import { describe, it, expect } from "bun:test";
 import {
   buildMailExistsQuery,
-  buildMarkMailReadQuery,
-  buildMarkMailSavedQuery,
   buildMarkMailSpamQuery
 } from "./core-query";
 
@@ -46,78 +44,6 @@ describe("buildMarkMailSpamQuery", () => {
 
   it("returns the touched id so the caller can tell a miss from a no-op", () => {
     expect(buildMarkMailSpamQuery(USER, MAIL, true, 1).sql).toContain(
-      "RETURNING mail_id"
-    );
-  });
-});
-
-describe("buildMarkMailReadQuery", () => {
-  it("stamps the mod-sequence the caller reserved", () => {
-    // A read is a flag change like the spam flip: it has to advance
-    // HIGHESTMODSEQ or a CONDSTORE client reads an unchanged value and never
-    // resyncs the \Seen flag.
-    const { sql, values } = buildMarkMailReadQuery(USER, MAIL, 41);
-    expect(sql).toContain("modseq = $4");
-    expect(values[3]).toBe(41);
-  });
-
-  it("matches no row when the mail is already read", () => {
-    // Idempotence guard: a re-mark must leave the reserved mod-sequence
-    // unused rather than announce a change that did not happen.
-    expect(buildMarkMailReadQuery(USER, MAIL, 41).sql).toContain(
-      "read IS DISTINCT FROM $1"
-    );
-  });
-
-  it("scopes the update to one mail owned by the caller", () => {
-    const { sql, values } = buildMarkMailReadQuery(USER, MAIL, 7);
-    expect(sql).toContain("WHERE mail_id = $2 AND user_id = $3");
-    expect(values).toEqual([true, MAIL, USER, 7]);
-  });
-
-  it("refreshes `updated` so delta-sync clients evict the row", () => {
-    expect(buildMarkMailReadQuery(USER, MAIL, 1).sql).toContain(
-      "updated = NOW()"
-    );
-  });
-
-  it("returns the touched id so the caller can tell a miss from a no-op", () => {
-    expect(buildMarkMailReadQuery(USER, MAIL, 1).sql).toContain(
-      "RETURNING mail_id"
-    );
-  });
-});
-
-describe("buildMarkMailSavedQuery", () => {
-  it("stamps the mod-sequence the caller reserved", () => {
-    // A star is a flag change like the spam flip: it has to advance
-    // HIGHESTMODSEQ or a CONDSTORE client reads an unchanged value and never
-    // resyncs the \Flagged flag.
-    const { sql, values } = buildMarkMailSavedQuery(USER, MAIL, true, 41);
-    expect(sql).toContain("modseq = $4");
-    expect(values[3]).toBe(41);
-  });
-
-  it("matches no row when the flag already holds the requested value", () => {
-    expect(buildMarkMailSavedQuery(USER, MAIL, true, 41).sql).toContain(
-      "saved IS DISTINCT FROM $1"
-    );
-  });
-
-  it("scopes the update to one mail owned by the caller", () => {
-    const { sql, values } = buildMarkMailSavedQuery(USER, MAIL, false, 7);
-    expect(sql).toContain("WHERE mail_id = $2 AND user_id = $3");
-    expect(values).toEqual([false, MAIL, USER, 7]);
-  });
-
-  it("refreshes `updated` so delta-sync clients evict the row", () => {
-    expect(buildMarkMailSavedQuery(USER, MAIL, true, 1).sql).toContain(
-      "updated = NOW()"
-    );
-  });
-
-  it("returns the touched id so the caller can tell a miss from a no-op", () => {
-    expect(buildMarkMailSavedQuery(USER, MAIL, true, 1).sql).toContain(
       "RETURNING mail_id"
     );
   });

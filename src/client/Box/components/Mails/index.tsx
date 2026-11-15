@@ -246,10 +246,7 @@ const RenderedMail = ({
         .filter((m) => !m.read)
         .forEach((m) => {
           requestMarkRead(m);
-          // The cache edit is the source of truth for the row's read state:
-          // the conversation's mail objects ARE the cached ones, so setting
-          // `m.read` here would mutate the cache in place and leave the
-          // rows memo stale — the same in-place class the edit above avoids.
+          // No direct `m.read` edit: markReadInQueryData already copy-replaces the row with read: true.
           markReadInQueryData(m);
         });
     }
@@ -767,12 +764,6 @@ const RenderedMails = ({
         const newData = [...oldData];
         const foundIndex = newData.findIndex((e) => e.id === mailId);
         if (foundIndex !== -1) {
-          // Copy, don't mutate in place: react-query's structural sharing
-          // hands back the previous `data` reference when every element is
-          // reference-equal, so an in-place `read` edit reaches the cache
-          // but notifies no observer — and the row keeps its unread dot
-          // until a refetch. (Same class as the accounts-bucket copy in
-          // accountsBucket.ts, which is why the counts already dropped.)
           newData[foundIndex] = new MailHeaderData({
             ...newData[foundIndex],
             read: true
@@ -838,11 +829,6 @@ const RenderedMails = ({
         const newData = [...oldData];
         const foundIndex = newData.findIndex((e) => e.id === mailId);
         if (foundIndex !== -1) {
-          // Copy, don't mutate in place: react-query's structural sharing
-          // hands back the previous `data` reference when every element is
-          // reference-equal, so an in-place `saved` edit reaches the cache
-          // but notifies no observer — the row's star would not flip until
-          // a refetch. (Same class as the read edit above.)
           newData[foundIndex] = new MailHeaderData({
             ...newData[foundIndex],
             saved: save
@@ -851,11 +837,6 @@ const RenderedMails = ({
         if (e === Category.SavedMails) {
           if (foundIndex !== -1) newData.splice(foundIndex, 1);
           else if (save) {
-            // Splice in only when saving: an unstar must never insert a row
-            // into the Saved list. The inserted row must carry the new
-            // value — spreading `mail` alone keeps the pre-click value,
-            // which is wrong now that the AllMails edit above copy-replaces
-            // instead of mutating the shared object in place.
             let i = 0;
             while (new Date(newData[i]?.date) > new Date(mail.date)) i++;
             newData.splice(
