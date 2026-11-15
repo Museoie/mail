@@ -6,6 +6,7 @@ import {
   buildAccountStatsQuery,
   buildDeltaAsOfQuery,
   buildDeltaEvictionQuery,
+  buildMailHeadersByIdsQuery,
   buildMailHeadersQuery,
   buildSearchAccountStatsQuery,
   buildSearchMailsQuery,
@@ -61,6 +62,62 @@ export const getMailHeaders = async (
   const result = await pool.query(sql, values);
   return result.rows as MailHeaderResult[];
 };
+
+// A full list is fetched as its ordered ids, then their headers a batch at a
+// time, so a 10,000-row list never holds every header row at once.
+const HEADER_BATCH_SIZE = 500;
+
+export const getMailHeaderIds = async (
+  user_id: string,
+  address: string,
+  options: GetMailHeadersOptions
+): Promise<string[]> => {
+  const { sql, values } = buildMailHeadersQuery(user_id, address, options, "mail_id");
+  const result = await pool.query<{ mail_id: string }>(sql, values);
+  return result.rows.map((row) => row.mail_id);
+};
+
+export const getUnifiedMailHeaderIds = async (
+  user_id: string,
+  addresses: string[],
+  options: UnifiedMailHeadersOptions
+): Promise<string[]> => {
+  const { sql, values } = buildUnifiedMailHeadersQuery(
+    user_id,
+    addresses,
+    options,
+    "mail_id"
+  );
+  const result = await pool.query<{ mail_id: string }>(sql, values);
+  return result.rows.map((row) => row.mail_id);
+};
+
+/**
+ * The rows `fetchBatch` returns for `ids`, `batchSize` ids at a time, each
+ * batch in the order of `ids`. An id with no row is skipped.
+ */
+export async function* rowsInIdOrder<R extends { mail_id: string }>(
+  ids: string[],
+  batchSize: number,
+  fetchBatch: (batch: string[]) => Promise<R[]>
+): AsyncGenerator<R[]> {
+  for (let start = 0; start < ids.length; start += batchSize) {
+    const batch = ids.slice(start, start + batchSize);
+    const byId = new Map((await fetchBatch(batch)).map((row) => [row.mail_id, row]));
+    yield batch.flatMap((id) => byId.get(id) ?? []);
+  }
+}
+
+/** The header rows of `ids` in the order given; an id expunged since it was listed is skipped. */
+export const getMailHeadersByIds = (
+  user_id: string,
+  ids: string[]
+): AsyncGenerator<MailHeaderResult[]> =>
+  rowsInIdOrder(ids, HEADER_BATCH_SIZE, async (batch) => {
+    const { sql, values } = buildMailHeadersByIdsQuery(user_id, batch);
+    const result = await pool.query<MailHeaderResult>(sql, values);
+    return result.rows;
+  });
 
 // Cross-account list for the "All accounts" view (design doc §8): one
 // server-side query over the union of the user's receiving addresses —

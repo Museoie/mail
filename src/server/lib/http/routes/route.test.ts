@@ -79,6 +79,18 @@ describe("Route.handler", () => {
     expect(await res.json()).toEqual({ status: "success", body: { hello: "world" } });
   });
 
+  it("sends a Response the callback built as is", async () => {
+    const built = new Response("[1,2]", { status: 201, headers: { ETag: 'W/"5-abc"' } });
+    const route = new Route("GET", "/list", async () => built);
+
+    const res = await route.handler(makeReq());
+
+    expect(res).toBe(built);
+    expect(res.status).toBe(201);
+    expect(res.headers.get("etag")).toBe('W/"5-abc"');
+    expect(await res.text()).toBe("[1,2]");
+  });
+
   it("answers an empty 200 when the callback returns nothing (void)", async () => {
     const route = new Route("POST", "/test", async () => undefined);
 
