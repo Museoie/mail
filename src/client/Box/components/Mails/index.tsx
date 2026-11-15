@@ -781,7 +781,7 @@ const RenderedMails = ({
         const newData = [...oldData];
         const foundIndex = newData.findIndex((e) => e.id === mailId);
         if (foundIndex !== -1) {
-          // Copy, don't mutate in place — see above.
+          // Copy, don't mutate in place.
           newData[foundIndex] = new MailHeaderData({
             ...newData[foundIndex],
             read: true
@@ -860,7 +860,7 @@ const RenderedMails = ({
         const newData = [...oldData];
         const foundIndex = newData.findIndex((e) => e.id === mailId);
         if (foundIndex !== -1) {
-          // Copy, don't mutate in place — see above.
+          // Copy, don't mutate in place.
           newData[foundIndex] = new MailHeaderData({
             ...newData[foundIndex],
             saved: save
