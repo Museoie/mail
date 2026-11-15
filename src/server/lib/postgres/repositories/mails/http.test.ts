@@ -5,6 +5,7 @@
  * when one of them fails. Scoped to the one file the function lives in.
  */
 import { describe, it, expect, beforeAll } from "bun:test";
+import { rowsInIdOrder } from "./http";
 
 describe("getMailHeadersDelta — cursor safety (#457)", () => {
   let fnSource: string;
@@ -80,5 +81,65 @@ describe("getUnifiedMailHeadersDelta — cursor safety (#457)", () => {
 
   it("echoes `since` as as_of on failure so the cursor cannot advance", () => {
     expect(fnSource).toMatch(/return\s*\{\s*as_of:\s*since/);
+  });
+});
+
+describe("rowsInIdOrder", () => {
+  const ids = Array.from({ length: 23 }, (_, i) => `mail-${i}`);
+  const row = (mail_id: string) => ({ mail_id, subject: `Subject of ${mail_id}` });
+
+  const collect = async <R>(batches: AsyncIterable<R[]>) => {
+    const sizes: number[] = [];
+    const rows: R[] = [];
+    for await (const batch of batches) {
+      sizes.push(batch.length);
+      rows.push(...batch);
+    }
+    return { sizes, rows };
+  };
+
+  it("asks for every id once, batchSize at a time", async () => {
+    const asked: string[][] = [];
+    await collect(
+      rowsInIdOrder(ids, 5, async (batch) => {
+        asked.push(batch);
+        return batch.map(row);
+      })
+    );
+    expect(asked).toEqual([
+      ids.slice(0, 5),
+      ids.slice(5, 10),
+      ids.slice(10, 15),
+      ids.slice(15, 20),
+      ids.slice(20, 23),
+    ]);
+  });
+
+  it("yields rows in id order whatever order the fetch returns them in", async () => {
+    const { rows, sizes } = await collect(
+      rowsInIdOrder(ids, 5, async (batch) => batch.map(row).reverse())
+    );
+    expect(rows).toEqual(ids.map(row));
+    expect(sizes).toEqual([5, 5, 5, 5, 3]);
+  });
+
+  it("skips an id the fetch has no row for", async () => {
+    const gone = new Set(["mail-0", "mail-7", "mail-22"]);
+    const { rows } = await collect(
+      rowsInIdOrder(ids, 5, async (batch) => batch.filter((id) => !gone.has(id)).map(row))
+    );
+    expect(rows.map((r) => r.mail_id)).toEqual(ids.filter((id) => !gone.has(id)));
+  });
+
+  it("fetches nothing for no ids", async () => {
+    let calls = 0;
+    const { rows } = await collect(
+      rowsInIdOrder([], 5, async () => {
+        calls++;
+        return [];
+      })
+    );
+    expect(rows).toEqual([]);
+    expect(calls).toBe(0);
   });
 });

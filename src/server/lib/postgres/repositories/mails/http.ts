@@ -94,21 +94,31 @@ export const getUnifiedMailHeaderIds = async (
 };
 
 /**
- * The header rows of `ids` in the order given, `HEADER_BATCH_SIZE` at a
- * time. An id expunged since it was listed is skipped.
+ * The rows `fetchBatch` returns for `ids`, `batchSize` ids at a time, each
+ * batch in the order of `ids`. An id with no row is skipped.
  */
-export async function* getMailHeadersByIds(
-  user_id: string,
-  ids: string[]
-): AsyncGenerator<MailHeaderResult[]> {
-  for (let start = 0; start < ids.length; start += HEADER_BATCH_SIZE) {
-    const batch = ids.slice(start, start + HEADER_BATCH_SIZE);
-    const { sql, values } = buildMailHeadersByIdsQuery(user_id, batch);
-    const result = await pool.query<MailHeaderResult>(sql, values);
-    const byId = new Map(result.rows.map((row) => [row.mail_id, row]));
+export async function* rowsInIdOrder<R extends { mail_id: string }>(
+  ids: string[],
+  batchSize: number,
+  fetchBatch: (batch: string[]) => Promise<R[]>
+): AsyncGenerator<R[]> {
+  for (let start = 0; start < ids.length; start += batchSize) {
+    const batch = ids.slice(start, start + batchSize);
+    const byId = new Map((await fetchBatch(batch)).map((row) => [row.mail_id, row]));
     yield batch.flatMap((id) => byId.get(id) ?? []);
   }
 }
+
+/** The header rows of `ids` in the order given; an id expunged since it was listed is skipped. */
+export const getMailHeadersByIds = (
+  user_id: string,
+  ids: string[]
+): AsyncGenerator<MailHeaderResult[]> =>
+  rowsInIdOrder(ids, HEADER_BATCH_SIZE, async (batch) => {
+    const { sql, values } = buildMailHeadersByIdsQuery(user_id, batch);
+    const result = await pool.query<MailHeaderResult>(sql, values);
+    return result.rows;
+  });
 
 // Cross-account list for the "All accounts" view (design doc §8): one
 // server-side query over the union of the user's receiving addresses —

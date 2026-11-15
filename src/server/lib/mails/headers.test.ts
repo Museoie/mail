@@ -75,7 +75,7 @@ describe("getMailHeaders", () => {
     expect(mockGetMailHeaderIds).not.toHaveBeenCalled();
   });
 
-  it("should call pgGetMailHeaders with correct parameters for SignedUser", async () => {
+  it("should call pgGetMailHeaderIds with correct parameters for SignedUser", async () => {
     const user = makeUser();
     await getMailHeaders(user, "inbox@example.com", defaultOptions);
     expect(mockGetMailHeaderIds).toHaveBeenCalledWith(
@@ -85,7 +85,7 @@ describe("getMailHeaders", () => {
     );
   });
 
-  it("should call pgGetMailHeaders with user_id for MaskedUser", async () => {
+  it("should call pgGetMailHeaderIds with user_id for MaskedUser", async () => {
     const user = makeMaskedUser();
     await getMailHeaders(user, "inbox@example.com", defaultOptions);
     expect(mockGetMailHeaderIds).toHaveBeenCalledWith(
@@ -423,7 +423,7 @@ describe("getUnifiedMailHeaders", () => {
     expect(mockGetUnifiedMailHeaderIds).not.toHaveBeenCalled();
   });
 
-  it("should call pgGetUnifiedMailHeaders with the user id and the address set", async () => {
+  it("should call pgGetUnifiedMailHeaderIds with the user id and the address set", async () => {
     const user = makeUser();
     await getUnifiedMailHeaders(user, ADDRESSES, {});
     expect(mockGetUnifiedMailHeaderIds).toHaveBeenCalledWith(

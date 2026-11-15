@@ -33,7 +33,6 @@ const expectSameAsJson = async <R>(rows: R[], map: (row: R) => unknown, batchSiz
   expect(new Uint8Array(actualBytes)).toEqual(new Uint8Array(expectedBytes));
   expect(actual.headers.get("etag")).toBe(expected.headers.get("etag"));
   expect(actual.headers.get("content-type")).toBe(expected.headers.get("content-type"));
-  expect(actual.headers.get("content-length")).toBe(String(expectedBytes.byteLength));
   expect(actual.status).toBe(200);
 };
 
@@ -74,5 +73,26 @@ describe("jsonList", () => {
     expect(seen).toEqual(rows.map((_, i) => i));
     const parsed = (await response.json()) as { body: { id: string }[] };
     expect(parsed.body.map((item) => item.id)).toEqual(rows.map((row) => row.id));
+  });
+
+  it("sends Content-Length on the wire, not chunked, for GET and HEAD", async () => {
+    const rows = rowsOf(3000);
+    const expectedBytes = new TextEncoder().encode(
+      JSON.stringify({ status: "success", body: rows.map(toItem) })
+    ).byteLength;
+    const server = Bun.serve({
+      port: 0,
+      fetch: () => jsonList(inBatches(rows, 500), toItem),
+    });
+    try {
+      for (const method of ["GET", "HEAD"]) {
+        const res = await fetch(server.url, { method });
+        expect(res.headers.get("content-length")).toBe(String(expectedBytes));
+        expect(res.headers.get("transfer-encoding")).toBeNull();
+        if (method === "GET") expect((await res.arrayBuffer()).byteLength).toBe(expectedBytes);
+      }
+    } finally {
+      server.stop(true);
+    }
   });
 });
