@@ -272,11 +272,12 @@ async function _processFetchMessages(
 
       if (!suppressReadMark && shouldMarkAsRead(fetchRequest.dataItems)) {
         // Skip the mark when the FETCH already loaded the flags and the mail
-        // is already read: a BODY[] + FLAGS fetch then costs zero queries
-        // for it. A body-only fetch does not project `read` (getRequestedFields
-        // adds it only for FLAGS), so `mail.read` is undefined there and the
-        // call still goes through — the repository probes before reserving,
-        // so that path costs one SELECT and burns no modseq.
+        // is already read: the read state is in hand, so no repository call
+        // is needed. A body-only fetch does not project `read`
+        // (getRequestedFields adds it only for FLAGS), so `mail.read` is
+        // undefined there and the call still goes through — the repository
+        // probes before reserving, so a re-mark of an already-read mail
+        // reserves nothing.
         if (mail.read !== true) {
           await markRead(store.getUser().id, id);
         }

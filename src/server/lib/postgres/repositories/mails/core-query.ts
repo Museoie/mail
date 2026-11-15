@@ -4,12 +4,6 @@
  * repository's own tests replace this module's siblings process-wide, so the
  * builders live outside them and can simply be called.
  *
- * Only `markMailSpam` still builds its mutation here: `markMailRead` and
- * `markMailSaved` express theirs through `mailsTable.updateWhere`, which
- * carries the same guard (`read = false` / `saved = !saved`) with the
- * shared filter handling — so their SQL shape is pinned by the Table layer,
- * not by a builder in this file.
- *
  * ```ts
  * const { sql, values } = buildMarkMailSpamQuery(user_id, mail_id, is_spam, modseq);
  * const result = await pool.query(sql, values);
