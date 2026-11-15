@@ -44,7 +44,7 @@ export const jsonList = async <R>(
 ): Promise<Response> => {
   const encoder = new TextEncoder();
   const hasher = new Bun.CryptoHasher("sha1");
-  const parts: Uint8Array<ArrayBuffer>[] = [];
+  const parts: Uint8Array[] = [];
   let byteLength = 0;
   const flush = (chunk: string) => {
     const bytes = encoder.encode(chunk);
@@ -68,8 +68,14 @@ export const jsonList = async <R>(
   flush(chunk + "]}");
 
   const hash = hasher.digest("base64").slice(0, 27);
-  // A Blob body, unlike a stream, goes out with its Content-Length.
-  return new Response(new Blob(parts), {
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const next = parts.shift();
+      if (next) controller.enqueue(next);
+      else controller.close();
+    },
+  });
+  return new Response(body, {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       ETag: `W/"${byteLength.toString(16)}-${hash}"`,

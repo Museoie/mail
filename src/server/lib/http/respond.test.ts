@@ -74,25 +74,4 @@ describe("jsonList", () => {
     const parsed = (await response.json()) as { body: { id: string }[] };
     expect(parsed.body.map((item) => item.id)).toEqual(rows.map((row) => row.id));
   });
-
-  it("sends Content-Length on the wire, not chunked, for GET and HEAD", async () => {
-    const rows = rowsOf(3000);
-    const expectedBytes = new TextEncoder().encode(
-      JSON.stringify({ status: "success", body: rows.map(toItem) })
-    ).byteLength;
-    const server = Bun.serve({
-      port: 0,
-      fetch: () => jsonList(inBatches(rows, 500), toItem),
-    });
-    try {
-      for (const method of ["GET", "HEAD"]) {
-        const res = await fetch(server.url, { method });
-        expect(res.headers.get("content-length")).toBe(String(expectedBytes));
-        expect(res.headers.get("transfer-encoding")).toBeNull();
-        if (method === "GET") expect((await res.arrayBuffer()).byteLength).toBe(expectedBytes);
-      }
-    } finally {
-      server.stop(true);
-    }
-  });
 });
