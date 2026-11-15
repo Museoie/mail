@@ -65,9 +65,12 @@ export const UID_DOMAIN = "uid_domain";
 // (saveMail, incl. APPEND/COPY), STORE (setMailFlags), and EXPUNGE/MOVE.
 // markMailSpam bumps it too: the flip moves the mail in or out of IMAP's INBOX
 // (see `isInboxTree`), which is a membership change a CONDSTORE client must
-// be able to detect. The remaining web-REST mutators (markMailRead /
-// markMailSaved) still do not bump it in phase 1 — they change no membership,
-// and no client can observe modseq until phase 3 (FETCH CHANGEDSINCE) lands.
+// be able to detect. The web-REST and IMAP mutators bump it as well —
+// markMailRead and markMailSaved reserve a fresh modseq exactly like
+// markMailSpam — so a CONDSTORE client watching FETCH CHANGEDSINCE sees read
+// and saved flips, even though they change no folder membership. markMailRead
+// is reached from both the web `/mark` route and the IMAP implicit-\Seen
+// writer (a non-peek BODY[] / RFC822 fetch).
 export const MODSEQ = "modseq";
 // mail_uid_counters columns
 export const UID_KIND = "uid_kind";

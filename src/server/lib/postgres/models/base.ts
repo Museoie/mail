@@ -254,14 +254,43 @@ export abstract class Table<
 
   async queryOne(
     filters: TypeSafeFilters<TSchema>
-  ): Promise<TModel | null> {
-    const { sql, values } = buildSelectWithFilters(this.name, "*", {
+  ): Promise<TModel | null>;
+  /**
+   * Same single-row read, projected to the given columns. The full-model
+   * overload cannot serve a projection: `ModelClass` validates the whole
+   * row, so a partial row fails construction (`MailModel` requires `html`,
+   * `text`, …). The columns path therefore returns the raw row, and the
+   * caller reads only the projected fields. Column names are validated
+   * against the schema up front so a typo fails here instead of as a
+   * Postgres error at runtime.
+   */
+  async queryOne(
+    filters: TypeSafeFilters<TSchema>,
+    columns: string[]
+  ): Promise<Record<string, unknown> | null>;
+  async queryOne(
+    filters: TypeSafeFilters<TSchema>,
+    columns?: string[]
+  ): Promise<TModel | Record<string, unknown> | null> {
+    if (columns !== undefined) {
+      const unknownColumns = columns.filter((c) => !(c in this.schema));
+      if (unknownColumns.length > 0) {
+        throw new Error(
+          `queryOne: unknown columns ${unknownColumns.join(", ")} for table ${this.name}`
+        );
+      }
+    }
+    const { sql, values } = buildSelectWithFilters(this.name, columns ?? "*", {
       filters,
       limit: 1,
       excludeDeleted: this.supportsSoftDelete,
     });
     const result = await pool.query(sql, values);
-    return result.rows.length > 0 ? new this.ModelClass(result.rows[0]) : null;
+    if (result.rows.length === 0) return null;
+    if (columns !== undefined) {
+      return result.rows[0] as Record<string, unknown>;
+    }
+    return new this.ModelClass(result.rows[0]);
   }
 
   /** The builders stamp `updated` only where the DDL declares the column. */

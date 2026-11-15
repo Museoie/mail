@@ -423,7 +423,20 @@ interface FetchCapture {
   changedSince?: number;
 }
 
-const recordingFetchStore = (captured: FetchCapture): Store =>
+const defaultFetchMail: Partial<MailType> = {
+  uid: { domain: 8, account: 8 },
+  modseq: 5,
+  read: false,
+  saved: false,
+  deleted: false,
+  draft: false,
+  answered: false,
+};
+
+const recordingFetchStore = (
+  captured: FetchCapture,
+  mail: Partial<MailType> = defaultFetchMail
+): Store =>
   ({
     getMessages: async (
       _box: string,
@@ -436,15 +449,7 @@ const recordingFetchStore = (captured: FetchCapture): Store =>
       captured.fields = fields;
       captured.changedSince = changedSince;
       const m = new Map<string, Partial<MailType>>();
-      m.set("doc1", {
-        uid: { domain: 8, account: 8 },
-        modseq: 5,
-        read: false,
-        saved: false,
-        deleted: false,
-        draft: false,
-        answered: false,
-      });
+      m.set("doc1", mail);
       return m;
     },
     getUser: () => ({ id: "user-123", username: "admin" } as SignedUser),
@@ -453,7 +458,8 @@ const recordingFetchStore = (captured: FetchCapture): Store =>
 const runFetch = async (
   dataItems: FetchDataItem[],
   condstoreEnabled: boolean,
-  changedSince?: number
+  changedSince?: number,
+  mail?: Partial<MailType>
 ) => {
   const captured: FetchCapture = { fields: [] };
   const lines: string[] = [];
@@ -461,7 +467,7 @@ const runFetch = async (
     "A1",
     { sequenceSet: { type: "uid", ranges: [{ start: 8 }] }, dataItems, changedSince },
     true,
-    recordingFetchStore(captured),
+    recordingFetchStore(captured, mail),
     "INBOX",
     seqStateFor([8]),
     (data: string) => {
@@ -495,6 +501,79 @@ describe("CONDSTORE — FETCH pulls the modseq column only when needed", () => {
     const { captured, out } = await runFetch([{ type: "FLAGS" }], false);
     expect(captured.fields).not.toContain("modseq");
     expect(out).not.toContain("MODSEQ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FETCH — the implicit-\Seen skip
+// ---------------------------------------------------------------------------
+
+describe("FETCH — the implicit-\\Seen skip", () => {
+  // The `if (mail.read !== true)` guard in message-ops.ts is the only thing
+  // standing between a FLAGS fetch of an already-read mail and a repository
+  // call per message. It is observed here through the probe SELECT the real
+  // `markRead` emits — the fake pool records every query, and the probe is
+  // the first query a mark makes. A FLAGS-only fetch never marks, so these
+  // tests fetch BODY[].
+  const bodyFlags: FetchDataItem[] = [
+    { type: "BODY", peek: false, section: { type: "FULL" } },
+    { type: "FLAGS" },
+  ];
+  const bodyOnly: FetchDataItem[] = [
+    { type: "BODY", peek: false, section: { type: "FULL" } },
+  ];
+
+  const probeSelects = (before: number): number =>
+    mockQuery.mock.calls
+      .slice(before)
+      .filter((call) =>
+        /^SELECT read FROM mails WHERE /.test(call[0] as string)
+      ).length;
+
+  const runMarkFetch = async (
+    mail: Partial<MailType>,
+    dataItems: FetchDataItem[]
+  ): Promise<{ out: string; probes: number }> => {
+    const before = mockQuery.mock.calls.length;
+    const { out } = await runFetch(dataItems, false, undefined, mail);
+    return { out, probes: probeSelects(before) };
+  };
+
+  it("marks an unread mail on a BODY[] + FLAGS fetch", async () => {
+    const { out, probes } = await runMarkFetch(
+      { ...defaultFetchMail, read: false, text: "hello world" },
+      bodyFlags
+    );
+    expect(out).toContain("BODY[]");
+    expect(probes).toBe(1);
+  });
+
+  it("does not call the repository for a read mail on a BODY[] + FLAGS fetch", async () => {
+    const { out, probes } = await runMarkFetch(
+      { ...defaultFetchMail, read: true, text: "hello world" },
+      bodyFlags
+    );
+    expect(out).toContain("BODY[]");
+    expect(probes).toBe(0);
+  });
+
+  it("marks a body-only fetch, where the read flag was never loaded", async () => {
+    // The mail carries no `read` key at all: a body-only fetch does not
+    // project it, so `mail.read` is undefined here. This is the case that
+    // tells `!== true` apart from `=== false` — the latter would skip the
+    // mark for an unread mail.
+    const bodyOnlyMail: Partial<MailType> = {
+      uid: { domain: 8, account: 8 },
+      modseq: 5,
+      saved: false,
+      deleted: false,
+      draft: false,
+      answered: false,
+      text: "hello world",
+    };
+    const { out, probes } = await runMarkFetch(bodyOnlyMail, bodyOnly);
+    expect(out).toContain("BODY[]");
+    expect(probes).toBe(1);
   });
 });
 

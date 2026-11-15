@@ -12,6 +12,8 @@ import {
   MODSEQ,
   DB_NOW,
   RFC822_SIZE,
+  READ,
+  SAVED,
 } from "../../models";
 import {
   getNextModseq,
@@ -485,12 +487,39 @@ export const markMailRead = async (
   user_id: string,
   mail_id: string
 ): Promise<boolean> => {
+  // Probe the current flag before reserving a mod-sequence: the reservation
+  // takes the per-user counter lock and burns a value, so a re-mark must
+  // not reserve. The probe projects only the flag — the full row would
+  // detoast the body columns for a boolean. The guarded update below still
+  // carries the `read = false` filter: the flag can flip between probe and
+  // update, and the flip can only land as a zero-row match, never as a
+  // write to a row that already holds the target value.
+  const current = await mailsTable.queryOne(
+    {
+      [MAIL_ID]: mail_id,
+      [USER_ID]: user_id,
+    },
+    [READ]
+  );
+  if (!current) return false;
+  if (current.read) return true;
   const rows = await mailsTable.updateWhere(
-    { [MAIL_ID]: mail_id, [USER_ID]: user_id },
-    { read: true, updated: DB_NOW },
+    { [MAIL_ID]: mail_id, [USER_ID]: user_id, read: false },
+    { read: true, updated: DB_NOW, [MODSEQ]: await getNextModseq(user_id) },
     [MAIL_ID]
   );
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+  // The update matched no row after the probe said unread: the flag flipped
+  // between the two calls. Re-probe to decide per the route contract — a
+  // re-mark of an existing mail stays a success, only a missing mail fails.
+  const after = await mailsTable.queryOne(
+    {
+      [MAIL_ID]: mail_id,
+      [USER_ID]: user_id,
+    },
+    [READ]
+  );
+  return after !== null;
 };
 
 export const markMailSaved = async (
@@ -498,12 +527,41 @@ export const markMailSaved = async (
   mail_id: string,
   saved: boolean
 ): Promise<boolean> => {
+  // Same probe-before-reservation shape as markMailRead: a re-save of a mail
+  // that already holds the requested value reserves nothing and still runs
+  // the pivot sync for the existing mail.
+  const current = await mailsTable.queryOne(
+    {
+      [MAIL_ID]: mail_id,
+      [USER_ID]: user_id,
+    },
+    [SAVED]
+  );
+  if (!current) return false;
+  if (current.saved === saved) {
+    await syncMailboxPivot(user_id, "Starred", mail_id, saved);
+    return true;
+  }
   const rows = await mailsTable.updateWhere(
-    { [MAIL_ID]: mail_id, [USER_ID]: user_id },
-    { saved, updated: DB_NOW },
+    { [MAIL_ID]: mail_id, [USER_ID]: user_id, saved: !saved },
+    { saved, updated: DB_NOW, [MODSEQ]: await getNextModseq(user_id) },
     [MAIL_ID]
   );
-  if (rows.length === 0) return false;
+  if (rows.length > 0) {
+    await syncMailboxPivot(user_id, "Starred", mail_id, saved);
+    return true;
+  }
+  // Zero-row match after the probe said the flag differed: the flag flipped
+  // between the two calls. Re-probe — an existing mail keeps the pivot sync
+  // and stays a success, a missing mail fails.
+  const after = await mailsTable.queryOne(
+    {
+      [MAIL_ID]: mail_id,
+      [USER_ID]: user_id,
+    },
+    [SAVED]
+  );
+  if (!after) return false;
   await syncMailboxPivot(user_id, "Starred", mail_id, saved);
   return true;
 };

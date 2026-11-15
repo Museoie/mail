@@ -271,7 +271,16 @@ async function _processFetchMessages(
       await writeFetchResponse(write, writeChunked, writeStream, seqNum, response);
 
       if (!suppressReadMark && shouldMarkAsRead(fetchRequest.dataItems)) {
-        await markRead(store.getUser().id, id);
+        // Skip the mark when the FETCH already loaded the flags and the mail
+        // is already read: the read state is in hand, so no repository call
+        // is needed. A body-only fetch does not project `read`
+        // (getRequestedFields adds it only for FLAGS), so `mail.read` is
+        // undefined there and the call still goes through — the repository
+        // probes before reserving, so a re-mark of an already-read mail
+        // reserves nothing.
+        if (mail.read !== true) {
+          await markRead(store.getUser().id, id);
+        }
       }
     } catch (error) {
       const stack = error instanceof Error ? error.stack : String(error);

@@ -34,7 +34,7 @@ mock.module("server/lib/postgres/pool", pgMock);
 // Import the subjects only after the driver mock is registered, so the lazy pool in
 // `postgres/client.ts` instantiates FakePool instead of a real connection.
 const { tables } = await import("./initialize");
-const { usersTable, sessionsTable, mailboxesTable } = await import("./models");
+const { usersTable, sessionsTable, mailboxesTable, mailsTable } = await import("./models");
 const { resetPool } = await import("./client");
 
 beforeAll(() => {
@@ -223,6 +223,35 @@ describe("Table.upsert — undefined column reaches neither INSERT nor conflict 
     const sql = lastSql();
     expect(insertColumns(sql)).toEqual(["updated", "user_id", "username"]);
     expect(setColumns(sql)).toEqual(["username", "updated"]);
+  });
+});
+
+describe("Table.queryOne — column list", () => {
+  it("projects only the requested columns instead of SELECT *", async () => {
+    // The mark-mail probes run on every mail open and every IMAP body-only
+    // fetch; selecting the full row would detoast the body columns for a
+    // boolean. The emitted SELECT list is the whole point of the overload.
+    await mailsTable.queryOne({ mail_id: "m1", user_id: "u1" }, ["read"]);
+    const sql = lastSql();
+    expect(sql).toMatch(/^SELECT read FROM mails WHERE /);
+    expect(sql).not.toContain("html");
+    expect(sql).not.toContain("text");
+    expect(sql).not.toContain("attachments");
+    expect(sql).not.toContain("insight");
+    expect(sql).not.toContain("search_vector");
+    expect(queries[0].values).toEqual(["m1", "u1", 1]);
+  });
+
+  it("still selects the full row with no column list", async () => {
+    await mailsTable.queryOne({ mail_id: "m1", user_id: "u1" });
+    expect(lastSql()).toMatch(/^SELECT \* FROM mails WHERE /);
+  });
+
+  it("refuses an unknown column instead of emitting bad SQL", async () => {
+    await expect(
+      mailsTable.queryOne({ mail_id: "m1", user_id: "u1" }, ["nope"])
+    ).rejects.toThrow("queryOne: unknown columns nope for table mails");
+    expect(queries).toHaveLength(0);
   });
 });
 

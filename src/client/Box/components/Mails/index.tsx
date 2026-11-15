@@ -246,8 +246,8 @@ const RenderedMail = ({
         .filter((m) => !m.read)
         .forEach((m) => {
           requestMarkRead(m);
+          // No direct `m.read` edit: markReadInQueryData already copy-replaces the row with read: true.
           markReadInQueryData(m);
-          m.read = true;
         });
     }
     navigate(mailPagePath(mail.id), { state: FROM_LIST_STATE });
@@ -762,8 +762,13 @@ const RenderedMails = ({
         if (!oldData) return oldData;
 
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.read = true;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            read: true
+          });
+        }
 
         return newData;
       });
@@ -774,8 +779,14 @@ const RenderedMails = ({
         if (!oldData) return oldData;
 
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.read = true;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place.
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            read: true
+          });
+        }
 
         return newData;
       });
@@ -816,21 +827,23 @@ const RenderedMails = ({
       mailsCache.set((oldData) => {
         if (!oldData) return oldData;
         const newData = [...oldData];
-        let foundIndex;
-        newData.find((e, i) => {
-          if (e.id === mailId) {
-            foundIndex = i;
-            e.saved = save;
-            return true;
-          }
-          return false;
-        });
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            saved: save
+          });
+        }
         if (e === Category.SavedMails) {
-          if (foundIndex !== undefined) newData.splice(foundIndex, 1);
-          else {
+          if (foundIndex !== -1) newData.splice(foundIndex, 1);
+          else if (save) {
             let i = 0;
             while (new Date(newData[i]?.date) > new Date(mail.date)) i++;
-            newData.splice(i, 0, new MailHeaderData({ ...mail }));
+            newData.splice(
+              i,
+              0,
+              new MailHeaderData({ ...mail, saved: save })
+            );
           }
         }
 
@@ -845,8 +858,14 @@ const RenderedMails = ({
       new MailsCache(mailAccount, Category.AllMails, true).set((oldData) => {
         if (!oldData) return oldData;
         const newData = [...oldData];
-        const foundData = newData.find((e) => e.id === mailId);
-        if (foundData) foundData.saved = save;
+        const foundIndex = newData.findIndex((e) => e.id === mailId);
+        if (foundIndex !== -1) {
+          // Copy, don't mutate in place.
+          newData[foundIndex] = new MailHeaderData({
+            ...newData[foundIndex],
+            saved: save
+          });
+        }
         return newData;
       });
     }
