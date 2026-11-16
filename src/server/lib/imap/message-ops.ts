@@ -34,6 +34,7 @@ import {
 } from "./util";
 import { shouldMarkAsRead } from "./session-utils";
 import {
+  FetchDataItem,
   FetchRequest,
   SearchRequest,
   SearchCriterion,
@@ -65,6 +66,13 @@ import {
 // FETCH
 // ---------------------------------------------------------------------------
 
+const isRowMetadataItem = (item: FetchDataItem): boolean =>
+  item.type === "FLAGS" ||
+  item.type === "UID" ||
+  item.type === "MODSEQ" ||
+  item.type === "RFC822.SIZE" ||
+  item.type === "INTERNALDATE";
+
 export async function fetchMessagesTyped(
   tag: string,
   fetchRequest: FetchRequest,
@@ -81,19 +89,10 @@ export async function fetchMessagesTyped(
   // the flag another client is looking at.
   suppressReadMark: boolean = false
 ): Promise<void> {
-  const isFlagsOnly = fetchRequest.dataItems.every(
-    (item) =>
-      item.type === "FLAGS" ||
-      item.type === "UID" ||
-      item.type === "RFC822.SIZE" ||
-      item.type === "INTERNALDATE"
-  );
+  const isFlagsOnly = fetchRequest.dataItems.every(isRowMetadataItem);
   const isHeaderOnly = fetchRequest.dataItems.every(
     (item) =>
-      item.type === "FLAGS" ||
-      item.type === "UID" ||
-      item.type === "RFC822.SIZE" ||
-      item.type === "INTERNALDATE" ||
+      isRowMetadataItem(item) ||
       (item.type === "BODY" && item.section?.type === "HEADER") ||
       (item.type === "BODY" && item.section?.type === "HEADER_FIELDS")
   );

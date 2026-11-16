@@ -504,6 +504,61 @@ describe("CONDSTORE — FETCH pulls the modseq column only when needed", () => {
   });
 });
 
+describe("CONDSTORE — a flag resync is not truncated by the per-command cap", () => {
+  const uids = Array.from({ length: 60 }, (_, i) => i + 1);
+
+  const fetchedUidRanges = async (dataItems: FetchDataItem[], changedSince?: number) => {
+    const ranges: Array<[number, number]> = [];
+    const store = {
+      getMessages: async (_box: string, start: number, end: number) => {
+        ranges.push([start, end]);
+        return new Map<string, Partial<MailType>>();
+      },
+      getUser: () => ({ id: "user-123", username: "admin" } as SignedUser),
+    } as unknown as Store;
+    await fetchMessagesTyped(
+      "A1",
+      { sequenceSet: { type: "uid", ranges: [{ start: 1, end: 60 }] }, dataItems, changedSince },
+      true,
+      store,
+      "INBOX",
+      seqStateFor(uids),
+      () => true,
+      async () => {},
+      async () => {},
+      false
+    );
+    return ranges;
+  };
+
+  it("fetches the whole range for (UID FLAGS MODSEQ)", async () => {
+    const ranges = await fetchedUidRanges([{ type: "UID" }, { type: "FLAGS" }, { type: "MODSEQ" }]);
+    expect(ranges).toEqual([[1, 60]]);
+  });
+
+  it("fetches the whole range for (UID FLAGS MODSEQ) (CHANGEDSINCE n)", async () => {
+    const ranges = await fetchedUidRanges([{ type: "UID" }, { type: "FLAGS" }, { type: "MODSEQ" }], 60);
+    expect(ranges).toEqual([[1, 60]]);
+  });
+
+  it("gives (UID FLAGS MODSEQ BODY.PEEK[HEADER.FIELDS (FROM)]) the header-fetch cap, not the body cap", async () => {
+    const ranges = await fetchedUidRanges([
+      { type: "UID" },
+      { type: "FLAGS" },
+      { type: "MODSEQ" },
+      { type: "BODY", peek: true, section: { type: "HEADER_FIELDS", fields: ["FROM"], not: false } },
+    ]);
+    expect(ranges).toEqual([[1, 60]]);
+  });
+
+  it("still caps a body fetch at 50 messages", async () => {
+    const ranges = await fetchedUidRanges([
+      { type: "BODY", peek: true, section: { type: "FULL" } },
+    ]);
+    expect(ranges).toEqual([[1, 50]]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // FETCH — the implicit-\Seen skip
 // ---------------------------------------------------------------------------
