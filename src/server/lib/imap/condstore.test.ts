@@ -541,6 +541,16 @@ describe("CONDSTORE — a flag resync is not truncated by the per-command cap", 
     expect(ranges).toEqual([[1, 60]]);
   });
 
+  it("gives (UID FLAGS MODSEQ BODY.PEEK[HEADER.FIELDS (FROM)]) the header-fetch cap, not the body cap", async () => {
+    const ranges = await fetchedUidRanges([
+      { type: "UID" },
+      { type: "FLAGS" },
+      { type: "MODSEQ" },
+      { type: "BODY", peek: true, section: { type: "HEADER_FIELDS", fields: ["FROM"], not: false } },
+    ]);
+    expect(ranges).toEqual([[1, 60]]);
+  });
+
   it("still caps a body fetch at 50 messages", async () => {
     const ranges = await fetchedUidRanges([
       { type: "BODY", peek: true, section: { type: "FULL" } },

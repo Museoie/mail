@@ -66,10 +66,6 @@ import {
 // FETCH
 // ---------------------------------------------------------------------------
 
-// Items answered from fixed-width columns of the mail row. A fetch made only
-// of these costs the same per message whatever the mailbox holds, so it is
-// exempt from the per-command message cap — a client resyncing flags asks for
-// the whole UID range at once and does not come back for a truncated tail.
 const isRowMetadataItem = (item: FetchDataItem): boolean =>
   item.type === "FLAGS" ||
   item.type === "UID" ||
