@@ -40,10 +40,21 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 if ("serviceWorker" in navigator) {
+  // The worker keeps this window's build cached while the window is open or reported it recently.
+  const reportBuild = () =>
+    navigator.serviceWorker.ready.then((registration) =>
+      registration.active?.postMessage({ type: "build", entry: new URL(import.meta.url).pathname })
+    );
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/service-worker.js").catch((error) => {
       console.error("Service worker registration failed:", error);
     });
+    reportBuild();
+  });
+  navigator.serviceWorker.addEventListener("controllerchange", reportBuild);
+  window.addEventListener("pageshow", (event) => event.persisted && reportBuild());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") reportBuild();
   });
 }
 
