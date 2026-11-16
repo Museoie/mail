@@ -42,7 +42,26 @@ export interface GetMailHeadersOptions {
   from?: number;
   size?: number;
   since?: string;
+  after?: ListCursor;
 }
+
+/**
+ * The sort keys of the row a page ended on, in newest-first order. The next
+ * page starts strictly after it, so mail arriving or changing between page
+ * loads never shifts the rows still to come the way an offset would. Both
+ * keys are immutable, so a mail never moves across the cursor.
+ */
+export interface ListCursor {
+  date: string;
+  id: string;
+}
+
+/**
+ * Selected by a paged list query: the id, plus the exact sort keys the next
+ * cursor is built from. `date` is read as text so the cursor keeps the
+ * column's microseconds, which a JS Date would round away.
+ */
+export const LIST_CURSOR_COLUMNS = `${MAIL_ID}, ${DATE}::text AS cursor_date`;
 
 export const buildHeaderAddressCondition = (
   options: Pick<GetMailHeadersOptions, "sent" | "saved">
@@ -161,7 +180,13 @@ export const buildMailHeadersQuery = (
     values.push(options.since);
   }
 
-  sql += ` ORDER BY date DESC`;
+  if (options.after) {
+    sql += ` AND (date, mail_id) < ($${paramIdx}::timestamptz, $${paramIdx + 1}::uuid)`;
+    values.push(options.after.date, options.after.id);
+    paramIdx += 2;
+  }
+
+  sql += ` ORDER BY date DESC, mail_id DESC`;
 
   if (options.size !== undefined) {
     sql += ` LIMIT $${paramIdx++}`;
@@ -174,6 +199,23 @@ export const buildMailHeadersQuery = (
   }
   return { sql, values };
 };
+
+/**
+ * One page of a folder's ids: `limit` rows after `options.after`, plus one
+ * more so the caller can tell whether another page follows.
+ */
+export const buildMailHeaderIdPageQuery = (
+  user_id: string,
+  address: string,
+  options: GetMailHeadersOptions,
+  limit: number
+): { sql: string; values: ParamValue[] } =>
+  buildMailHeadersQuery(
+    user_id,
+    address,
+    { ...options, from: undefined, size: limit + 1 },
+    LIST_CURSOR_COLUMNS
+  );
 
 export const buildDeltaAsOfQuery = (): {
   sql: string;
@@ -216,13 +258,13 @@ export interface UnifiedMailHeadersOptions {
   from?: number;
   size?: number;
   since?: string;
+  /** Newest first, as the client shows the list, instead of unread first. A
+   * paged list needs it: under unread-first a partial list would leave out
+   * read mail newer than the unread mail it holds. */
+  newestFirst?: boolean;
+  /** Only with `newestFirst`: start after this position. */
+  after?: ListCursor;
 }
-
-// One `[{address}]` jsonb value per address, bound as a single jsonb[] — the
-// same single-address shape the per-account condition binds, so each `@>`
-// probe keeps the per-account form.
-const toAddressJsons = (addresses: string[]): string[] =>
-  addresses.map((address) => JSON.stringify([{ address }]));
 
 /**
  * The cross-account ("All accounts") list condition: a mail belongs to the
@@ -231,9 +273,13 @@ const toAddressJsons = (addresses: string[]): string[] =>
  * the user sent to someone else is out, a mail they sent to themselves is in
  * (their own address is a recipient). An empty address set matches nothing,
  * so a user with no received mail gets an empty list rather than an error.
+ *
+ * The addresses are bound as one text[]: Postgres hashes a large `= ANY`
+ * array, so each recipient costs one lookup, where a jsonb `@> ANY` probes
+ * every address against every column of every row.
  */
 export const buildUnifiedAddressCondition = (paramIndex = 2): string =>
-  `(${TO_ADDRESS} @> ANY($${paramIndex}::jsonb[]) OR cc_address @> ANY($${paramIndex}::jsonb[]) OR bcc_address @> ANY($${paramIndex}::jsonb[]) OR envelope_to @> ANY($${paramIndex}::jsonb[]))`;
+  `EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(${TO_ADDRESS}, '[]'::jsonb) || COALESCE(cc_address, '[]'::jsonb) || COALESCE(bcc_address, '[]'::jsonb) || COALESCE(envelope_to, '[]'::jsonb)) AS recipient WHERE recipient->>'address' = ANY($${paramIndex}::text[]))`;
 
 export const buildUnifiedMailHeadersQuery = (
   user_id: string,
@@ -250,7 +296,7 @@ export const buildUnifiedMailHeadersQuery = (
       AND draft = FALSE
       AND is_spam = FALSE
   `;
-  const values: ParamValue[] = [user_id, toAddressJsons(addresses)];
+  const values: ParamValue[] = [user_id, addresses];
   let paramIdx = 3;
 
   if (options.since !== undefined) {
@@ -258,9 +304,18 @@ export const buildUnifiedMailHeadersQuery = (
     values.push(options.since);
   }
 
-  // Unread-then-recent (design doc §8): unread mail first, newest first
-  // within each read state — the per-account list is date-only.
-  sql += ` ORDER BY read ASC, date DESC`;
+  if (options.newestFirst) {
+    if (options.after) {
+      sql += ` AND (date, mail_id) < ($${paramIdx}::timestamptz, $${paramIdx + 1}::uuid)`;
+      values.push(options.after.date, options.after.id);
+      paramIdx += 2;
+    }
+    sql += ` ORDER BY date DESC, mail_id DESC`;
+  } else {
+    // Unread-then-recent (design doc §8): unread mail first, newest first
+    // within each read state — the per-account list is date-only.
+    sql += ` ORDER BY read ASC, date DESC`;
+  }
 
   if (options.size !== undefined) {
     sql += ` LIMIT $${paramIdx++}`;
@@ -273,6 +328,20 @@ export const buildUnifiedMailHeadersQuery = (
   }
   return { sql, values };
 };
+
+/** The unified list's `buildMailHeaderIdPageQuery`, newest first like the client shows it. */
+export const buildUnifiedMailHeaderIdPageQuery = (
+  user_id: string,
+  addresses: string[],
+  options: UnifiedMailHeadersOptions,
+  limit: number
+): { sql: string; values: ParamValue[] } =>
+  buildUnifiedMailHeadersQuery(
+    user_id,
+    addresses,
+    { ...options, newestFirst: true, from: undefined, size: limit + 1 },
+    LIST_CURSOR_COLUMNS
+  );
 
 export const buildUnifiedDeltaEvictionQuery = (
   user_id: string,
@@ -289,7 +358,7 @@ export const buildUnifiedDeltaEvictionQuery = (
         AND (expunged = TRUE OR is_spam = TRUE)
         AND updated > $3
     `;
-  return { sql: expungedSql, values: [user_id, toAddressJsons(addresses), since] };
+  return { sql: expungedSql, values: [user_id, addresses, since] };
 };
 
 export const buildSearchMailsQuery = (

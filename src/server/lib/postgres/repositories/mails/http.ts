@@ -2,20 +2,23 @@ import { logger } from "../../../logger";
 import { pool } from "../../client";
 import {
   GetMailHeadersOptions,
+  ListCursor,
   UnifiedMailHeadersOptions,
   buildAccountStatsQuery,
   buildDeltaAsOfQuery,
   buildDeltaEvictionQuery,
   buildMailHeadersByIdsQuery,
+  buildMailHeaderIdPageQuery,
   buildMailHeadersQuery,
   buildSearchAccountStatsQuery,
   buildSearchMailsQuery,
   buildUnifiedDeltaEvictionQuery,
+  buildUnifiedMailHeaderIdPageQuery,
   buildUnifiedMailHeadersQuery,
   buildUnreadNotificationsQuery,
 } from "./http-query";
 
-export type { GetMailHeadersOptions, UnifiedMailHeadersOptions };
+export type { GetMailHeadersOptions, ListCursor, UnifiedMailHeadersOptions };
 
 /**
  * Represents the subset of mail fields returned by getMailHeaders.
@@ -90,6 +93,53 @@ export const getUnifiedMailHeaderIds = async (
   );
   const result = await pool.query<{ mail_id: string }>(sql, values);
   return result.rows.map((row) => row.mail_id);
+};
+
+/** One page of a list: its ids in order, and where the next page starts (null on the last page). */
+export interface MailIdPage {
+  ids: string[];
+  next: ListCursor | null;
+}
+
+/** A row of a page query (`buildMailHeaderIdPageQuery` and its unified twin). */
+export interface CursorRow {
+  mail_id: string;
+  cursor_date: string;
+}
+
+/**
+ * The page of `limit` ids in `rows`. The page query asks for one row past the
+ * page, so a full page is known to be the last one without a second round
+ * trip: the next cursor exists only when that extra row came back.
+ */
+export const toIdPage = (rows: CursorRow[], limit: number): MailIdPage => {
+  const page = rows.slice(0, limit);
+  const last = page[page.length - 1];
+  const next =
+    rows.length > limit && last ? { date: last.cursor_date, id: last.mail_id } : null;
+  return { ids: page.map((row) => row.mail_id), next };
+};
+
+export const getMailHeaderIdPage = async (
+  user_id: string,
+  address: string,
+  options: GetMailHeadersOptions,
+  limit: number
+): Promise<MailIdPage> => {
+  const { sql, values } = buildMailHeaderIdPageQuery(user_id, address, options, limit);
+  const result = await pool.query<CursorRow>(sql, values);
+  return toIdPage(result.rows, limit);
+};
+
+export const getUnifiedMailHeaderIdPage = async (
+  user_id: string,
+  addresses: string[],
+  options: UnifiedMailHeadersOptions,
+  limit: number
+): Promise<MailIdPage> => {
+  const { sql, values } = buildUnifiedMailHeaderIdPageQuery(user_id, addresses, options, limit);
+  const result = await pool.query<CursorRow>(sql, values);
+  return toIdPage(result.rows, limit);
 };
 
 /**
