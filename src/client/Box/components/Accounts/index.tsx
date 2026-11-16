@@ -132,8 +132,11 @@ const Accounts = ({
   const { confirm } = useFeedback();
 
   const getAccounts = async () => {
+    const accounts = await fetchAccounts();
+    // Cleared on arrival, not on request: onSuccess also runs for cache
+    // edits made while the request is in flight.
     isFetched = false;
-    return fetchAccounts();
+    return accounts;
   };
 
   const onSuccess = (data: AccountsGetResponse) => {

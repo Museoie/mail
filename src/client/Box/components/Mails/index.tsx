@@ -77,6 +77,7 @@ import {
   scheduleDelete,
   withoutPendingDeletes
 } from "./pendingDeletes";
+import { trackMarkRead, withPendingReads } from "./pendingReads";
 import {
   accountCountForCategory,
   accountForMail,
@@ -245,7 +246,7 @@ const RenderedMail = ({
       mails
         .filter((m) => !m.read)
         .forEach((m) => {
-          requestMarkRead(m);
+          trackMarkRead(m.id, requestMarkRead(m));
           // No direct `m.read` edit: markReadInQueryData already copy-replaces the row with read: true.
           markReadInQueryData(m);
         });
@@ -649,16 +650,17 @@ const RenderedMails = ({
 
   const queryUrl = getMailsQueryUrl(selectedAccount, selectedCategory, unified);
 
-  const getMails = async () => {
-    const { status, body, message } = await call.get<
-      HeadersGetResponse | SearchGetResponse
-    >(queryUrl);
-    if (status === "success") {
-      return withoutPendingDeletes(
-        body?.map((d) => new MailHeaderData(d)) || []
-      );
-    } else throw new Error(message);
-  };
+  const getMails = () =>
+    withPendingReads(async () => {
+      const { status, body, message } = await call.get<
+        HeadersGetResponse | SearchGetResponse
+      >(queryUrl);
+      if (status === "success") {
+        return withoutPendingDeletes(
+          body?.map((d) => new MailHeaderData(d)) || []
+        );
+      } else throw new Error(message);
+    });
   const query = useQuery<MailHeaderData[]>(queryUrl, getMails, {
     refetchOnMount: revalidateOnMountPolicy(queryUrl)
   });
