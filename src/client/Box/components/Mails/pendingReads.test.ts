@@ -47,6 +47,17 @@ describe("withPendingReads", () => {
     expect(mails.map((m) => m.read)).toEqual([false]);
   });
 
+  it("trusts a list started after the mark succeeded even while an older list is in flight", async () => {
+    const older = deferred<MailHeaderData[]>();
+    const olderFetch = withPendingReads(() => older.promise);
+    trackMarkRead("a", Promise.resolve({ status: "success" }));
+    await tick();
+    const newer = await withPendingReads(async () => [unread("a")]);
+    expect(newer.map((m) => m.read)).toEqual([false]);
+    older.resolve([unread("a")]);
+    expect((await olderFetch).map((m) => m.read)).toEqual([true]);
+  });
+
   it("trusts the server again once the mark fails", async () => {
     trackMarkRead("a", Promise.resolve({ status: "error" }));
     await tick();
