@@ -34,6 +34,7 @@ import {
 } from "./util";
 import { shouldMarkAsRead } from "./session-utils";
 import {
+  FetchDataItem,
   FetchRequest,
   SearchRequest,
   SearchCriterion,
@@ -65,6 +66,17 @@ import {
 // FETCH
 // ---------------------------------------------------------------------------
 
+// Items answered from fixed-width columns of the mail row. A fetch made only
+// of these costs the same per message whatever the mailbox holds, so it is
+// exempt from the per-command message cap — a client resyncing flags asks for
+// the whole UID range at once and does not come back for a truncated tail.
+const isRowMetadataItem = (item: FetchDataItem): boolean =>
+  item.type === "FLAGS" ||
+  item.type === "UID" ||
+  item.type === "MODSEQ" ||
+  item.type === "RFC822.SIZE" ||
+  item.type === "INTERNALDATE";
+
 export async function fetchMessagesTyped(
   tag: string,
   fetchRequest: FetchRequest,
@@ -81,19 +93,10 @@ export async function fetchMessagesTyped(
   // the flag another client is looking at.
   suppressReadMark: boolean = false
 ): Promise<void> {
-  const isFlagsOnly = fetchRequest.dataItems.every(
-    (item) =>
-      item.type === "FLAGS" ||
-      item.type === "UID" ||
-      item.type === "RFC822.SIZE" ||
-      item.type === "INTERNALDATE"
-  );
+  const isFlagsOnly = fetchRequest.dataItems.every(isRowMetadataItem);
   const isHeaderOnly = fetchRequest.dataItems.every(
     (item) =>
-      item.type === "FLAGS" ||
-      item.type === "UID" ||
-      item.type === "RFC822.SIZE" ||
-      item.type === "INTERNALDATE" ||
+      isRowMetadataItem(item) ||
       (item.type === "BODY" && item.section?.type === "HEADER") ||
       (item.type === "BODY" && item.section?.type === "HEADER_FIELDS")
   );
