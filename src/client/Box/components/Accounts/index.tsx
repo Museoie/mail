@@ -279,6 +279,9 @@ const Accounts = ({
           setIsAccountsOpen(false);
           return;
         }
+        // Picking an account is navigation, like a folder tap: the writer
+        // docks over the list it switches to.
+        setIsWriterOpen(false);
         setIsSettingsOpen(false);
         if (selectedAccount !== accountName) {
           setPage(1);
