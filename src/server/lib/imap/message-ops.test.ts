@@ -45,6 +45,7 @@ const USER_ROW = {
   updated: null,
   is_deleted: null,
   imap_uid_validity: STORED_UIDVALIDITY,
+  auth_sub: null,
 };
 
 // Every UID reservation this run made, in call order. `buildReserveUidQuery`

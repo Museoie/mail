@@ -39,6 +39,14 @@ export const addressToUsername = (address: string) => {
 };
 
 /**
+ * Whether `username` can name a mailbox: {@link getUserDomain} makes it a DNS
+ * label under the served domain and {@link addressToUsername} reads it back
+ * lower-cased, so only a lower-case label routes mail to the account.
+ */
+export const isRoutableUsername = (username: string) =>
+  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(username);
+
+/**
  * Resolves `undefined` if `promise` has not settled within `ms`.
  *
  * For awaits on the shutdown path whose own transport carries no deadline: a

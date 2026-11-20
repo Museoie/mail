@@ -3,7 +3,7 @@ import path from "path";
 import { getDomain, isProduction, PostgresSessionStore } from "server";
 import { resolveProxyTrust } from "./app";
 import { resolveSessionSecret } from "./session-secret";
-import handleApi from "./routes";
+import handleApi, { isRawBodyPath } from "./routes";
 import { mountedPath } from "./routes/route";
 import { errorHandler, reportMiddlewareError, serverErrorHandler } from "./error-handler";
 import { startCleanupScheduler } from "./rate-limit";
@@ -20,6 +20,7 @@ import { conditional, send, text } from "./respond";
 import { serveIndex, serveStatic } from "./static";
 import { MAX_REQUEST_BODY_SIZE } from "./upload";
 import { logger } from "../logger";
+import { enforceSsoSession } from "../sso/session";
 
 /**
  * Security response headers, applied to every response. This is the single
@@ -139,11 +140,12 @@ export const createHttpApp = (store: SessionStore): HttpApp => {
     let session: HttpSession | undefined;
     let response: Response;
     try {
-      const body = await readJsonBody(request);
+      const body = isRawBodyPath(url.pathname) ? {} : await readJsonBody(request);
       session = await HttpSession.load(request.headers.get("cookie"), store, {
         secret: sessionSecret,
         secure: production,
       });
+      await enforceSsoSession(session);
       response = await route({
         method,
         path: url.pathname,

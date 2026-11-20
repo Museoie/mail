@@ -4,6 +4,7 @@ import {
   isSecureRequest,
   parseQuery,
   readJsonBody,
+  readTextBody,
   requestTarget,
   resolveClientIp,
   trustLoopbackAndPrivate,
@@ -158,5 +159,36 @@ describe("readJsonBody", () => {
     expect(await post(gzipped, { "Content-Type": "application/json", "Content-Encoding": "gzip" })).toEqual({
       zipped: true,
     });
+  });
+});
+
+describe("readTextBody", () => {
+  const post = (body: BodyInit | null, headers: Record<string, string> = {}) =>
+    new Request("http://localhost/", { method: "POST", headers, body });
+
+  it("reads the body as text whatever its content type", async () => {
+    for (const type of ["application/secevent+jwt", "application/json", "text/plain"]) {
+      expect(await readTextBody(post("eyJ.eyJ.sig", { "content-type": type }), 1024)).toBe(
+        "eyJ.eyJ.sig"
+      );
+    }
+    expect(await readTextBody(post(null), 1024)).toBe("");
+  });
+
+  it("refuses a body past the limit, declared or streamed", async () => {
+    await expect(readTextBody(post("x".repeat(11)), 10)).rejects.toMatchObject({ status: 413 });
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("x".repeat(11)));
+        controller.close();
+      },
+    });
+    await expect(readTextBody(post(stream), 10)).rejects.toMatchObject({ status: 413 });
+  });
+
+  it("refuses an unknown content encoding", async () => {
+    await expect(
+      readTextBody(post("x", { "content-encoding": "br" }), 1024)
+    ).rejects.toMatchObject({ status: 415 });
   });
 });

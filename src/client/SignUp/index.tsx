@@ -1,13 +1,13 @@
 import { useState, useContext, useEffect, ChangeEvent, FormEvent } from "react";
 import { useMutation } from "react-query";
-import { useParams, useLocation, Link } from "react-router-dom";
+import { useParams, useLocation, Link, Navigate } from "react-router-dom";
 
 import SignUpIcon from "./components/SignUpIcon";
 import UserEditIcon from "./components/UserEditIcon";
 
 import { SignedUser, SignedUserType } from "common";
 import { ApiResponse, SetInfoPostResponse, TokenPostResponse } from "server";
-import { Context, call } from "client";
+import { Context, call, getSignInMode } from "client";
 
 import { copyFor, statusFor, SignUpMode } from "./messages";
 import "../SignIn/index.scss";
@@ -108,6 +108,9 @@ const SignUp = () => {
     e.preventDefault();
     onClickSignUp();
   };
+
+  // Sign-up and reset set a password this server no longer signs in with.
+  if (!getSignInMode().localLogin) return <Navigate to="/sign-in" replace />;
 
   return (
     <div className="container_login">

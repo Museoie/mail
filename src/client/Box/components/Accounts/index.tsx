@@ -580,6 +580,10 @@ const Accounts = ({
       ].forEach((key) => localStorage.removeItem(key));
       setUserInfo(undefined);
       setSelectedAccount("");
+      // A single sign-on session ends at the provider too, which sends the
+      // browser back here afterwards.
+      const logoutUrl = response.body?.logoutUrl;
+      if (logoutUrl) window.location.assign(logoutUrl);
     };
 
     // The Folders sheet rows (design doc §4, option A): the four folders

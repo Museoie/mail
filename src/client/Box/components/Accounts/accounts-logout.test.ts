@@ -299,6 +299,50 @@ describe("Accounts logout confirm", () => {
     }
   });
 
+  it("sends the browser on to end a single sign-on session when the server names where", async () => {
+    confirmValue = true;
+    const logoutUrl =
+      "https://auth.example.test/logout?client_id=mail&post_logout_redirect_uri=https%3A%2F%2Fmail.example.test%2F";
+    call.delete = (async (path: string) => {
+      deleteCalls.push(path);
+      return path === "/api/users/login"
+        ? { status: "success", body: { logoutUrl } }
+        : { status: "success" };
+    }) as typeof call.delete;
+    const assigned: string[] = [];
+    const originalAssign = window.location.assign;
+    window.location.assign = ((url: string) => {
+      assigned.push(url);
+    }) as typeof window.location.assign;
+    const { waitForLogout, clickLogout, teardown } = await mountAccounts();
+    try {
+      await clickLogout(await waitForLogout());
+      expect(setUserInfoCalls).toEqual([undefined]);
+      expect(assigned).toEqual([logoutUrl]);
+    } finally {
+      window.location.assign = originalAssign;
+      await teardown();
+    }
+  });
+
+  it("stays in the app after a password session ends", async () => {
+    confirmValue = true;
+    const assigned: string[] = [];
+    const originalAssign = window.location.assign;
+    window.location.assign = ((url: string) => {
+      assigned.push(url);
+    }) as typeof window.location.assign;
+    const { waitForLogout, clickLogout, teardown } = await mountAccounts();
+    try {
+      await clickLogout(await waitForLogout());
+      expect(setUserInfoCalls).toEqual([undefined]);
+      expect(assigned).toEqual([]);
+    } finally {
+      window.location.assign = originalAssign;
+      await teardown();
+    }
+  });
+
   it("confirm logs out: session torn down and selection cleared", async () => {
     confirmValue = true;
     const { waitForLogout, clickLogout, teardown } = await mountAccounts();

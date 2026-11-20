@@ -6,6 +6,9 @@ import {
   SESSION_IS_READ_ONLY,
   SESSION_AUTHENTICATED_AS,
   SESSION_PASSWORD_VERSION,
+  SESSION_AUTH_SID,
+  SESSION_AUTH_REFRESH_TOKEN,
+  SESSION_AUTH_RECHECK_AT,
   COOKIE_ORIGINAL_MAX_AGE,
   COOKIE_MAX_AGE,
   COOKIE_SIGNED,
@@ -39,6 +42,9 @@ export interface SessionJSON {
   // The credential generation the session was minted from.
   // Null on rows written before the fence's migration; reads as 1.
   session_password_version: number | null;
+  auth_sid: string | null;
+  auth_refresh_token: string | null;
+  auth_recheck_at: string | null;
   cookie_original_max_age: number | null;
   cookie_max_age: number | null;
   cookie_signed: boolean | null;
@@ -64,6 +70,11 @@ const sessionSchema = {
   // table; a row written before this column existed reads back as
   // generation 1, which is what it was.
   [SESSION_PASSWORD_VERSION]: "INTEGER",
+  // Nullable: a local session has none of them, and the auto-migration adds
+  // them to existing rows.
+  [SESSION_AUTH_SID]: "TEXT",
+  [SESSION_AUTH_REFRESH_TOKEN]: "TEXT",
+  [SESSION_AUTH_RECHECK_AT]: "TIMESTAMPTZ",
   [COOKIE_ORIGINAL_MAX_AGE]: "BIGINT",
   [COOKIE_MAX_AGE]: "BIGINT",
   [COOKIE_SIGNED]: "BOOLEAN",
@@ -86,6 +97,9 @@ export class SessionModel extends Model<SessionJSON, SessionSchema> {
   declare session_is_read_only: boolean | null;
   declare session_authenticated_as: string | null;
   declare session_password_version: number | null;
+  declare auth_sid: string | null;
+  declare auth_refresh_token: string | null;
+  declare auth_recheck_at: string | null;
   declare cookie_original_max_age: number | null;
   declare cookie_max_age: number | null;
   declare cookie_signed: boolean | null;
@@ -105,6 +119,9 @@ export class SessionModel extends Model<SessionJSON, SessionSchema> {
     session_is_read_only: isNullableBoolean,
     session_authenticated_as: isNullableString,
     session_password_version: isNullableNumber,
+    auth_sid: isNullableString,
+    auth_refresh_token: isNullableString,
+    auth_recheck_at: isNullableString,
     cookie_original_max_age: isNullableNumber,
     cookie_max_age: isNullableNumber,
     cookie_signed: isNullableBoolean,
@@ -130,6 +147,9 @@ export class SessionModel extends Model<SessionJSON, SessionSchema> {
       session_is_read_only: this.session_is_read_only,
       session_authenticated_as: this.session_authenticated_as,
       session_password_version: this.session_password_version,
+      auth_sid: this.auth_sid,
+      auth_refresh_token: this.auth_refresh_token,
+      auth_recheck_at: this.auth_recheck_at,
       cookie_original_max_age: this.cookie_original_max_age,
       cookie_max_age: this.cookie_max_age,
       cookie_signed: this.cookie_signed,
@@ -149,7 +169,11 @@ export const sessionsTable = createTable({
   schema: sessionSchema,
   ModelClass: SessionModel,
   supportsSoftDelete: false,
-  indexes: [{ column: SESSION_USER_ID }, { column: COOKIE_EXPIRES }],
+  indexes: [
+    { column: SESSION_USER_ID },
+    { column: COOKIE_EXPIRES },
+    { column: SESSION_AUTH_SID },
+  ],
 });
 
 export const sessionColumns = Object.keys(sessionsTable.schema);

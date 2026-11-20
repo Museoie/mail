@@ -11,6 +11,8 @@ import { MAX_MESSAGE_BYTES } from "./message-size";
 import { restoreLeaves } from "test-helpers";
 import { logger } from "./logger";
 import { resetAlarmState } from "./alarm";
+import * as appPassword from "./sso/app-password";
+import { initializeSso, resetSso } from "./sso";
 
 // Mock dependencies before importing project code (Bun requirement)
 const mockGetUser = mock(() => Promise.resolve(null));
@@ -124,8 +126,13 @@ import {
 
 // Revert the auth-rate-limit spies after this file so the real implementation is
 // restored for any test file that runs later (e.g. auth-rate-limit.test.ts).
+// Spied, not module-mocked, and restored below: the SSO suites test it for real.
+const mockCheckAppPassword = spyOn(appPassword, "checkAppPassword");
+
 afterAll(() => {
   verifySpy.mockRestore();
+  mockCheckAppPassword.mockRestore();
+  resetSso();
   mockParseMessage.mockRestore();
   mockCreateSmtpServer.mockRestore();
   mockIsAuthRateLimited.mockRestore();
@@ -2602,6 +2609,37 @@ describe("initializeSmtp configuration", () => {
     }
   });
 
+  it("takes AUTH before STARTTLS on the submission port only while single sign-on is off", async () => {
+    const { writeFileSync, mkdtempSync, rmSync } = await import("fs");
+    const { tmpdir } = await import("os");
+    const { join } = await import("path");
+    const dir = mkdtempSync(join(tmpdir(), "smtp-sso-test-"));
+    writeFileSync(join(dir, "cert.pem"), "DUMMY CERT");
+    writeFileSync(join(dir, "key.pem"), "DUMMY KEY");
+    process.env.SSL_CERTIFICATE = join(dir, "cert.pem");
+    process.env.SSL_CERTIFICATE_KEY = join(dir, "key.pem");
+    try {
+      const initializeSmtp = await loadInitializeSmtp();
+      await initializeSmtp();
+      initializeSso({
+        AUTH_ISSUER: "https://auth.example.test",
+        AUTH_CLIENT_ID: "mail",
+        AUTH_CLIENT_SECRET: "test_key_not_real_do_not_use",
+        APP_HOSTNAME: "mail.example.test",
+      });
+      await initializeSmtp();
+      // 25, 465 and 587 for each start: only the submission port ever takes
+      // AUTH in cleartext, and only without single sign-on.
+      expect(createdOptions.map((options) => options.allowInsecureAuth ?? false)).toEqual([
+        false, false, true,
+        false, false, false,
+      ]);
+    } finally {
+      resetSso();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("asks every listener for a PROXY header only when PROXY_PROTOCOL is true", async () => {
     const initializeSmtp = await loadInitializeSmtp();
     delete process.env.PROXY_PROTOCOL;
@@ -3254,5 +3292,141 @@ describe("onData DATA budget wiring", () => {
       jest.useRealTimers();
       logger.warn = originalWarn;
     }
+  });
+});
+
+describe("onAuth with single sign-on", () => {
+  const APP_PASSWORD = "abcd-efgh-ijkl-mnop";
+
+  /** Settings only: the provider is never contacted, `checkAppPassword` is spied on. */
+  const useSso = (localLogin: boolean) =>
+    initializeSso({
+      AUTH_ISSUER: "https://auth.example.test",
+      AUTH_CLIENT_ID: "mail",
+      AUTH_CLIENT_SECRET: "test_key_not_real_do_not_use",
+      APP_HOSTNAME: "mail.example.test",
+      AUTH_LOCAL_LOGIN: String(localLogin),
+    })!;
+
+  const authenticate = (session: SmtpSession, username: string, password: string) =>
+    new Promise<{ err?: Error & { responseCode?: number }; user?: string }>((resolve) => {
+      onAuth!({ username, password } as SmtpAuthRequest, session, (err, data) =>
+        resolve({ err: err ?? undefined, user: data?.user })
+      );
+    });
+
+  beforeEach(() => {
+    resetSso();
+    mockGetUser.mockReset();
+    mockCheckAppPassword.mockReset();
+    mockCheckAppPassword.mockImplementation(async () => ({ status: "rejected" }));
+    mockIsAuthRateLimited.mockReset();
+    mockIsAuthRateLimited.mockImplementation(() => false);
+    mockRecordAuthFailure.mockReset();
+    mockRecordAuthFailure.mockImplementation(() => Promise.resolve(false));
+    mockResetAuthFailures.mockReset();
+    mockResetAuthFailures.mockImplementation(() => undefined);
+  });
+
+  afterEach(() => resetSso());
+
+  it("never asks the provider while it is off", async () => {
+    mockGetUser.mockResolvedValue(null);
+    await authenticate({ remoteAddress: "203.0.113.7" } as SmtpSession, "alice", APP_PASSWORD);
+    expect(mockCheckAppPassword).not.toHaveBeenCalled();
+    expect(mockGetUser).toHaveBeenCalled();
+  });
+
+  it("accepts an app password and stamps the account's generation on the connection", async () => {
+    const sso = useSso(false);
+    mockCheckAppPassword.mockImplementation(async () => ({
+      status: "accepted",
+      user: { id: "u1", username: "alice" } as never,
+      passwordVersion: 4,
+    }));
+    const session = { remoteAddress: "203.0.113.7" } as SmtpSession;
+
+    const result = await authenticate(session, "alice", APP_PASSWORD);
+
+    expect(result).toEqual({ err: undefined, user: "alice" });
+    expect(mockCheckAppPassword.mock.calls).toEqual([
+      [sso, "alice", APP_PASSWORD, "smtp", "203.0.113.7"],
+    ]);
+    expect((session as SmtpSession & { passwordVersion?: number }).passwordVersion).toBe(4);
+    expect(mockResetAuthFailures).toHaveBeenCalledWith("203.0.113.7", "alice");
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it("answers 454 without counting a failure while the provider cannot answer", async () => {
+    useSso(false);
+    mockCheckAppPassword.mockImplementation(async () => ({ status: "unavailable" }));
+
+    const result = await authenticate({} as SmtpSession, "alice", APP_PASSWORD);
+
+    expect(result.err?.responseCode).toBe(454);
+    expect(result.err?.message).toBe("4.7.0 Temporary authentication failure");
+    expect(mockRecordAuthFailure).not.toHaveBeenCalled();
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it("answers 451 when the account lookup behind the check fails", async () => {
+    useSso(false);
+    mockCheckAppPassword.mockRejectedValue(new Error("connection lost"));
+
+    const result = await authenticate({} as SmtpSession, "alice", APP_PASSWORD);
+
+    expect(result.err?.responseCode).toBe(451);
+    expect(mockRecordAuthFailure).not.toHaveBeenCalled();
+  });
+
+  it("refuses anything else as a failed attempt while local passwords are off", async () => {
+    useSso(false);
+
+    const result = await authenticate({} as SmtpSession, "alice", "a-local-password");
+
+    expect(result).toEqual({ err: undefined, user: undefined });
+    expect(mockRecordAuthFailure).toHaveBeenCalledWith("unknown", "alice");
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it("still takes a local password while AUTH_LOCAL_LOGIN keeps them", async () => {
+    useSso(true);
+    const hashedPw = await Bun.password.hash("correct-horse", { algorithm: "bcrypt", cost: 4 });
+    mockGetUser.mockResolvedValue({
+      password: hashedPw,
+      passwordVersion: 2,
+      getSigned: () => ({ username: "alice" }),
+    });
+
+    const result = await authenticate({} as SmtpSession, "alice", "correct-horse");
+
+    // A local password that matches is never sent to the provider.
+    expect(mockCheckAppPassword).not.toHaveBeenCalled();
+    expect(result.user).toBe("alice");
+  });
+
+  it("checks an app password after the local one while AUTH_LOCAL_LOGIN keeps them", async () => {
+    const sso = useSso(true);
+    const hashedPw = await Bun.password.hash("correct-horse", { algorithm: "bcrypt", cost: 4 });
+    mockGetUser.mockResolvedValue({
+      password: hashedPw,
+      passwordVersion: 2,
+      getSigned: () => ({ username: "alice" }),
+    });
+    mockCheckAppPassword.mockImplementation(async () => ({
+      status: "accepted",
+      user: { id: "u1", username: "alice" } as never,
+      passwordVersion: 4,
+    }));
+    const session = { remoteAddress: "203.0.113.7" } as SmtpSession;
+
+    const result = await authenticate(session, "alice", APP_PASSWORD);
+
+    expect(mockGetUser).toHaveBeenCalled();
+    expect(mockCheckAppPassword.mock.calls).toEqual([
+      [sso, "alice", APP_PASSWORD, "smtp", "203.0.113.7"],
+    ]);
+    expect(result).toEqual({ err: undefined, user: "alice" });
+    expect((session as SmtpSession & { passwordVersion?: number }).passwordVersion).toBe(4);
   });
 });

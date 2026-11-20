@@ -37,6 +37,7 @@ import { getCredentialPasswordVersion } from "./credential-version";
 
 // Extracted module helpers
 import { handleAuthenticate, handleLogin } from "./auth";
+import { getSso } from "../sso";
 import {
   createMailbox,
   deleteMailbox,
@@ -351,11 +352,23 @@ export class ImapSession {
   // Authentication
   // ---------------------------------------------------------------------------
 
+  /**
+   * With single sign-on on, no password is taken before TLS: an app password
+   * is a full credential for the protocol. Writes the refusal and returns true
+   * when the caller must stop.
+   */
+  private refusesCleartextAuth = (tag: string): boolean => {
+    if (this.handler.isTls || !getSso()) return false;
+    this.write(`${tag} NO [PRIVACYREQUIRED] Use STARTTLS or the TLS port to sign in\r\n`);
+    return true;
+  };
+
   authenticate = async (
     tag: string,
     mechanism: string,
     initialResponse?: string
   ) => {
+    if (this.refusesCleartextAuth(tag)) return;
     const result = await handleAuthenticate(
       tag,
       mechanism,
@@ -376,6 +389,7 @@ export class ImapSession {
   };
 
   login = async (tag: string, args: string[]) => {
+    if (this.refusesCleartextAuth(tag)) return;
     const result = await handleLogin(
       tag,
       args,

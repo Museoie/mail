@@ -62,10 +62,26 @@ export class Cookie extends Model<Cookie> implements CookieType {
   }
 }
 
+/**
+ * What a session started through single sign-on keeps from the provider. It
+ * stays on the session, never on the user the login routes return, so the
+ * refresh token does not reach the browser.
+ */
+export interface SsoSessionType {
+  /** The provider's session id, which its `session.ended` event names. */
+  sid: string;
+  /** Null when the provider issued none; the session then ends at its re-check. */
+  refreshToken: string | null;
+  /** When access is next re-checked with the provider. */
+  recheckAt: Date;
+}
+
 /** A session as the server holds it while handling a request. */
 export interface RuntimeSessionType {
   user: SignedUser;
   cookie: RuntimeCookieType;
+  /** Absent on a session signed in with a local password. */
+  auth?: SsoSessionType;
 }
 
 export class RuntimeSession
@@ -74,6 +90,7 @@ export class RuntimeSession
 {
   declare user: SignedUser;
   declare cookie: RuntimeCookie;
+  declare auth?: SsoSessionType;
 
   constructor(data?: Partial<RuntimeSession>) {
     super(data);
@@ -88,11 +105,13 @@ export class RuntimeSession
 export interface SessionType {
   cookie: CookieType;
   user: SignedUserType;
+  auth?: SsoSessionType;
 }
 
 export class Session extends Model<Session> implements SessionType {
   declare user: SignedUser;
   declare cookie: Cookie;
+  declare auth?: SsoSessionType;
 
   constructor(data?: Partial<Session>) {
     super(data);

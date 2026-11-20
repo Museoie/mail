@@ -96,6 +96,13 @@ export const jsonList = async <R>(
   });
 };
 
+/** A `302` to `location`, setting each of `cookies`. Never cached. */
+export const redirect = (location: string, cookies: string[] = []): Response => {
+  const headers = new Headers({ Location: location, "Cache-Control": "no-store" });
+  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+  return new Response(null, { status: 302, headers });
+};
+
 export const text = (body: string, status = 200): Response =>
   send(body, { status, contentType: "text/plain; charset=utf-8" });
 

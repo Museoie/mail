@@ -1,4 +1,5 @@
 import { isTlsAvailable } from "../tls";
+import { getSso } from "../sso";
 
 export const getCapabilities = (isTls = false) => {
   const capabilities = [
@@ -18,6 +19,12 @@ export const getCapabilities = (isTls = false) => {
     // would make a client send `LIST (SPECIAL-USE) "" "*"` and get BAD.
     "AUTH=PLAIN"
   ];
+
+  // With single sign-on an app password is a full credential for the
+  // protocol, so none is taken before TLS (RFC 3501 §6.2.3).
+  if (!isTls && getSso()) {
+    capabilities.splice(capabilities.indexOf("AUTH=PLAIN"), 1, "LOGINDISABLED");
+  }
 
   // Plain port: advertise STARTTLS so clients can upgrade — but only when the
   // certificate the upgrade reads is one this process can actually read.

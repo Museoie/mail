@@ -10,6 +10,7 @@ import {
   IS_DELETED,
   USERS,
   IMAP_UID_VALIDITY,
+  AUTH_SUB,
 } from "./common";
 import { Model, createTable } from "./base";
 
@@ -53,6 +54,10 @@ const userSchema = {
   [UPDATED]: "TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP",
   [IS_DELETED]: "BOOLEAN DEFAULT FALSE",
   [IMAP_UID_VALIDITY]: "BIGINT",
+  // Nullable so the auto-migration can add it to existing rows, none of which
+  // is linked yet; UNIQUE so two sign-ins racing to link one subject cannot
+  // both win.
+  [AUTH_SUB]: "TEXT UNIQUE",
 };
 
 type UserSchema = typeof userSchema;
@@ -68,6 +73,7 @@ export class UserModel extends Model<MaskedUser, UserSchema> {
   declare updated: string;
   declare is_deleted: boolean;
   declare imap_uid_validity: number | null;
+  declare auth_sub: string | null;
 
   static typeChecker = {
     user_id: isString,
@@ -80,6 +86,7 @@ export class UserModel extends Model<MaskedUser, UserSchema> {
     updated: isNullableString,
     is_deleted: isNullableBoolean,
     imap_uid_validity: isNullableNumber,
+    auth_sub: isNullableString,
   };
 
   constructor(data: unknown) {

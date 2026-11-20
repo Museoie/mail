@@ -10,7 +10,13 @@ import {
   MutableRefObject
 } from "react";
 import { QueryClientProvider } from "react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation
+} from "react-router-dom";
 
 import { SignedUser, ReplyData } from "common";
 import { DomainGetResponse } from "server";
@@ -141,6 +147,15 @@ export interface ContextType {
 }
 
 export const Context = createContext<ContextType>({} as ContextType);
+
+/**
+ * Sends a signed-out visitor to the sign-in page, which hands where they were
+ * going to single sign-on to come back to.
+ */
+const ToSignIn = () => {
+  const { pathname, search } = useLocation();
+  return <Navigate to="/sign-in" replace state={{ returnTo: pathname + search }} />;
+};
 
 interface Props {
   user?: SignedUser;
@@ -420,13 +435,13 @@ const App = ({ user: session }: Props) => {
                     <Route
                       path="/"
                       element={
-                        userInfo ? <Box /> : <Navigate to="/sign-in" replace />
+                        userInfo ? <Box /> : <ToSignIn />
                       }
                     />
                     <Route
                       path="/mail/:mailId"
                       element={
-                        userInfo ? <Box /> : <Navigate to="/sign-in" replace />
+                        userInfo ? <Box /> : <ToSignIn />
                       }
                     />
                     <Route

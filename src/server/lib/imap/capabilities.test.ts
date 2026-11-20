@@ -1,6 +1,7 @@
 import { afterEach, afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { createTlsEnvFixture } from "test-helpers";
 import { getCapabilities } from "./capabilities";
+import { initializeSso, resetSso } from "../sso";
 import { getImapPort, getImapTlsPort } from "./index";
 
 describe("IMAP capabilities", () => {
@@ -113,5 +114,32 @@ describe("getImapTlsPort", () => {
   it("falls back to 993 for non-numeric IMAP_TLS_PORT", () => {
     process.env.IMAP_TLS_PORT = "not-a-port";
     expect(getImapTlsPort()).toBe(993);
+  });
+});
+
+describe("IMAP capabilities with single sign-on", () => {
+  afterEach(resetSso);
+
+  const useSso = () =>
+    initializeSso({
+      AUTH_ISSUER: "https://auth.example.test",
+      AUTH_CLIENT_ID: "mail",
+      AUTH_CLIENT_SECRET: "test_key_not_real_do_not_use",
+      APP_HOSTNAME: "mail.example.test",
+    });
+
+  it("disables sign-in before TLS, in place of AUTH=PLAIN", () => {
+    useSso();
+    const plain = getCapabilities(false).split(" ");
+    expect(plain).toContain("LOGINDISABLED");
+    expect(plain).not.toContain("AUTH=PLAIN");
+    expect(plain.at(-1)).toBe("LOGINDISABLED");
+  });
+
+  it("offers sign-in once on TLS", () => {
+    useSso();
+    const tls = getCapabilities(true).split(" ");
+    expect(tls).toContain("AUTH=PLAIN");
+    expect(tls).not.toContain("LOGINDISABLED");
   });
 });

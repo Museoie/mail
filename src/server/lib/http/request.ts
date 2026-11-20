@@ -172,6 +172,24 @@ export const hasBody = (request: Request): boolean =>
   request.body !== null && request.headers.get("content-length") !== "0";
 
 /**
+ * The body of any request as text, whatever its content type. Throws
+ * {@link HttpError} with 413 past `limit` bytes, 415 for an unknown content
+ * encoding and 400 for a body that cannot be read.
+ */
+export const readTextBody = async (request: Request, limit: number): Promise<string> => {
+  if (!hasBody(request)) return "";
+  if (Number(request.headers.get("content-length")) > limit) {
+    throw new HttpError(413, "request entity too large");
+  }
+  try {
+    return await readLimited(decodedBody(request.body!, request.headers), limit);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(400, "invalid request body");
+  }
+};
+
+/**
  * The body of an `application/json` request, parsed; `{}` for any other
  * request. Only an object or array is accepted at the top level.
  *

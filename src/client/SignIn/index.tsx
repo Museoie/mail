@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect, ChangeEvent, FormEvent } from "react";
 import { useMutation } from "react-query";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { SignedUser, SignedUserType } from "common";
 import { LoginPostResponse } from "server";
 import {
@@ -8,9 +8,12 @@ import {
   call,
   Context,
   setCacheUser,
-  hydrateQueryCache
+  hydrateQueryCache,
+  getSignInMode,
+  ssoLoginUrl
 } from "client";
 import LoginIcon from "./components/LoginIcon";
+import { ssoErrorMessage } from "./messages";
 import "./index.scss";
 
 interface LoginBody {
@@ -19,8 +22,17 @@ interface LoginBody {
   username?: string;
 }
 
+/** Set by the redirect that sent a signed-out visitor here. */
+interface SignInState {
+  returnTo?: string;
+}
+
 const Home = () => {
   const { setUserInfo } = useContext(Context);
+  const signInMode = getSignInMode();
+  const location = useLocation();
+  const ssoError = new URLSearchParams(location.search).get("sso_error");
+  const returnTo = (location.state as SignInState | null)?.returnTo;
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [missingField, setMissingField] = useState(false);
@@ -42,6 +54,11 @@ const Home = () => {
   let infoMessage: string | undefined;
   let isError = false;
 
+  const ssoMessage = ssoError ? ssoErrorMessage(ssoError) : undefined;
+  if (ssoMessage) {
+    infoMessage = ssoMessage;
+    isError = true;
+  }
   if (missingField) {
     infoMessage = "Enter your username or email and your password.";
     isError = true;
@@ -62,6 +79,9 @@ const Home = () => {
     infoMessage = mutation.data?.message || "Wrong username or password.";
     isError = true;
   }
+
+  // The fields are not what a failed single sign-on got wrong.
+  const fieldsInvalid = isError && infoMessage !== ssoMessage;
 
   useEffect(() => {
     const isSuccess = mutation.data?.status === "success";
@@ -101,54 +121,67 @@ const Home = () => {
           >
             {infoMessage}
           </div>
-          <label className="login_label" htmlFor="login-username">
-            Username or email
-          </label>
-          <input
-            id="login-username"
-            className="login_ui"
-            type="text"
-            name="username"
-            autoComplete="username"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-            aria-invalid={isError || undefined}
-            value={usernameInput}
-            onChange={onChangeUsername}
-          />
-          <label className="login_label" htmlFor="login-password">
-            Password
-          </label>
-          <input
-            id="login-password"
-            className="login_ui"
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            aria-invalid={isError || undefined}
-            value={passwordInput}
-            onChange={onChangePassword}
-          />
-          <button
-            className="login_ui login_submit"
-            type="submit"
-            disabled={mutation.isLoading}
-          >
-            <LoginIcon />
-            <span>Sign in</span>
-          </button>
-          <div className="card_footer">
-            <div className="footer_line">
-              <span>Forgot your password?</span>{" "}
-              <Link to="/set-info?mode=reset">Reset it</Link>
-            </div>
-            <div className="footer_line">
-              <span>New here?</span> <Link to="/set-info">Create an account</Link>
-            </div>
-          </div>
+          {signInMode.enabled ? (
+            <a className="login_ui login_sso" href={ssoLoginUrl(returnTo)}>
+              <LoginIcon />
+              <span>Sign in with SSO</span>
+            </a>
+          ) : null}
+          {signInMode.localLogin ? (
+            <>
+              {signInMode.enabled ? (
+                <div className="login_divider">or with a password</div>
+              ) : null}
+              <label className="login_label" htmlFor="login-username">
+                Username or email
+              </label>
+              <input
+                id="login-username"
+                className="login_ui"
+                type="text"
+                name="username"
+                autoComplete="username"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+                aria-invalid={fieldsInvalid || undefined}
+                value={usernameInput}
+                onChange={onChangeUsername}
+              />
+              <label className="login_label" htmlFor="login-password">
+                Password
+              </label>
+              <input
+                id="login-password"
+                className="login_ui"
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                required
+                aria-invalid={fieldsInvalid || undefined}
+                value={passwordInput}
+                onChange={onChangePassword}
+              />
+              <button
+                className="login_ui login_submit"
+                type="submit"
+                disabled={mutation.isLoading}
+              >
+                <LoginIcon />
+                <span>Sign in</span>
+              </button>
+              <div className="card_footer">
+                <div className="footer_line">
+                  <span>Forgot your password?</span>{" "}
+                  <Link to="/set-info?mode=reset">Reset it</Link>
+                </div>
+                <div className="footer_line">
+                  <span>New here?</span> <Link to="/set-info">Create an account</Link>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
       </form>
     </div>

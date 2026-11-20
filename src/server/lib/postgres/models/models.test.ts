@@ -73,6 +73,7 @@ function makeUserData(overrides: Record<string, unknown> = {}): Record<string, u
     updated: "2024-01-01T00:00:00+00:00",
     is_deleted: false,
     imap_uid_validity: null,
+    auth_sub: null,
     ...overrides,
   };
 }
@@ -86,6 +87,9 @@ function makeSessionData(overrides: Record<string, unknown> = {}): Record<string
     session_is_read_only: null,
     session_authenticated_as: null,
     session_password_version: 1,
+    auth_sid: null,
+    auth_refresh_token: null,
+    auth_recheck_at: null,
     cookie_original_max_age: 86400000,
     cookie_max_age: 86400000,
     cookie_signed: true,
@@ -823,12 +827,17 @@ describe("Table wires both mutation builders through the guard", () => {
     const source = await Bun.file(
       new URL("./base.ts", import.meta.url).pathname
     ).text();
+    const prepareUpdateWhere = source.slice(source.indexOf("  prepareUpdateWhere("));
     const updateWhere = source.slice(source.indexOf("async updateWhere("));
     const deleteWhere = source.slice(source.indexOf("async deleteWhere("));
 
     // Asserted as booleans so a failure prints a one-line diff, not the file.
+    // updateWhere runs the statement prepareUpdateWhere builds, guard and all.
     expect(
-      updateWhere.includes('resolveMutationFilters("updateWhere", filters)')
+      prepareUpdateWhere.includes('resolveMutationFilters("updateWhere", filters)')
+    ).toBe(true);
+    expect(
+      updateWhere.includes("this.prepareUpdateWhere(filters, data, returning)")
     ).toBe(true);
     expect(
       deleteWhere.includes('resolveMutationFilters("deleteWhere", filters)')

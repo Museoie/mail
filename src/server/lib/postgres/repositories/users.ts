@@ -1,8 +1,11 @@
+import { randomBytes } from "crypto";
 import { pool } from "../client";
+import { SOFT_DELETE_CONDITION, type PreparedQuery } from "../database";
 import { hashPassword } from "../../verify-password";
 import {
   MaskedUser,
   User,
+  UserModel,
   usersTable,
   USER_ID,
   USERNAME,
@@ -13,6 +16,9 @@ import {
   EMAIL,
   IMAP_UID_VALIDITY,
   USERS,
+  AUTH_SUB,
+  IS_DELETED,
+  DB_NOW,
 } from "../models";
 
 export type IndexUserInput = Omit<User, "user_id" | "password"> & {
@@ -163,4 +169,142 @@ export const getImapUidValidity = async (user_id: string): Promise<number> => {
   await usersTable.update(user_id, { [IMAP_UID_VALIDITY]: uidValidity });
 
   return uidValidity;
+};
+
+/** The account a single sign-on subject is linked to, if any. */
+export const findUserByAuthSub = async (sub: string): Promise<UserModel | null> =>
+  usersTable.queryOne({ [AUTH_SUB]: sub });
+
+/**
+ * The account with this username, including an unfinished sign-up, which
+ * `searchUser` cannot return because it has no password yet.
+ */
+export const findUserByUsername = async (username: string): Promise<UserModel | null> =>
+  usersTable.queryOne({ [USERNAME]: username });
+
+/**
+ * Direct SQL: the builder compares with `=` only, and this needs the address
+ * matched ignoring case and the link column matched by `IS NULL`. An account
+ * with no password is a sign-up still waiting for its link, not an account.
+ * Two rows are enough to tell "exactly one" from "more than one".
+ */
+export const buildFindUnlinkedUsersByEmail = (
+  email: string,
+  excludedUsernames: string[]
+): PreparedQuery => ({
+  sql: `SELECT * FROM ${USERS} WHERE LOWER(${EMAIL}) = LOWER($1) AND ${AUTH_SUB} IS NULL AND ${PASSWORD} IS NOT NULL AND ${USERNAME} <> ALL($2::text[]) AND ${SOFT_DELETE_CONDITION} LIMIT 2`,
+  values: [email, excludedUsernames],
+});
+
+export const findUnlinkedUsersByEmail = async (
+  email: string,
+  excludedUsernames: string[]
+): Promise<UserModel[]> => {
+  const { sql, values } = buildFindUnlinkedUsersByEmail(email, excludedUsernames);
+  const result = await pool.query(sql, values);
+  return result.rows.map((row: unknown) => new UserModel(row));
+};
+
+/**
+ * The link's guard is `auth_sub IS NULL`, which keeps two sign-ins from
+ * linking one account to two subjects; the column's UNIQUE constraint keeps
+ * one subject off two accounts. A soft-deleted account is never linked.
+ */
+const linkArgs = (userId: string, sub: string): Parameters<typeof usersTable.updateWhere> => [
+  { [USER_ID]: userId, [AUTH_SUB]: { op: "IS NULL" }, [IS_DELETED]: { op: "IS NOT TRUE" } },
+  { [AUTH_SUB]: sub, updated: DB_NOW },
+  ["*"],
+];
+
+/** The statement `linkUserAuthSub` runs, from the same arguments. */
+export const buildLinkUserAuthSub = (userId: string, sub: string): PreparedQuery =>
+  usersTable.prepareUpdateWhere(...linkArgs(userId, sub))!;
+
+const isUniqueViolation = (error: unknown): boolean =>
+  (error as { code?: unknown } | null)?.code === "23505";
+
+/**
+ * Links an account that is not linked yet.
+ *
+ * @returns the linked account, or null when another sign-in linked the
+ * account, or this subject, first.
+ */
+export const linkUserAuthSub = async (userId: string, sub: string): Promise<UserModel | null> => {
+  try {
+    const [row] = await usersTable.updateWhere(...linkArgs(userId, sub));
+    return row ? new UserModel(row) : null;
+  } catch (error) {
+    if (isUniqueViolation(error)) return null;
+    throw error;
+  }
+};
+
+interface SsoUserRow {
+  username: string;
+  email: string;
+  sub: string;
+  passwordHash: string;
+}
+
+/**
+ * `ON CONFLICT DO NOTHING` covers both unique columns: a taken username and a
+ * subject another sign-in has just linked both leave the table untouched and
+ * return no row.
+ */
+const insertArgs = (account: SsoUserRow): Parameters<typeof usersTable.insert> => [
+  {
+    [USERNAME]: account.username,
+    [PASSWORD]: account.passwordHash,
+    [EMAIL]: account.email,
+    [AUTH_SUB]: account.sub,
+  },
+  ["*"],
+  { onConflictDoNothing: true },
+];
+
+/** The statement `insertSsoUser` runs, from the same arguments. */
+export const buildInsertSsoUser = (account: SsoUserRow): PreparedQuery =>
+  usersTable.prepareInsert(...insertArgs(account));
+
+/**
+ * Creates the account a first single sign-on makes. Its password is a hash of
+ * a secret that exists nowhere, as for a revoked read-only account: no
+ * password sign-in can present it, and every surface that reads the row as a
+ * signed-up account keeps working.
+ *
+ * @returns the new account, or null when the username or the subject is taken.
+ */
+export const insertSsoUser = async (account: {
+  username: string;
+  email: string;
+  sub: string;
+}): Promise<UserModel | null> => {
+  const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+  const row = await usersTable.insert(...insertArgs({ ...account, passwordHash }));
+  return row ? new UserModel(row) : null;
+};
+
+export const updateUserEmail = async (userId: string, email: string): Promise<void> => {
+  await usersTable.update(userId, { [EMAIL]: email });
+};
+
+/**
+ * Moves the linked account's credential generation on, the same fence a
+ * password change moves: every HTTP session, IMAP connection and SMTP
+ * connection stamped with an older generation fails its next check, in every
+ * process. Direct SQL for the atomic increment, as in `rotateUserPassword`.
+ */
+export const buildBumpPasswordVersionByAuthSub = (sub: string): PreparedQuery => ({
+  sql: `UPDATE ${USERS} SET ${PASSWORD_VERSION} = COALESCE(${PASSWORD_VERSION}, 1) + 1, updated = CURRENT_TIMESTAMP WHERE ${AUTH_SUB} = $1 RETURNING ${USER_ID}, ${USERNAME}, ${PASSWORD_VERSION}`,
+  values: [sub],
+});
+
+/** @returns the account whose generation moved, or null when none is linked. */
+export const bumpPasswordVersionByAuthSub = async (
+  sub: string
+): Promise<{ userId: string; username: string } | null> => {
+  const { sql, values } = buildBumpPasswordVersionByAuthSub(sub);
+  const result = await pool.query(sql, values);
+  const row = result.rows[0];
+  return row ? { userId: row[USER_ID], username: row[USERNAME] } : null;
 };

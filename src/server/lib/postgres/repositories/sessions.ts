@@ -11,6 +11,9 @@ import {
   SESSION_IS_READ_ONLY,
   SESSION_AUTHENTICATED_AS,
   SESSION_PASSWORD_VERSION,
+  SESSION_AUTH_SID,
+  SESSION_AUTH_REFRESH_TOKEN,
+  SESSION_AUTH_RECHECK_AT,
   COOKIE_ORIGINAL_MAX_AGE,
   COOKIE_MAX_AGE,
   COOKIE_SIGNED,
@@ -55,7 +58,7 @@ export const updateSession = async (
   session_id: string,
   session: Session
 ): Promise<void> => {
-  const { user, cookie } = session;
+  const { user, cookie, auth } = session;
   const data = {
     [SESSION_ID]: session_id,
     [SESSION_USER_ID]: user.id,
@@ -69,6 +72,9 @@ export const updateSession = async (
     // that straddled a password rotation stamps the stale generation and
     // fails its next comparison instead of inheriting the new one.
     [SESSION_PASSWORD_VERSION]: user.passwordVersion ?? 1,
+    [SESSION_AUTH_SID]: auth?.sid ?? null,
+    [SESSION_AUTH_REFRESH_TOKEN]: auth?.refreshToken ?? null,
+    [SESSION_AUTH_RECHECK_AT]: auth?.recheckAt ?? null,
     [COOKIE_ORIGINAL_MAX_AGE]: cookie.originalMaxAge,
     [COOKIE_MAX_AGE]: cookie.maxAge,
     [COOKIE_SIGNED]: cookie.signed,
@@ -144,6 +150,16 @@ export const deleteSessionsForUser = async (
   userId: string
 ): Promise<number> => {
   return sessionsTable.deleteWhere({ [SESSION_USER_ID]: userId });
+};
+
+/**
+ * Deletes every session started through the single sign-on session `sid`,
+ * which the provider's `session.ended` event names.
+ * @returns A promise to be a count of deleted sessions. A failed delete
+ * rejects, so the provider retries an event whose sessions are still alive.
+ */
+export const deleteSessionsByAuthSid = async (sid: string): Promise<number> => {
+  return sessionsTable.deleteWhere({ [SESSION_AUTH_SID]: sid });
 };
 
 /**
@@ -227,6 +243,13 @@ export class PostgresSessionStore implements SessionStore {
         sessionModel.session_authenticated_as ?? undefined;
     }
     runtimeSession.cookie = cookie;
+    if (sessionModel.auth_sid && sessionModel.auth_recheck_at) {
+      runtimeSession.auth = {
+        sid: sessionModel.auth_sid,
+        refreshToken: sessionModel.auth_refresh_token,
+        recheckAt: new Date(sessionModel.auth_recheck_at),
+      };
+    }
 
     return runtimeSession;
   };
@@ -237,7 +260,7 @@ export class PostgresSessionStore implements SessionStore {
    * @param session
    */
   set = async (session_id: string, session: RuntimeSessionType): Promise<void> => {
-    const { cookie, user } = session;
+    const { cookie, user, auth } = session;
     const {
       secure,
       sameSite,
@@ -262,7 +285,7 @@ export class PostgresSessionStore implements SessionStore {
       _expires,
     });
 
-    const storedSession = new Session({ user, cookie: storedCookie });
+    const storedSession = new Session({ user, cookie: storedCookie, auth });
 
     await updateSession(session_id, storedSession);
   };

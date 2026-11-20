@@ -21,6 +21,8 @@ import {
   resetAuthFailures
 } from "./auth-rate-limit";
 import { verifyPassword } from "./verify-password";
+import { getSso } from "./sso";
+import { checkAppPassword } from "./sso/app-password";
 import { plainTextToHtml } from "./mails/text-to-html";
 import { addressToUsername, getUserDomain, isLocalAddress } from "./util";
 import { sendAlarm } from "./alarm";
@@ -177,39 +179,64 @@ export const onAuth: SmtpServerOptions["onAuth"] = async (auth, session, cb) => 
     return cb(new Error("Too many failed authentication attempts"));
   }
 
-  let user;
-  let pwMatches = false;
+  const sso = getSso();
+  // While single sign-on and local passwords are both on (a migration), the
+  // local password goes first: it is never sent to the provider, and the
+  // clients still using one don't spend the provider's per-client and
+  // per-address limits on failed introspections, which would then refuse
+  // the app passwords of everyone behind the same address.
+  if (!sso || sso.config.localLogin) {
+    let user;
+    let pwMatches = false;
+    try {
+      user = await getUser({ username });
+      pwMatches = await verifyPassword(password, user?.password);
+    } catch (err) {
+      logger.error("SMTP: authentication lookup failed", { remoteAddress: ip }, err);
+      return cb(new LookupFailedError());
+    }
+
+    const signedUser = user?.getSigned();
+    if (user && signedUser && pwMatches) {
+      // Scoped reset: forgive only the authenticating account's own bucket. The
+      // per-IP aggregate keeps its count, so a success here cannot wipe another
+      // account's failures from the same IP.
+      resetAuthFailures(ip, account);
+      // Credential-revocation fence: stamp the credential row's
+      // current generation onto the connection. The server only copies
+      // `response.user` onto the session, so the stamp goes on the session
+      // object directly; the per-command gates below re-check it.
+      (session as VersionStampedSmtpSession).passwordVersion =
+        user.passwordVersion ?? 1;
+      // Audit line names the original credential. Read-only sessions pass this
+      // gate and are refused later at the single mutating gate this surface
+      // has, `onMailFrom` (below) — matching HTTP and IMAP where the read-only
+      // credential logs in but is refused at every write.
+      if (username === ADMIN_RO_USERNAME) {
+        logger.info("SMTP AUTH success (read-only)", { authenticatedAs: username, ip });
+      }
+      return cb(null, { user: username });
+    }
+    if (!sso) {
+      await recordAuthFailure(ip, account);
+      return cb(null, { user: undefined });
+    }
+  }
+
+  let appPassword;
   try {
-    user = await getUser({ username });
-    pwMatches = await verifyPassword(password, user?.password);
+    appPassword = await checkAppPassword(sso, username, password, "smtp", ip);
   } catch (err) {
     logger.error("SMTP: authentication lookup failed", { remoteAddress: ip }, err);
     return cb(new LookupFailedError());
   }
-
-  const signedUser = user?.getSigned();
-  if (!user || !signedUser || !pwMatches) {
+  if (appPassword.status === "unavailable") return cb(new AuthUnavailableError());
+  if (appPassword.status === "rejected") {
     await recordAuthFailure(ip, account);
     return cb(null, { user: undefined });
   }
-
-  // Scoped reset: forgive only the authenticating account's own bucket. The
-  // per-IP aggregate keeps its count, so a success here cannot wipe another
-  // account's failures from the same IP.
   resetAuthFailures(ip, account);
-  // Credential-revocation fence: stamp the credential row's
-  // current generation onto the connection. The server only copies
-  // `response.user` onto the session, so the stamp goes on the session
-  // object directly; the per-command gates below re-check it.
-  (session as VersionStampedSmtpSession).passwordVersion =
-    user.passwordVersion ?? 1;
-  // Audit line names the original credential. Read-only sessions pass this
-  // gate and are refused later at the single mutating gate this surface
-  // has, `onMailFrom` (below) — matching HTTP and IMAP where the read-only
-  // credential logs in but is refused at every write.
-  if (username === ADMIN_RO_USERNAME) {
-    logger.info("SMTP AUTH success (read-only)", { authenticatedAs: username, ip });
-  }
+  (session as VersionStampedSmtpSession).passwordVersion = appPassword.passwordVersion;
   cb(null, { user: username });
 };
 
@@ -297,6 +324,19 @@ class LookupFailedError extends Error {
 
   constructor() {
     super("4.3.0 Error: temporary lookup failure");
+  }
+}
+
+/**
+ * The identity provider could not say whether an app password is valid.
+ * RFC 4954 §6 gives 454 to a temporary failure on the server's side, so the
+ * client retries the same credential later rather than reporting it wrong.
+ */
+class AuthUnavailableError extends Error {
+  responseCode = 454;
+
+  constructor() {
+    super("4.7.0 Temporary authentication failure");
   }
 }
 
@@ -1008,7 +1048,9 @@ export const initializeSmtp = async () => {
       const server = createSmtpServer({
         ...options,
         secure: false,
-        allowInsecureAuth: true
+        // With single sign-on an app password is a full credential for the
+        // protocol, so this port too takes none before STARTTLS.
+        allowInsecureAuth: getSso() === null
       });
       registerListeners(server, port, () => {
         logger.info(`SMTP server listening on port ${port}`);

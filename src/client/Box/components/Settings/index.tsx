@@ -7,6 +7,7 @@ import {
   Notifier,
   ThemeSetting,
   call,
+  getSignInMode,
   useFeedback
 } from "client";
 import { accountsQueryUrl, fetchAccounts } from "../Accounts";
@@ -49,6 +50,7 @@ const Settings = () => {
   // configuration; the reset mail is refused for them by design.
   const isSeededAccount =
     userInfo?.username === "admin" || userInfo?.username === "admin-ro";
+  const hasPasswordSignIn = getSignInMode().localLogin;
 
   const onClickResetPassword = async () => {
     if (!userInfo?.email) return;
@@ -130,12 +132,14 @@ const Settings = () => {
             <div className="settings-label">
               Password
               <div className="settings-description">
-                {isSeededAccount
-                  ? "This account's password is set by the server's ADMIN_PASSWORD setting."
-                  : `We'll email a link to set a new password to ${userInfo.email}.`}
+                {!hasPasswordSignIn
+                  ? "You sign in with single sign-on. Mail apps use an app password you create in your single sign-on account."
+                  : isSeededAccount
+                    ? "This account's password is set by the server's ADMIN_PASSWORD setting."
+                    : `We'll email a link to set a new password to ${userInfo.email}.`}
               </div>
             </div>
-            {isSeededAccount ? null : (
+            {isSeededAccount || !hasPasswordSignIn ? null : (
               <button
                 type="button"
                 className="text-button"

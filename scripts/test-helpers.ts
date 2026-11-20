@@ -99,3 +99,5 @@ export const createTlsEnvFixture = () => {
     },
   };
 };
+
+export * from "./fake-issuer";

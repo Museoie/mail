@@ -30,6 +30,9 @@ export const EXPIRY = "expiry";
 // against the row's current one.
 export const PASSWORD_VERSION = "password_version";
 export const IMAP_UID_VALIDITY = "imap_uid_validity";
+// The single sign-on subject (`sub`) the account is linked to; null for an
+// account that has never signed in through SSO.
+export const AUTH_SUB = "auth_sub";
 
 // Mails columns
 export const MAIL_ID = "mail_id";
@@ -99,6 +102,12 @@ export const SESSION_AUTHENTICATED_AS = "session_authenticated_as";
 // Stamped at issuance; PostgresSessionStore.get rejects the row when it
 // reads behind the user row's current PASSWORD_VERSION.
 export const SESSION_PASSWORD_VERSION = "session_password_version";
+// Set on a session started through single sign-on, null on a local one: the
+// provider's session id, the refresh token that re-checks access, and when
+// that re-check is next due.
+export const SESSION_AUTH_SID = "auth_sid";
+export const SESSION_AUTH_REFRESH_TOKEN = "auth_refresh_token";
+export const SESSION_AUTH_RECHECK_AT = "auth_recheck_at";
 export const COOKIE_ORIGINAL_MAX_AGE = "cookie_original_max_age";
 export const COOKIE_MAX_AGE = "cookie_max_age";
 export const COOKIE_SIGNED = "cookie_signed";

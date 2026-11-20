@@ -44,6 +44,7 @@ const liveUserRow = (password_version: number) => ({
   updated: new Date().toISOString(),
   is_deleted: false,
   imap_uid_validity: null,
+  auth_sub: null,
 });
 
 const SESSION_ID = "fault-propagation-session-id";
@@ -63,6 +64,9 @@ const liveSessionRow = () => ({
   session_is_read_only: null,
   session_authenticated_as: null,
   session_password_version: stampedVersion,
+  auth_sid: null,
+  auth_refresh_token: null,
+  auth_recheck_at: null,
   cookie_original_max_age: WEEK_MS,
   cookie_max_age: WEEK_MS,
   cookie_signed: null,

@@ -121,6 +121,7 @@ const makeUserRow = (overrides: Record<string, unknown> = {}) => ({
   updated: null,
   is_deleted: false,
   imap_uid_validity: null,
+  auth_sub: null,
   ...overrides,
 });
 

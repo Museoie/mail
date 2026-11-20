@@ -18,6 +18,8 @@ import {
   resetAuthFailures,
 } from "../auth-rate-limit";
 import { verifyPassword } from "../verify-password";
+import { getSso } from "../sso";
+import { checkAppPassword } from "../sso/app-password";
 import { Store } from "./store";
 import { closeSocket } from "./close-socket";
 
@@ -66,6 +68,11 @@ type ResolvedSessionUser = NonNullable<Awaited<ReturnType<typeof resolveSessionU
  * Each entry point owns only its own credential framing (PLAIN base64
  * decoding, LOGIN quote stripping) and its success response.
  *
+ * With single sign-on on, the password is checked as the provider's app
+ * password; while `AUTH_LOCAL_LOGIN` keeps local passwords valid, the stored
+ * one is tried first. A provider that cannot answer gets `NO [UNAVAILABLE]`,
+ * which is not counted as a failed attempt.
+ *
  * Returns the resolved session user on success. On failure, writes the
  * tagged NO reply (and closes the socket when the rate limiter says so)
  * and returns null. Throws only on unexpected errors, which
@@ -91,24 +98,56 @@ const authenticateCredentials = async (
     return null;
   }
 
+  const sso = getSso();
+  // While single sign-on and local passwords are both on (a migration), the
+  // local password goes first: it is never sent to the provider, and the
+  // clients still using one don't spend the provider's per-client and
+  // per-address limits on failed introspections, which would then refuse
+  // the app passwords of everyone behind the same address.
+  if (!sso || sso.config.localLogin) {
+    const local = await checkLocalPassword(username, password);
+    if (local) {
+      // Scoped reset: forgive only the authenticating account's own bucket. The
+      // per-IP aggregate keeps its count, so a success here cannot wipe another
+      // account's failures from the same IP.
+      resetAuthFailures(ip, account);
+      return local;
+    }
+    if (!sso) return failAuth(tag, ip, socket, write, account);
+  }
+
+  const appPassword = await checkAppPassword(sso, username, password, "imap", ip);
+  if (appPassword.status === "unavailable") {
+    write(`${tag} NO [UNAVAILABLE] Authentication is temporarily unavailable\r\n`);
+    return null;
+  }
+  if (appPassword.status === "rejected") return failAuth(tag, ip, socket, write, account);
+  resetAuthFailures(ip, account);
+  return {
+    user: appPassword.user,
+    isReadOnly: false,
+    passwordVersion: appPassword.passwordVersion,
+  };
+};
+
+/**
+ * The account's own stored password, with the read-only remap applied; null
+ * when it doesn't match or the remap has no effective user.
+ */
+const checkLocalPassword = async (
+  username: string,
+  password: string
+): Promise<(ResolvedSessionUser & { passwordVersion: number }) | null> => {
   const user = await getUser({ username, password });
   const signedUser = user?.getSigned();
 
   const pwMatches = await verifyPassword(password, user?.password);
 
-  if (!user || !signedUser || !pwMatches) {
-    return failAuth(tag, ip, socket, write, account);
-  }
+  if (!user || !signedUser || !pwMatches) return null;
 
   const resolved = await resolveSessionUser(signedUser);
-  if (!resolved) {
-    return failAuth(tag, ip, socket, write, account);
-  }
+  if (!resolved) return null;
 
-  // Scoped reset: forgive only the authenticating account's own bucket. The
-  // per-IP aggregate keeps its count, so a success here cannot wipe another
-  // account's failures from the same IP.
-  resetAuthFailures(ip, account);
   // Stamp the credential row's generation — the per-command gate compares
   // this against the row's current version. Read here, at auth time, so a
   // LOGIN that straddled a rotation stamps the stale generation and fails

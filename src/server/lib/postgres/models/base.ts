@@ -8,6 +8,8 @@ import {
   SearchFilters,
   ParamValue,
   QueryData,
+  type InsertOptions,
+  type PreparedQuery,
 } from "../database";
 
 /**
@@ -123,8 +125,26 @@ export interface FilterCondition {
   notNull?: boolean;
 }
 
-/** Accepts either a plain equality value or a FilterCondition for deleteWhere()/updateWhere(). */
-export type WhereFilter = ParamValue | FilterCondition;
+/**
+ * A filter condition that binds no value: `IS NULL` matches a NULL column, and
+ * `IS NOT TRUE` one that is FALSE or NULL (the soft-delete test). A plain
+ * `null` value can't stand in for either, since it binds as `= NULL`, which
+ * matches nothing.
+ *
+ * Example: updateWhere({ user_id: id, auth_sub: { op: "IS NULL" } }, { auth_sub: sub })
+ */
+export interface NullaryCondition {
+  op: "IS NULL" | "IS NOT TRUE";
+}
+
+const isNullaryCondition = (filter: unknown): filter is NullaryCondition =>
+  filter !== null &&
+  typeof filter === "object" &&
+  "op" in filter &&
+  (filter.op === "IS NULL" || filter.op === "IS NOT TRUE");
+
+/** Accepts a plain equality value, a FilterCondition or a NullaryCondition for deleteWhere()/updateWhere(). */
+export type WhereFilter = ParamValue | FilterCondition | NullaryCondition;
 
 export type WhereFilters<TSchema extends Schema> = {
   [K in SchemaFilterKey<TSchema>]?: WhereFilter | unknown;
@@ -161,6 +181,7 @@ export function resolveMutationFilters(
       // `{ op, value: undefined }` would bind NULL and match nothing rather
       // than widen, but it is still a caller that named a predicate it had no
       // value for — reject it on the same terms as a bare undefined.
+      if (isNullaryCondition(value)) return false;
       if (value !== null && typeof value === "object" && "op" in value) {
         return (value as FilterCondition).value === undefined;
       }
@@ -186,7 +207,7 @@ export function resolveMutationFilters(
  * the parameter values, with placeholders numbered starting at startParamIdx.
  * Throws if an IN-list value is empty (postgres rejects `col IN ()`).
  */
-function buildFilterClauses(
+export function buildFilterClauses(
   entries: [string, unknown][],
   startParamIdx: number
 ): { whereSql: string; values: ParamValue[] } {
@@ -194,7 +215,9 @@ function buildFilterClauses(
   const values: ParamValue[] = [];
   let paramIdx = startParamIdx;
   for (const [col, filter] of entries) {
-    if (filter !== null && typeof filter === "object" && "op" in (filter as object)) {
+    if (isNullaryCondition(filter)) {
+      whereClauses.push(`${col} ${filter.op}`);
+    } else if (filter !== null && typeof filter === "object" && "op" in (filter as object)) {
       const cond = filter as FilterCondition;
       if (cond.notNull) whereClauses.push(`${col} IS NOT NULL`);
       if (cond.op === "IN") {
@@ -298,16 +321,27 @@ export abstract class Table<
     return "updated" in this.schema;
   }
 
-  async insert(
+  /** The statement `insert` runs, for tests and probes that check it without a pool. */
+  prepareInsert(
     data: QueryData,
-    returning?: string[]
-  ): Promise<Record<string, unknown> | null> {
-    const { sql, values } = buildInsert(
+    returning?: string[],
+    options: Pick<InsertOptions, "onConflictDoNothing"> = {}
+  ): PreparedQuery {
+    return buildInsert(
       this.name,
       data as Record<string, ParamValue>,
       returning ?? [this.primaryKey],
-      { stampUpdated: this.stampUpdated }
+      { stampUpdated: this.stampUpdated, onConflictDoNothing: options.onConflictDoNothing }
     );
+  }
+
+  /** Resolves null when nothing came back, including a row `onConflictDoNothing` skipped. */
+  async insert(
+    data: QueryData,
+    returning?: string[],
+    options: Pick<InsertOptions, "onConflictDoNothing"> = {}
+  ): Promise<Record<string, unknown> | null> {
+    const { sql, values } = this.prepareInsert(data, returning, options);
     const result = await pool.query(sql, values);
     return result.rows.length > 0 ? result.rows[0] : null;
   }
@@ -372,15 +406,19 @@ export abstract class Table<
     return result.rowCount ?? 0;
   }
 
-  async updateWhere(
+  /**
+   * The statement `updateWhere` runs, for tests and probes that check it
+   * without a pool; null when the data bag sets nothing.
+   */
+  prepareUpdateWhere(
     filters: WhereFilters<TSchema>,
     data: QueryData,
     returning?: string[]
-  ): Promise<Record<string, unknown>[]> {
+  ): PreparedQuery | null {
     const filterEntries = resolveMutationFilters("updateWhere", filters);
     const dataEntries = Object.entries(data).filter(([, v]) => v !== undefined);
     if (dataEntries.length === 0) {
-      return [];
+      return null;
     }
     let paramIdx = 1;
     const dataValues: ParamValue[] = [];
@@ -395,7 +433,17 @@ export abstract class Table<
     const { whereSql, values: whereValues } = buildFilterClauses(filterEntries, paramIdx);
     const returningClause = returning?.length ? ` RETURNING ${returning.join(", ")}` : "";
     const sql = `UPDATE ${this.name} SET ${setClauses.join(", ")} WHERE ${whereSql}${returningClause}`;
-    const result = await pool.query(sql, [...dataValues, ...whereValues]);
+    return { sql, values: [...dataValues, ...whereValues] };
+  }
+
+  async updateWhere(
+    filters: WhereFilters<TSchema>,
+    data: QueryData,
+    returning?: string[]
+  ): Promise<Record<string, unknown>[]> {
+    const query = this.prepareUpdateWhere(filters, data, returning);
+    if (!query) return [];
+    const result = await pool.query(query.sql, query.values);
     return result.rows;
   }
 

@@ -14,3 +14,4 @@ Following is an example of running Mail as a web service.
 # Instruction
 
 - [How To Setup](docs/how_to_setup.md)
+- [Single sign-on (optional)](docs/how_to_setup.md#single-sign-on-optional)

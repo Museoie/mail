@@ -31,6 +31,8 @@ import { restoreLeaves } from "test-helpers";
 import { ADMIN_RO_USERNAME, ADMIN_USERNAME } from "../read-only";
 import { encryptPassword } from "../users";
 import * as authRateLimit from "../auth-rate-limit";
+import * as appPassword from "../sso/app-password";
+import { initializeSso, resetSso } from "../sso";
 
 const realVerify = Bun.password.verify.bind(Bun.password);
 
@@ -79,12 +81,15 @@ mock.module("server", serverMock);
 const mockIsAuthRateLimited = spyOn(authRateLimit, "isAuthRateLimited").mockReturnValue(false);
 const mockRecordAuthFailure = spyOn(authRateLimit, "recordAuthFailure").mockResolvedValue(false);
 const mockResetAuthFailures = spyOn(authRateLimit, "resetAuthFailures").mockReturnValue(undefined);
+const mockCheckAppPassword = spyOn(appPassword, "checkAppPassword");
 
 const { handleAuthenticate, handleLogin } = await import("./auth");
 const { ImapRequestHandler } = await import("./handler");
 
 afterAll(() => {
   verifySpy.mockRestore();
+  mockCheckAppPassword.mockRestore();
+  resetSso();
   mockIsAuthRateLimited.mockRestore();
   mockRecordAuthFailure.mockRestore();
   mockResetAuthFailures.mockRestore();
@@ -181,6 +186,9 @@ beforeEach(() => {
   mockRecordAuthFailure.mockImplementation(() => Promise.resolve(false));
   mockResetAuthFailures.mockReset();
   mockResetAuthFailures.mockImplementation(() => undefined);
+  mockCheckAppPassword.mockReset();
+  mockCheckAppPassword.mockImplementation(async () => ({ status: "rejected" }));
+  resetSso();
 });
 
 describe("handleAuthenticate", () => {
@@ -886,5 +894,232 @@ describe("SASL continuation line", () => {
 
     expect(mockGetUser).toHaveBeenCalledWith({ username: "nobody", password: "hunter2" });
     expect(socket.writes).toContain("D3 NO [AUTHENTICATIONFAILED] Invalid credentials.\r\n");
+  });
+});
+
+describe("with single sign-on", () => {
+  const APP_PASSWORD = "abcd-efgh-ijkl-mnop";
+  const aliceSigned = new SignedUser({
+    id: "user-alice",
+    username: "alice",
+    email: "alice@example.com",
+    passwordVersion: 4,
+  });
+
+  /** Settings only: the provider is never contacted, `checkAppPassword` is spied on. */
+  const useSso = (localLogin: boolean) =>
+    initializeSso({
+      AUTH_ISSUER: "https://auth.example.test",
+      AUTH_CLIENT_ID: "mail",
+      AUTH_CLIENT_SECRET: "test_key_not_real_do_not_use",
+      APP_HOSTNAME: "mail.example.test",
+      AUTH_LOCAL_LOGIN: String(localLogin),
+    })!;
+
+  const accept = () =>
+    mockCheckAppPassword.mockImplementation(async () => ({
+      status: "accepted",
+      user: aliceSigned,
+      passwordVersion: 4,
+    }));
+
+  it("never asks the provider while it is off", async () => {
+    const { args } = makeHarness();
+    await handleAuthenticate("S0", "PLAIN", plainResponse("alice", APP_PASSWORD), ...args);
+    expect(mockCheckAppPassword).not.toHaveBeenCalled();
+    expect(mockGetUser).toHaveBeenCalled();
+  });
+
+  it("signs in with an app password, bound to the linked account and its generation", async () => {
+    const sso = useSso(false);
+    accept();
+    const { socket, args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S1",
+      "PLAIN",
+      plainResponse("alice", APP_PASSWORD),
+      ...args
+    );
+
+    expect(mockCheckAppPassword.mock.calls).toEqual([
+      [sso, "alice", APP_PASSWORD, "imap", REMOTE_IP],
+    ]);
+    expect(result).not.toBeNull();
+    expect(result!.store.getUser()).toBe(aliceSigned);
+    expect(result!.isReadOnly).toBe(false);
+    expect(result!.authenticatedAs).toBe("alice");
+    expect(result!.passwordVersion).toBe(4);
+    expect(socket.writes).toEqual([
+      `S1 OK [CAPABILITY ${CAPABILITIES}] AUTHENTICATE completed\r\n`,
+    ]);
+    expect(mockResetAuthFailures).toHaveBeenCalledWith(REMOTE_IP, "alice");
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it("signs in with an app password over LOGIN too", async () => {
+    useSso(false);
+    accept();
+    const { socket, args } = makeHarness();
+
+    const result = await handleLogin("S2", ["alice", APP_PASSWORD], args[0], args[1], args[3]);
+
+    expect(result!.store.getUser()).toBe(aliceSigned);
+    expect(result!.passwordVersion).toBe(4);
+    expect(socket.writes).toEqual([`S2 OK [CAPABILITY ${CAPABILITIES}] LOGIN completed\r\n`]);
+  });
+
+  it("answers UNAVAILABLE without counting a failure while the provider cannot answer", async () => {
+    useSso(false);
+    mockCheckAppPassword.mockImplementation(async () => ({ status: "unavailable" }));
+    const { socket, args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S3",
+      "PLAIN",
+      plainResponse("alice", APP_PASSWORD),
+      ...args
+    );
+
+    expect(result).toBeNull();
+    expect(socket.writes).toEqual([
+      "S3 NO [UNAVAILABLE] Authentication is temporarily unavailable\r\n",
+    ]);
+    expect(mockRecordAuthFailure).not.toHaveBeenCalled();
+    expect(mockGetUser).not.toHaveBeenCalled();
+    expect(socket.destroyed).toBe(false);
+  });
+
+  it("refuses anything else as a failed attempt while local passwords are off", async () => {
+    useSso(false);
+    const { socket, args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S4",
+      "PLAIN",
+      plainResponse("alice", "a-local-password"),
+      ...args
+    );
+
+    expect(result).toBeNull();
+    expect(socket.writes).toEqual(["S4 NO [AUTHENTICATIONFAILED] Invalid credentials.\r\n"]);
+    expect(mockRecordAuthFailure).toHaveBeenCalledWith(REMOTE_IP, "alice");
+    expect(mockGetUser).not.toHaveBeenCalled();
+    expect(compareCalls).toHaveLength(0);
+  });
+
+  it("still takes a local password while AUTH_LOCAL_LOGIN keeps them", async () => {
+    useSso(true);
+    mockGetUser.mockImplementation(async () => ({
+      password: await hashOf("correct-horse"),
+      getSigned: () => signedUser,
+    }));
+    const { socket, args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S5",
+      "PLAIN",
+      plainResponse("admin", "correct-horse"),
+      ...args
+    );
+
+    // A local password that matches is never sent to the provider.
+    expect(mockCheckAppPassword).not.toHaveBeenCalled();
+    expect(result!.store.getUser()).toBe(signedUser as never);
+    expect(socket.writes).toEqual([
+      `S5 OK [CAPABILITY ${CAPABILITIES}] AUTHENTICATE completed\r\n`,
+    ]);
+  });
+
+  it("checks an app password after the local one while AUTH_LOCAL_LOGIN keeps them", async () => {
+    const sso = useSso(true);
+    accept();
+    mockGetUser.mockImplementation(async () => ({
+      password: await hashOf("correct-horse"),
+      getSigned: () => signedUser,
+    }));
+    const { socket, args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S6",
+      "PLAIN",
+      plainResponse("alice", APP_PASSWORD),
+      ...args
+    );
+
+    expect(mockGetUser).toHaveBeenCalled();
+    expect(mockCheckAppPassword.mock.calls).toEqual([
+      [sso, "alice", APP_PASSWORD, "imap", REMOTE_IP],
+    ]);
+    expect(result!.store.getUser()).toBe(aliceSigned);
+    expect(socket.writes).toEqual([
+      `S6 OK [CAPABILITY ${CAPABILITIES}] AUTHENTICATE completed\r\n`,
+    ]);
+  });
+
+  it("takes no password before TLS", async () => {
+    useSso(true);
+    accept();
+    const settle = async () => {
+      for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 5));
+    };
+    const handler = new ImapRequestHandler();
+    const socket = makeSocket();
+    handler.setSocket(socket as unknown as Socket);
+
+    socket.emit("data", Buffer.from(`T1 LOGIN alice ${APP_PASSWORD}\r\n`));
+    socket.emit("data", Buffer.from(`T2 AUTHENTICATE PLAIN ${plainResponse("alice", APP_PASSWORD)}\r\n`));
+    socket.emit("data", Buffer.from("T3 AUTHENTICATE PLAIN\r\n"));
+    await settle();
+
+    const refusal = "NO [PRIVACYREQUIRED] Use STARTTLS or the TLS port to sign in\r\n";
+    expect(socket.writes).toContain(`T1 ${refusal}`);
+    expect(socket.writes).toContain(`T2 ${refusal}`);
+    expect(socket.writes).toContain(`T3 ${refusal}`);
+    expect(socket.writes).not.toContain("+ \r\n");
+    expect(mockCheckAppPassword).not.toHaveBeenCalled();
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  it("takes a password once on TLS", async () => {
+    useSso(false);
+    accept();
+    const handler = new ImapRequestHandler(true);
+    const socket = makeSocket();
+    handler.setSocket(socket as unknown as Socket);
+
+    socket.emit("data", Buffer.from(`T4 LOGIN alice ${APP_PASSWORD}\r\n`));
+    for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 5));
+
+    expect(socket.writes.some((line) => line.startsWith("T4 OK"))).toBe(true);
+    expect(mockCheckAppPassword).toHaveBeenCalledTimes(1);
+    // Closing runs the session's cleanup, which drops it from the registry.
+    socket.end();
+  });
+
+  it("keeps the read-only credential's remap on the local path", async () => {
+    useSso(true);
+    const adminSigned = new SignedUser({ id: "user-admin", username: ADMIN_USERNAME, email: "a@test.com" });
+    mockGetUser.mockImplementation(async (input: unknown) => {
+      const { username } = input as { username: string };
+      if (username === ADMIN_RO_USERNAME) {
+        return {
+          password: await hashOf("ro-secret"),
+          getSigned: () => new SignedUser({ id: "user-ro", username: ADMIN_RO_USERNAME, email: "r@test.com" }),
+        };
+      }
+      return username === ADMIN_USERNAME ? { password: "unused", getSigned: () => adminSigned } : null;
+    });
+    const { args } = makeHarness();
+
+    const result = await handleAuthenticate(
+      "S6",
+      "PLAIN",
+      plainResponse(ADMIN_RO_USERNAME, "ro-secret"),
+      ...args
+    );
+
+    expect(result!.isReadOnly).toBe(true);
+    expect(result!.store.getUser().id).toBe("user-admin");
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { json, jsonList } from "./respond";
+import { json, jsonList, redirect } from "./respond";
 
 const whole = <R>(rows: R[], toItem: (row: R) => unknown) =>
   json({ status: "success", body: rows.map(toItem) });
@@ -96,5 +96,15 @@ describe("jsonList", () => {
     expect(seen).toEqual(rows.map((_, i) => i));
     const parsed = (await response.json()) as { body: { id: string }[] };
     expect(parsed.body.map((item) => item.id)).toEqual(rows.map((row) => row.id));
+  });
+});
+
+describe("redirect", () => {
+  it("answers 302 to the location, uncached, setting each cookie", () => {
+    const response = redirect("/mail/42", ["a=1; Path=/", "b=; Max-Age=0"]);
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/mail/42");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.getSetCookie()).toEqual(["a=1; Path=/", "b=; Max-Age=0"]);
   });
 });

@@ -66,6 +66,7 @@ The IMAP/SMTP port env vars exist primarily to let non-root sandboxes bind high 
 | `MAILGUN_KEY` | For sending | Mailgun API key. Required to send outgoing mail. |
 | `MAILGUN_URL` | Optional | Root of Mailgun's HTTP API. Defaults to `https://api.mailgun.net`; set `https://api.eu.mailgun.net` for an EU-region domain. |
 | `DISCORD_ALARM_WEBHOOK` | Optional | Discord webhook URL for server error alarms (unhandled exceptions, 5xx errors). |
+| `AUTH_ISSUER` | Optional | Turns on single sign-on through an OpenID Connect provider, with the other `AUTH_*` settings. Code in `src/server/lib/sso/`; see "Single sign-on (optional)" in `docs/how_to_setup.md`. |
 
 ### `APP_HOSTNAME` vs `EMAIL_DOMAIN`
 

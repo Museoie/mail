@@ -422,6 +422,31 @@ describe("Settings account section", () => {
     }
   });
 
+  it("offers no reset link while the server signs in only with single sign-on", async () => {
+    const { callUser } = await import("client");
+    const reportMode = async (sso: { enabled: boolean; localLogin: boolean }) => {
+      const previous = call.get;
+      call.get = (async () => ({
+        status: "success",
+        body: { app: { version: "" }, sso }
+      })) as typeof call.get;
+      await callUser();
+      call.get = previous;
+    };
+    await reportMode({ enabled: true, localLogin: false });
+    const mount = await mountSettings("comfortable", { userInfo: user });
+    try {
+      const buttons = Array.from(mount.container.querySelectorAll("button")).map(
+        (b) => b.textContent
+      );
+      expect(buttons).not.toContain("Send reset link");
+      expect(mount.container.textContent).toContain("You sign in with single sign-on.");
+    } finally {
+      await mount.teardown();
+      await reportMode({ enabled: false, localLogin: true });
+    }
+  });
+
   it("offers no reset link for admin, whose password is configured", async () => {
     const mount = await mountSettings("comfortable", {
       userInfo: { id: "a", username: "admin", email: "admin@example.com" }

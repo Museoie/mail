@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test";
-import { getDomain, getUserDomain, withTimeout } from "./util";
+import { getDomain, getUserDomain, isRoutableUsername, withTimeout } from "./util";
 
 describe("getDomain", () => {
   const originalEnv = process.env.EMAIL_DOMAIN;
@@ -89,6 +89,20 @@ describe("withTimeout", () => {
     } finally {
       globalThis.setTimeout = realSetTimeout;
       globalThis.clearTimeout = realClearTimeout;
+    }
+  });
+});
+
+describe("isRoutableUsername", () => {
+  it("accepts a lower-case DNS label", () => {
+    for (const username of ["alice", "a1", "bob-smith", "x", "a".repeat(63)]) {
+      expect(isRoutableUsername(username)).toBe(true);
+    }
+  });
+
+  it("refuses anything mail to <username>.<domain> could not reach", () => {
+    for (const username of ["", "Alice", "al_ice", "-bob", "bob-", "a.b", "a b", "a".repeat(64)]) {
+      expect(isRoutableUsername(username)).toBe(false);
     }
   });
 });

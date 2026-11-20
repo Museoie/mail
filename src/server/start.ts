@@ -22,6 +22,7 @@ import {
   POOL_SHUTDOWN_TIMEOUT_MS,
 } from "./lib/crash-alarm";
 import { handleStartupFailure } from "./lib/startup-failure";
+import { initializeSso } from "./lib/sso";
 
 // Module scope, not `start()`: the crash handler below is registered here too,
 // and has to be able to cancel the phase it cannot otherwise outlive.
@@ -56,6 +57,9 @@ process.on("uncaughtException", async (error) => {
 });
 
 const start = async () => {
+  // Settings only: a misconfiguration stops the start here, before anything
+  // binds, and the provider is first contacted by the first sign-in.
+  initializeSso();
   await initializePostgres();
   await initializeAdminUser();
   await initializeAdminReadOnlyUser();

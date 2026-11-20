@@ -151,3 +151,39 @@ describe("read-only attribution across the session store round trip", () => {
     expect(refuseReadOnly(rehydrated, "Sending mail").ok).toBe(true);
   });
 });
+
+describe("single sign-on fields across the session store round trip", () => {
+  const auth = {
+    sid: "ses_alice",
+    refreshToken: "rt_alice",
+    recheckAt: new Date(Date.UTC(2026, 10, 18, 12, 10, 0)),
+  };
+
+  it("rehydrates the provider session, refresh token and re-check time", async () => {
+    await store.set(SESSION_ID, { user: ADMIN, cookie: runtimeCookie(), auth } as never);
+    const session = await store.get(SESSION_ID);
+    expect(session?.auth).toEqual(auth);
+    expect(persistedRow?.auth_sid).toBe("ses_alice");
+    expect(persistedRow?.auth_refresh_token).toBe("rt_alice");
+    expect(persistedRow?.auth_recheck_at).toBe("2026-11-18T12:10:00.000Z");
+    // The refresh token is a session field, never one of the user's.
+    expect(JSON.stringify(session?.user)).not.toContain("rt_alice");
+  });
+
+  it("keeps a session without a refresh token one from single sign-on", async () => {
+    await store.set(SESSION_ID, {
+      user: ADMIN,
+      cookie: runtimeCookie(),
+      auth: { ...auth, refreshToken: null },
+    } as never);
+    expect((await store.get(SESSION_ID))?.auth).toEqual({ ...auth, refreshToken: null });
+  });
+
+  it("leaves a password session without them, writing them as NULL", async () => {
+    await store.set(SESSION_ID, { user: ADMIN, cookie: runtimeCookie() } as never);
+    expect((await store.get(SESSION_ID))?.auth).toBeUndefined();
+    expect(persistedRow?.auth_sid).toBeNull();
+    expect(persistedRow?.auth_refresh_token).toBeNull();
+    expect(persistedRow?.auth_recheck_at).toBeNull();
+  });
+});

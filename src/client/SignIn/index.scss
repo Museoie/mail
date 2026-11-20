@@ -118,3 +118,38 @@ h2.greeting {
     text-decoration: none;
   }
 }
+
+/* The single sign-on action is a link, not a submit: the provider's page loads
+ * in its place. Same footprint as the password form's submit button. */
+.login_card a.login_sso {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 44px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--textBright);
+  background-color: var(--blue);
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--blue), white 14%);
+  }
+  &:active {
+    background-color: color-mix(in srgb, var(--blue), white 10%);
+  }
+
+  svg {
+    margin-right: 0.5rem;
+  }
+}
+
+.login_divider {
+  margin: 1.25rem 0 0;
+  font-size: 14px;
+  text-align: center;
+  color: var(--textSoft);
+}

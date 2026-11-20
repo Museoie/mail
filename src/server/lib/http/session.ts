@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { RuntimeCookie, RuntimeSessionType, SignedUser } from "common";
+import { RuntimeCookie, RuntimeSessionType, SignedUser, SsoSessionType } from "common";
 
 export const SESSION_COOKIE_NAME = "connect.sid";
 
@@ -57,7 +57,8 @@ export const readCookie = (header: string | null, name: string): string | undefi
 
 const generateSessionId = () => crypto.randomBytes(24).toString("base64url");
 
-const fingerprint = (user: SignedUser | undefined) => JSON.stringify(user ?? null);
+const fingerprint = (user: SignedUser | undefined, auth: SsoSessionType | undefined) =>
+  JSON.stringify([user ?? null, auth ?? null]);
 
 export interface SessionOptions {
   secret: string;
@@ -83,6 +84,9 @@ export class HttpSession {
     this.identity = value;
   }
 
+  /** What a session started through single sign-on keeps from the provider. */
+  auth: SsoSessionType | undefined;
+
   private identity: SignedUser | undefined;
   private id: string;
   private cookie: RuntimeCookie;
@@ -101,13 +105,14 @@ export class HttpSession {
     if (stored) {
       this.id = stored.id;
       this.identity = stored.session.user;
+      this.auth = stored.session.auth;
       this.cookie = new RuntimeCookie(stored.session.cookie);
     } else {
       this.id = generateSessionId();
       this.cookie = this.freshCookie();
     }
     this.originalId = this.id;
-    this.originalFingerprint = fingerprint(this.identity);
+    this.originalFingerprint = fingerprint(this.identity, this.auth);
   }
 
   /**
@@ -149,11 +154,15 @@ export class HttpSession {
         ...this.cookie,
         maxAge: expires ? expires.getTime() - Date.now() : undefined,
       }),
+      auth: this.auth,
     };
   }
 
   private isModified() {
-    return this.originalId !== this.id || this.originalFingerprint !== fingerprint(this.identity);
+    return (
+      this.originalId !== this.id ||
+      this.originalFingerprint !== fingerprint(this.identity, this.auth)
+    );
   }
 
   /** Deletes the stored session and continues under a new, empty one. */
@@ -161,6 +170,7 @@ export class HttpSession {
     const previous = this.id;
     this.id = generateSessionId();
     this.identity = undefined;
+    this.auth = undefined;
     this.cookie = this.freshCookie();
     await this.store.destroy(previous);
   }

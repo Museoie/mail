@@ -31,6 +31,14 @@ export interface StampUpdatedOption {
   stampUpdated?: boolean;
 }
 
+export interface InsertOptions extends StampUpdatedOption {
+  /**
+   * Appends `ON CONFLICT DO NOTHING`: a row that would break any unique
+   * constraint is skipped, and the statement returns no row for it.
+   */
+  onConflictDoNothing?: boolean;
+}
+
 export interface UpdateOptions extends StampUpdatedOption {
   additionalWhere?: { column: string; value: ParamValue };
   returning?: string[];
@@ -161,7 +169,7 @@ export function buildInsert(
   tableName: string,
   data: Record<string, ParamValue>,
   returning?: string[],
-  options: StampUpdatedOption = {}
+  options: InsertOptions = {}
 ): PreparedQuery {
   const { columns, placeholders } = autoColumns(options.stampUpdated !== false);
   const values: ParamValue[] = [];
@@ -176,6 +184,8 @@ export function buildInsert(
   }
 
   let sql = `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${placeholders.join(", ")})`;
+
+  if (options.onConflictDoNothing) sql += " ON CONFLICT DO NOTHING";
 
   if (returning && returning.length > 0) {
     sql += ` RETURNING ${returning.join(", ")}`;

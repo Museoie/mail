@@ -33,6 +33,7 @@ const USER_ROW = {
   updated: null,
   is_deleted: null,
   imap_uid_validity: STORED_UIDVALIDITY,
+  auth_sub: null,
 };
 
 // getDomainUidNext / getAccountUidNext both SELECT ... AS next_uid FROM mails.

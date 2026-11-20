@@ -35,6 +35,7 @@ const makeUserRow = (username: string) => ({
   updated: null,
   is_deleted: null,
   imap_uid_validity: null,
+  auth_sub: null,
 });
 
 const mockQuery = mock(async (_sql: string, values?: unknown[]) => {
