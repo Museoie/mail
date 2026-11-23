@@ -108,7 +108,7 @@ export const getThread = async (
   return thread
     .sort((a, b) => +new Date(a.date) - +new Date(b.date))
     .map((row) => {
-      const header = toMailHeaderData({ ...row, user_id: userId });
+      const header = toMailHeaderData({ ...row, user_id: userId }, user.username ?? "");
       if (row.is_spam) header.spam = true;
       return header;
     });

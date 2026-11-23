@@ -8,6 +8,7 @@ mock.module("../postgres/repositories/mails", () => ({
 }));
 
 import { searchMail } from "./search";
+import { getDomain } from "../util";
 import { SignedUser } from "common";
 
 const mockUser = new SignedUser({
@@ -76,7 +77,8 @@ describe("searchMail", () => {
 
   it("should map envelope_to when present", async () => {
     // A BCC delivery's search hit resolves its account the same way the
-    // list rows do.
+    // list rows do, and names no other recipient of the delivery.
+    const own = `b@testuser.${getDomain()}`;
     const mockMailModel = {
       mail_id: "mail-envelope",
       subject: "BCC Email",
@@ -89,7 +91,7 @@ describe("searchMail", () => {
       cc_text: null,
       bcc_address: null,
       bcc_text: null,
-      envelope_to: [{ address: "b@example.com" }],
+      envelope_to: [{ address: own }, { address: `hidden@other.${getDomain()}` }, { address: "x@example.com" }],
       read: false,
       saved: false,
       sent: false,
@@ -101,9 +103,7 @@ describe("searchMail", () => {
 
     const results = await searchMail(mockUser, "subject");
     expect(results).toHaveLength(1);
-    expect(results[0].envelopeTo?.value).toEqual([
-      { address: "b@example.com" },
-    ]);
+    expect(results[0].envelopeTo).toEqual({ value: [{ address: own }], text: "" });
   });
 
   it("builds the snippet from the bounded text prefix", async () => {

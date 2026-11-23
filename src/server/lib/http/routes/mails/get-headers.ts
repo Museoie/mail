@@ -77,12 +77,14 @@ export const getHeadersRoute = new Route<
         pageParams.limit,
         pageParams.after
       );
-      return jsonList(batches, toMailHeaderData, {
+      return jsonList(batches, (row) => toMailHeaderData(row, user.username), {
         listKey: "headers",
         fields: { next_cursor: encodeListCursor(next) }
       });
     }
 
-    return jsonList(await getMailHeaders(user, req.params.account, options), toMailHeaderData);
+    return jsonList(await getMailHeaders(user, req.params.account, options), (row) =>
+      toMailHeaderData(row, user.username)
+    );
   }
 );

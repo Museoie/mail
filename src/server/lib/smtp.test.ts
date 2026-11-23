@@ -508,6 +508,7 @@ describe("onMailFrom handler", () => {
     // username with any other username must not trip it. `every(p)` on a
     // list of one user would hide a `!==` typo; asserting the pass path
     // with a distinct username is the discriminator.
+    mockGetUser.mockResolvedValueOnce({ passwordVersion: 1 } as never);
     const session = {
       user: "alice",
       remoteAddress: "10.0.0.2",
@@ -530,6 +531,31 @@ describe("onMailFrom handler", () => {
       user: "alice",
       passwordVersion: 1,
       remoteAddress: "10.0.0.3",
+    } as unknown as SmtpSession;
+    const address = { address: "alice@test.com" } as never;
+
+    const err = await new Promise<Error | null>((resolve) => {
+      onMailFrom!(address, session, (e) => resolve(e || null));
+    });
+
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toBe(
+      "4.4.2 Credential changed, please re-authenticate"
+    );
+    expect(
+      (err as Error & { responseCode?: number }).responseCode
+    ).toBe(421);
+  });
+
+  it("refuses MAIL FROM with 421 when the account is gone", async () => {
+    // Deleted, or soft-deleted (which the lookup leaves out), after AUTH: the
+    // grant goes with the row, as it does on a rotation. A missing row used
+    // to read as generation 1 and let the session go on.
+    mockGetUser.mockResolvedValueOnce(null);
+    const session = {
+      user: "alice",
+      passwordVersion: 1,
+      remoteAddress: "10.0.0.6",
     } as unknown as SmtpSession;
     const address = { address: "alice@test.com" } as never;
 
@@ -2129,6 +2155,64 @@ describe("onData transaction files", () => {
     expect(err).toBeUndefined();
     expect(mockSendMail).toHaveBeenCalledTimes(1);
     expect(fs.existsSync(directories[0])).toBe(false);
+  });
+
+  it("hands an outgoing submission's attachments to the send, then removes them", async () => {
+    // Regression: the parsed attachments were written here and never passed
+    // on, so a submission went out and into Sent without its files.
+    parseWritingAFile();
+    mockGetUser.mockResolvedValue({ getSigned: () => ({ username: "admin" }) });
+    let seenWhileSending: boolean | undefined;
+    mockSendMail.mockImplementation(((...args: unknown[]) => {
+      const files = args[2] as { tempFilePath: string }[];
+      seenWhileSending = fs.existsSync(files[0].tempFilePath);
+      return Promise.resolve();
+    }) as () => Promise<void>);
+    const err = await deliver({
+      user: "admin",
+      envelope: {
+        mailFrom: { address: "admin@test.com" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession);
+    await settled();
+    expect(err).toBeUndefined();
+    // The files an HTTP send uploads, in the shape it hands them on.
+    expect((mockSendMail.mock.calls[0] as unknown[])[2]).toEqual([
+      {
+        name: "a.bin",
+        mimetype: "application/octet-stream",
+        size: 16,
+        tempFilePath: path.join(directories[0], "0")
+      }
+    ]);
+    expect(seenWhileSending).toBe(true);
+    expect(fs.existsSync(directories[0])).toBe(false);
+  });
+
+  it("names an outgoing attachment that has no file name as a received one is named", async () => {
+    mockParseMessage.mockImplementation(async (stream) => {
+      for await (const _chunk of stream as Readable) {
+        // read the message out
+      }
+      return {
+        subject: "unnamed",
+        attachments: [{ path: "/nonexistent/0", contentType: "image/png", size: 3 }]
+      };
+    });
+    mockGetUser.mockResolvedValue({ getSigned: () => ({ username: "admin" }) });
+    await deliver({
+      user: "admin",
+      envelope: {
+        mailFrom: { address: "admin@test.com" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession);
+    expect((mockSendMail.mock.calls[0] as unknown[])[2]).toEqual([
+      { name: "attachment", mimetype: "image/png", size: 3, tempFilePath: "/nonexistent/0" }
+    ]);
   });
 });
 

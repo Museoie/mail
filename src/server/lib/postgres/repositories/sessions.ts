@@ -208,7 +208,20 @@ export class PostgresSessionStore implements SessionStore {
     const userRow = await usersTable.queryOne({
       [USER_ID]: sessionModel.session_user_id,
     });
-    const currentVersion = userRow?.password_version ?? 1;
+    // A session ends with its account. The read leaves out a soft-deleted
+    // row, so a deleted and a soft-deleted user both find nothing here, and
+    // the session is ended the way a rotated one is.
+    if (!userRow) {
+      logger.info("Session rejected: its user no longer exists", {
+        session_id,
+        user_id: sessionModel.session_user_id,
+      });
+      await this.destroy(session_id).catch((error) =>
+        logger.error("Failed to delete session", { session_id }, error)
+      );
+      return null;
+    }
+    const currentVersion = userRow.password_version ?? 1;
     if (stampedVersion < currentVersion) {
       logger.info(
         "Session rejected: credential rotated after the session was issued",

@@ -14,6 +14,13 @@ Run tests with:
 bun test
 ```
 
+The black-box suite in `e2e/` runs the same tests against the Bun server and
+the Rust server (`src/server-rs`); it needs a local PostgreSQL. See
+`e2e/README.md`:
+```bash
+bun run test:e2e
+```
+
 ### Security Guidelines for Tests
 
 **All test code is public.** Apply the same security scrutiny as production code.

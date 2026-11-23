@@ -815,9 +815,9 @@ export class ImapSession {
    * Credential-revocation fence. Compares the generation the
    * connection was stamped with at LOGIN/AUTHENTICATE time against the
    * credential row's current version. On a mismatch — the password was
-   * rotated after this connection authenticated — the session is
-   * de-authenticated and unregistered, and the tagged command is answered
-   * `NO [AUTHENTICATIONFAILED]` so the client re-authenticates instead of
+   * rotated after this connection authenticated, or the account was deleted
+   * — the session is de-authenticated and unregistered, and the tagged
+   * command is answered `NO [AUTHENTICATIONFAILED]` so the client re-authenticates instead of
    * retrying the same grant. Returns true when the caller may proceed.
    *
    * This is what closes the gap for connections no sweep can reach: a
@@ -838,12 +838,15 @@ export class ImapSession {
       return true;
     }
     const current = await getCredentialPasswordVersion(this.authenticatedAs);
-    if (current <= this.credentialPasswordVersion) return true;
+    // A credential whose row is gone is revoked, as a rotated one is.
+    if (current !== null && current <= this.credentialPasswordVersion) return true;
     this.authenticated = false;
     this.credentialPasswordVersion = null;
     unregisterSession(this);
     logger.info(
-      "IMAP session de-authenticated: credential rotated after auth",
+      current === null
+        ? "IMAP session de-authenticated: account removed after auth"
+        : "IMAP session de-authenticated: credential rotated after auth",
       {
         component: "imap",
         authenticatedAs: this.authenticatedAs,

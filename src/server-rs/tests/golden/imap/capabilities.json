@@ -1,0 +1,10 @@
+[
+{"isTls":false,"sso":false,"tlsAvailable":false,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN"},
+{"isTls":true,"sso":false,"tlsAvailable":false,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN"},
+{"isTls":false,"sso":false,"tlsAvailable":true,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN STARTTLS"},
+{"isTls":true,"sso":false,"tlsAvailable":true,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN"},
+{"isTls":false,"sso":true,"tlsAvailable":false,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE LOGINDISABLED"},
+{"isTls":true,"sso":true,"tlsAvailable":false,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN"},
+{"isTls":false,"sso":true,"tlsAvailable":true,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE LOGINDISABLED STARTTLS"},
+{"isTls":true,"sso":true,"tlsAvailable":true,"expected":"IMAP4rev1 LITERAL+ SASL-IR LOGIN-REFERRALS ID ENABLE IDLE MOVE CONDSTORE AUTH=PLAIN"}
+]

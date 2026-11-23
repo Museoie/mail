@@ -11,6 +11,9 @@
 # production
 /build
 
+# Rust server build output
+/src/server-rs/target
+
 # misc
 .DS_Store
 .env

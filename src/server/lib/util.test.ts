@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test";
-import { getDomain, getUserDomain, isRoutableUsername, withTimeout } from "./util";
+import { getDomain, getUserDomain, isRoutableUsername, recipientUsername, withTimeout } from "./util";
 
 describe("getDomain", () => {
   const originalEnv = process.env.EMAIL_DOMAIN;
@@ -103,6 +103,33 @@ describe("isRoutableUsername", () => {
   it("refuses anything mail to <username>.<domain> could not reach", () => {
     for (const username of ["", "Alice", "al_ice", "-bob", "bob-", "a.b", "a b", "a".repeat(64)]) {
       expect(isRoutableUsername(username)).toBe(false);
+    }
+  });
+});
+
+describe("recipientUsername", () => {
+  const originalEnv = process.env.EMAIL_DOMAIN;
+
+  afterEach(() => {
+    if (originalEnv !== undefined) {
+      process.env.EMAIL_DOMAIN = originalEnv;
+    } else {
+      delete process.env.EMAIL_DOMAIN;
+    }
+  });
+
+  it("names the user a served address is delivered to", () => {
+    process.env.EMAIL_DOMAIN = "example.com";
+    expect(recipientUsername("x@bob.example.com", "example.com")).toBe("bob");
+    expect(recipientUsername("X@BOB.Example.COM", "example.com")).toBe("bob");
+    expect(recipientUsername("hi@example.com", "example.com")).toBe("admin");
+    expect(recipientUsername("hi@admin.example.com", "example.com")).toBe("admin");
+  });
+
+  it("names no one for an address outside the served domain", () => {
+    process.env.EMAIL_DOMAIN = "example.com";
+    for (const address of ["x@remote.example", "x@bob.example.com.evil", "x@notexample.com"]) {
+      expect(recipientUsername(address, "example.com")).toBeUndefined();
     }
   });
 });

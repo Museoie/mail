@@ -39,6 +39,14 @@ describe("buildMarkMailSpamQuery", () => {
     );
   });
 
+  // Regression: an expunged mail could still be flagged (and the flag bumped
+  // its `updated`) although every list hides it.
+  it("leaves an expunged row alone", () => {
+    expect(buildMarkMailSpamQuery(USER, MAIL, true, 1).sql).toContain(
+      "AND expunged = FALSE"
+    );
+  });
+
   it("returns the touched id so the caller can tell a miss from a no-op", () => {
     expect(buildMarkMailSpamQuery(USER, MAIL, true, 1).sql).toContain(
       "RETURNING mail_id"
@@ -52,5 +60,9 @@ describe("buildMailExistsQuery", () => {
     expect(sql).toContain("WHERE mail_id = $1 AND user_id = $2");
     expect(sql).toContain("LIMIT 1");
     expect(values).toEqual([MAIL, USER]);
+  });
+
+  it("does not find an expunged row, so it is refused like a missing one", () => {
+    expect(buildMailExistsQuery(USER, MAIL).sql).toContain("AND expunged = FALSE");
   });
 });

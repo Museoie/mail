@@ -31,7 +31,10 @@ export type IndexUserInput = Omit<User, "user_id" | "password"> & {
    */
   password?: string;
 };
-export type PartialUser = { user_id: string } & Partial<User>;
+/** `password` is the plain text to hash; an update never clears one. */
+export type PartialUser = { user_id: string } & Partial<Omit<User, "password">> & {
+  password?: string;
+};
 
 export const maskUser = (user: User): MaskedUser => {
   const { user_id, username, email } = user;
@@ -175,10 +178,7 @@ export const getImapUidValidity = async (user_id: string): Promise<number> => {
 export const findUserByAuthSub = async (sub: string): Promise<UserModel | null> =>
   usersTable.queryOne({ [AUTH_SUB]: sub });
 
-/**
- * The account with this username, including an unfinished sign-up, which
- * `searchUser` cannot return because it has no password yet.
- */
+/** The account with this username, an unfinished sign-up included, as a model. */
 export const findUserByUsername = async (username: string): Promise<UserModel | null> =>
   usersTable.queryOne({ [USERNAME]: username });
 

@@ -14,6 +14,7 @@ import {
   buildAllUidsQuery,
   buildCountMessagesQuery,
   buildExpungeDeletedFilters,
+  buildExpungeDeletedInboxQuery,
   buildExpungeDeletedSelectQuery,
   buildExpungeUidsFilters,
   buildExpungeUidsSelectQuery,
@@ -376,8 +377,12 @@ describe("buildAllUidsQuery / buildFirstUnseenUidQuery", () => {
 
 describe("expunge filters and lookups", () => {
   it("restricts a domain EXPUNGE to \\Deleted rows the box still shows", () => {
-    // Without the membership rule an INBOX EXPUNGE would collect quarantined
-    // spam the client never saw and could not have flagged.
+    expect(buildExpungeDeletedFilters(USER, null, true)).toEqual({
+      user_id: USER,
+      sent: true,
+      deleted: true,
+      expunged: false,
+    });
     expect(buildExpungeDeletedFilters(USER, null, false)).toEqual({
       user_id: USER,
       sent: false,
@@ -408,8 +413,57 @@ describe("expunge filters and lookups", () => {
       if (expression !== "TRUE") expect(sql).toContain(expression);
       expect(sql).toContain("m.deleted = TRUE AND m.expunged = FALSE");
       expect(sql).toContain("AND x.mailbox = $3");
+      expect(sql).toContain("x.uid as uid");
       expect(values).toEqual([USER, false, mailbox]);
     }
+  });
+
+  describe("an INBOX, Drafts or Junk EXPUNGE", () => {
+    const VIEWS = [null, "Drafts", "Junk"];
+
+    it("keeps the view's own rule and numbers by uid_domain", () => {
+      // Without the membership rule an INBOX EXPUNGE would collect quarantined
+      // spam the client never saw and could not have flagged.
+      for (const mailbox of VIEWS) {
+        const { sql } = buildExpungeDeletedInboxQuery(USER, mailbox, false);
+        expect(sql).toContain(membershipExpression(mailbox, false, "m."));
+        expect(sql).toContain("m.deleted = TRUE AND m.expunged = FALSE");
+        expect(sql).toContain("m.uid_domain as uid");
+        // No JOIN: a mail with no mapping row at all must still be found.
+        expect(sql).not.toContain("JOIN");
+      }
+    });
+
+    it("takes a mail holding a row in the INBOX tree", () => {
+      // The regression: INBOX lists a copy filed into Trash, flagged \Deleted,
+      // and an EXPUNGE bounded by the predicate alone destroyed it. A message
+      // filed into INBOX holds an INBOX row (or, when that row was skipped on
+      // a uid_domain collision, its per-address row); the copy holds neither.
+      const { sql, values } = buildExpungeDeletedInboxQuery(USER, null, false);
+      expect(sql).toContain("AND (x.mailbox = $3 OR x.mailbox LIKE $4)");
+      expect(values.slice(2, 4)).toEqual(["INBOX", "INBOX/accounts/%"]);
+    });
+
+    it("takes mail with no row but the Starred and Trash pivots, unless it is a copy", () => {
+      // Mail stored before the mapping rows were written has none, and the
+      // STORE that flags it \Deleted files it into Trash like any other: that
+      // pivot must not make it un-expungeable. A COPY / MOVE copy into Trash
+      // looks the same but for its derived Message-ID, which keeps it out.
+      const { sql, values } = buildExpungeDeletedInboxQuery(USER, null, false);
+      expect(sql).toContain("m.message_id NOT LIKE $5");
+      expect(sql).toContain("AND NOT EXISTS (");
+      expect(sql).toContain("x.mailbox NOT IN ($6, $7)");
+      expect(values.slice(4)).toEqual(["%.copy@server", "Starred", "Trash"]);
+    });
+
+    it("binds every placeholder it uses", () => {
+      for (const mailbox of VIEWS) {
+        const { sql, values } = buildExpungeDeletedInboxQuery(USER, mailbox, false);
+        const highest = Math.max(...[...sql.matchAll(/\$(\d+)/g)].map((m) => Number(m[1])));
+        expect(highest).toBe(values.length);
+        expect(values.slice(0, 2)).toEqual([USER, false]);
+      }
+    });
   });
 
   it("restricts a domain MOVE removal to the named UIDs the box shows", () => {

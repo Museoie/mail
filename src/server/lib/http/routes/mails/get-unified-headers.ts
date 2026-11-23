@@ -57,12 +57,14 @@ export const getUnifiedHeadersRoute = new Route<
         pageParams.limit,
         pageParams.after
       );
-      return jsonList(batches, toMailHeaderData, {
+      return jsonList(batches, (row) => toMailHeaderData(row, user.username), {
         listKey: "headers",
         fields: { next_cursor: encodeListCursor(next) }
       });
     }
 
-    return jsonList(await getUnifiedMailHeaders(user, addresses, {}), toMailHeaderData);
+    return jsonList(await getUnifiedMailHeaders(user, addresses, {}), (row) =>
+      toMailHeaderData(row, user.username)
+    );
   }
 );

@@ -193,7 +193,6 @@ export const parseHeaderValue = (input: string): StructuredHeaderValue => {
   return { value: main, params };
 };
 
-/** Wraps a message id in angle brackets, or answers `undefined` for an empty one. */
 /** Longest Message-ID kept, matching the `message_id` column. */
 const MAX_MESSAGE_ID_LENGTH = 512;
 /** Most References entries kept: the oldest ones add nothing to threading. */
@@ -214,10 +213,16 @@ export const parseMessageIdList = (value: string): string[] => {
   return ids.slice(-MAX_REFERENCE_IDS);
 };
 
+/**
+ * Wraps a message id in angle brackets, or answers `undefined` for an empty
+ * one. An id longer than the column holds is dropped too, as it is from
+ * `In-Reply-To` and `References`: the message is then stored as one without
+ * a Message-ID, where keeping it would fail the save every time.
+ */
 export const ensureMessageIdFormat = (value: string): string | undefined => {
   if (!value.length) return undefined;
   let id = value;
   if (!id.startsWith("<")) id = "<" + id;
   if (!id.endsWith(">")) id += ">";
-  return id;
+  return id.length > MAX_MESSAGE_ID_LENGTH ? undefined : id;
 };

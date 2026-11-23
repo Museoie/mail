@@ -30,7 +30,9 @@ export interface MaskedUser {
 }
 
 export type User = MaskedUser & {
-  password: string;
+  // NULL on a sign-up that has not set its password yet: the row exists from
+  // the first token request, and nothing can sign in with it until set-info.
+  password: string | null;
   // token/expiry are required to round-trip through `toUser()` so callers like
   // `setUserInfo` can validate them. `null` when no in-flight signup token.
   token?: string | null;
@@ -101,8 +103,13 @@ export class UserModel extends Model<MaskedUser, UserSchema> {
     return this.toJSON();
   }
 
+  /**
+   * The row as an account, a sign-up still waiting for its password included:
+   * that one is found, with a null password, so the token route can re-issue
+   * its token and set-info can complete it. Nothing signs in on a null
+   * password, and `getSigned` refuses an account without one.
+   */
   toUser(): User {
-    if (this.password === null) throw new Error("User has no password set");
     return {
       user_id: this.user_id,
       username: this.username,

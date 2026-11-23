@@ -30,6 +30,21 @@ const ADMIN = new SignedUser({
   email: "admin@example.com",
 });
 
+/** Admin's user row, the one a read-only session is checked against. */
+const adminRow = () => ({
+  user_id: ADMIN.id,
+  username: ADMIN.username,
+  password: "hashed",
+  password_version: 1,
+  email: ADMIN.email,
+  expiry: null,
+  token: null,
+  updated: new Date().toISOString(),
+  is_deleted: false,
+  imap_uid_validity: null,
+  auth_sub: null,
+});
+
 /** Columns and values the last INSERT carried, zipped back into a row. */
 let persistedRow: Record<string, unknown> | null = null;
 
@@ -61,6 +76,10 @@ const mockQuery = mock(async (sql: string, values: unknown[] = []) => {
   if (sql.startsWith("SELECT") && sql.includes("FROM sessions")) {
     const rows = persistedRow ? [persistedRow] : [];
     return { rows, rowCount: rows.length };
+  }
+  // The session store ends a session whose user row is gone.
+  if (sql.startsWith("SELECT") && sql.includes("FROM users")) {
+    return { rows: [adminRow()], rowCount: 1 };
   }
   return { rows: [] as unknown[], rowCount: 0 as number | null };
 });

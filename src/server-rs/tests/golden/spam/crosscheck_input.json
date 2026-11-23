@@ -1,0 +1,196 @@
+{
+  "userId": "c0c0c0c0-0000-4000-8000-000000000001",
+  "username": "spam-crosscheck",
+  "stages": [
+    {
+      "name": "a",
+      "train": [
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "WIN a FREE prize today!!!",
+            "text": "Congratulations you have won. Claim your prize now at http://bit.ly/win",
+            "html": "<p>Congratulations <b>you</b> have won. <a href='http://bit.ly/win'>Claim your prize</a></p>"
+          }
+        },
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "Cheap meds online",
+            "text": "Buy cheap meds now. Limited time offer, click here."
+          }
+        },
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "Double your bitcoin",
+            "text": "Guaranteed returns on bitcoin investment. Act now, free crypto."
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "Team standup tomorrow",
+            "text": "Hi team, the standup meeting is moved to tomorrow at ten. Thanks"
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "Quarterly report",
+            "text": "Please find the quarterly report attached. Let me know if you have questions."
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "Lunch on Friday?",
+            "text": "Are you free for lunch on Friday? There is a new place near the office."
+          }
+        },
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "ΔΩΡΕΑΝ ΔΩΡΟ – CLICK HERE",
+            "text": "İstanbul prize naïve café straße über ΣΟΦΟΣ"
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "html": "<html><body><p>Meeting notes from <i>Monday</i></p><ul><li>budget</li><li>hiring</li></ul></body></html>"
+          }
+        }
+      ],
+      "allowlistAdd": [
+        "Friend@Example.com",
+        "friend@example.com",
+        "*@Trusted.Example",
+        "ÀLICE@ÉXAMPLE.COM",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com"
+      ],
+      "allowlistRemove": []
+    },
+    {
+      "name": "b",
+      "train": [
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "WIN a FREE prize today!!!",
+            "text": "Congratulations you have won. Claim your prize now at http://bit.ly/win",
+            "html": "<p>Congratulations <b>you</b> have won. <a href='http://bit.ly/win'>Claim your prize</a></p>"
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "Cheap meds online",
+            "text": "Buy cheap meds now. Limited time offer, click here."
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "1234 !!",
+            "text": "… 42 — ok"
+          }
+        },
+        {
+          "isSpam": true,
+          "email": {
+            "subject": "Exclusive deal for valued customers",
+            "text": "Dear customer, you have been selected for an exclusive deal. Our special offer includes a free gift with every purchase made this week. Visit our store today and save big on electronics, furniture, clothing and more. This limited time promotion will not last, so act now before stock runs out. Wire transfer and bitcoin accepted."
+          }
+        },
+        {
+          "isSpam": false,
+          "email": {
+            "subject": "Re: Quarterly report",
+            "text": "Thanks for the report. The meeting tomorrow works for me."
+          }
+        }
+      ],
+      "allowlistAdd": [
+        "boss@work.example",
+        "*@trusted.example"
+      ],
+      "allowlistRemove": [
+        "FRIEND@EXAMPLE.COM",
+        "friend@example.com",
+        "never@added.example"
+      ]
+    }
+  ],
+  "classify": [
+    { "subject": "Claim your free prize now" },
+    { "subject": "Standup meeting tomorrow" },
+    { "subject": "Free lunch on Friday" },
+    { "subject": "bitcoin report" },
+    { "subject": "cheap meds" },
+    { "text": "completely unseen words everywhere" },
+    { "subject": "Exclusive deal: wire transfer accepted", "html": "<p>Act now for a <b>free gift</b></p>" },
+    {}
+  ],
+  "allowlisted": [
+    "FRIEND@example.COM",
+    "other@example.com",
+    "anyone@trusted.example",
+    "Anyone@TRUSTED.Example",
+    "anyone@sub.trusted.example",
+    "àlice@éxample.com",
+    "Àlice@Éxample.com",
+    "boss@work.example",
+    "nobody",
+    "a@trusted.example@elsewhere.example"
+  ],
+  "checkSpam": [
+    {
+      "fromAddress": "anyone@trusted.example",
+      "envelopeFromAddress": "bounce@trusted.example",
+      "fromName": "Trusted Sender",
+      "subject": "FREE MONEY WINNER ACT NOW!!!",
+      "text": "Click http://bit.ly/x to claim your free prize. Act now!!!",
+      "remoteAddress": "10.1.2.3"
+    },
+    {
+      "fromAddress": "anyone@trusted.example",
+      "envelopeFromAddress": "bounce@elsewhere.example",
+      "fromName": "Trusted Sender",
+      "subject": "FREE MONEY WINNER ACT NOW!!!",
+      "text": "Click http://bit.ly/x to claim your free prize. Act now!!!",
+      "remoteAddress": "10.1.2.3"
+    },
+    {
+      "fromAddress": "anyone@trusted.example",
+      "envelopeFromAddress": "bounce@trusted.example",
+      "fromName": "Trusted Sender",
+      "subject": "FREE MONEY WINNER ACT NOW!!!",
+      "text": "Click http://bit.ly/x to claim your free prize. Act now!!!"
+    },
+    {
+      "fromAddress": "stranger@nowhere.example",
+      "fromName": "Stranger",
+      "subject": "Claim your free prize",
+      "text": "Congratulations you have won a prize. Claim your prize today."
+    },
+    {
+      "fromAddress": "boss@work.example",
+      "fromName": "Boss",
+      "subject": "Standup meeting tomorrow",
+      "text": "The standup meeting tomorrow is moved. Thanks team."
+    },
+    {
+      "fromAddress": "colleague@work.example",
+      "envelopeFromAddress": "colleague@work.example",
+      "fromName": "Colleague",
+      "subject": "Quarterly report questions",
+      "text": "Let me know if you have questions about the report.",
+      "remoteAddress": "192.168.4.20"
+    },
+    {
+      "subject": "bitcoin investment",
+      "html": "<p>Double your bitcoin with guaranteed returns</p>"
+    }
+  ]
+}

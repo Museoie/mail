@@ -239,10 +239,10 @@ describe("refreshSubscription", () => {
     const m = makeMocks();
     const push = m.make();
 
-    await push.refreshSubscription("sub-1");
+    await push.refreshSubscription("sub-1", "u1");
 
     expect(m.repo.refreshSubscription).toHaveBeenCalledTimes(1);
-    expect(m.repo.refreshSubscription.mock.calls[0]).toEqual(["sub-1"] as never);
+    expect(m.repo.refreshSubscription.mock.calls[0]).toEqual(["sub-1", "u1"] as never);
   });
 });
 

@@ -73,6 +73,12 @@ const forwardedHops = (header: string | null): string[] =>
         .reverse()
     : [];
 
+/** A dual-stack listener reports IPv4 peers as `::ffff:a.b.c.d`; name them as IPv4. */
+export const socketPeerAddress = (address: string): string => {
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  return mapped && net.isIPv4(mapped[1]!) ? mapped[1]! : address;
+};
+
 /**
  * The client address a request is attributed to, walking `X-Forwarded-For`
  * from the socket outward and stopping at the first hop that is not a trusted

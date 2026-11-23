@@ -43,6 +43,20 @@ const liveSessionRow = () => ({
   updated: new Date().toISOString(),
 });
 
+const liveUserRow = () => ({
+  user_id: "u1",
+  username: "alice",
+  password: "hashed",
+  password_version: 1,
+  email: "alice@example.com",
+  expiry: null,
+  token: null,
+  updated: new Date().toISOString(),
+  is_deleted: false,
+  imap_uid_validity: null,
+  auth_sub: null,
+});
+
 const issuedSql: string[] = [];
 const isSessionDelete = (sql: string) =>
   sql.startsWith("DELETE FROM sessions WHERE session_id = $1");
@@ -58,6 +72,10 @@ const mockQuery = mock(async (sql: string, _values?: unknown[]) => {
   }
   if (sql.startsWith("SELECT") && sql.includes("FROM sessions")) {
     return { rows: [liveSessionRow()], rowCount: 1 };
+  }
+  // The session store ends a session whose user row is gone.
+  if (sql.startsWith("SELECT") && sql.includes("FROM users")) {
+    return { rows: [liveUserRow()], rowCount: 1 };
   }
   return { rows: [] as unknown[], rowCount: 0 as number | null };
 });

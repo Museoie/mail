@@ -123,6 +123,21 @@ describe("ImapSession.verifyCredentialVersion", () => {
     expect(session.isAuthenticated()).toBe(true);
   });
 
+  it("de-authenticates when the account is gone, as on a rotation", async () => {
+    // Deleted, or soft-deleted (which the lookup leaves out), after auth. A
+    // missing row used to read as generation 1 and let the session go on.
+    mockGetUser.mockImplementation(() => Promise.resolve(undefined));
+    const { session, writes } = primeAuthenticated(1);
+
+    const ok = await session.verifyCredentialVersion("A6");
+
+    expect(ok).toBe(false);
+    expect(writes).toEqual([
+      "A6 NO [AUTHENTICATIONFAILED] Credential changed, please re-authenticate\r\n",
+    ]);
+    expect(session.isAuthenticated()).toBe(false);
+  });
+
   it("does not touch the database for an unauthenticated session", async () => {
     const { socket, writes } = mkSocket();
     const session = new ImapSession(mkHandler() as never, socket as never);

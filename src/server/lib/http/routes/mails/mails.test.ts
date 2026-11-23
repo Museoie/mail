@@ -1346,6 +1346,19 @@ describe("getAttachmentRoute", () => {
     expect((result as ApiResponse<unknown>).message).toBe("Not found");
   });
 
+  // Regression: an expunged mail's attachments were still served.
+  it("looks the attachment up among the user's mails that are not expunged", async () => {
+    const { getAttachmentRoute } = await import("./get-attachment");
+    mockMailsTableQueryOne.mockResolvedValueOnce(null);
+    const req = makeReq({ params: { id: "att1" } });
+    await getAttachmentRoute.callback(req);
+    expect(mockMailsTableQueryOne).toHaveBeenCalledWith({
+      user_id: req.session.user!.id,
+      attachments: [{ content: { data: "att1" } }],
+      expunged: false,
+    });
+  });
+
   it("returns failed when attachment file missing from disk", async () => {
     const { getAttachmentRoute } = await import("./get-attachment");
     mockMailsTableQueryOne.mockResolvedValueOnce({ id: "m1" });

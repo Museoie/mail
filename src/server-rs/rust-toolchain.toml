@@ -1,0 +1,7 @@
+# `str::to_lowercase` follows this compiler's Unicode tables, and the spam
+# golden test checks them against Bun 1.4.4's `toLowerCase`. Moving the pin
+# means re-running that test.
+[toolchain]
+channel = "1.97.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

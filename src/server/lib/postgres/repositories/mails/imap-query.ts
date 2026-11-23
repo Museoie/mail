@@ -25,9 +25,14 @@ import {
   EXPUNGED,
   MAIL_MAILBOX_UID,
   MAILBOX,
+  MESSAGE_ID,
   UID,
 } from "../../models";
+import { STARRED_MAILBOX, TRASH_MAILBOX } from "./pivot-decisions";
+import { COPY_MESSAGE_ID_SUFFIX } from "./thread";
 import {
+  INBOX_ACCOUNTS_PREFIX,
+  INBOX_VIEW,
   membershipCondition,
   membershipExpression,
   membershipFilter,
@@ -550,10 +555,11 @@ export const buildFirstUnseenUidQuery = (
 };
 
 /**
- * Rows an EXPUNGE addresses on a domain-scoped view. EXPUNGE removes
- * `\Deleted` messages *from the selected mailbox*, so a mail the box does not
- * show is out of reach here too — otherwise an INBOX EXPUNGE would collect
- * spam the client never saw and could not have flagged.
+ * Rows an EXPUNGE addresses on a domain-scoped view of the sent lane — the
+ * unified `Sent Messages` (the received lane's views take
+ * `buildExpungeDeletedInboxQuery`). EXPUNGE removes `\Deleted` messages
+ * *from the selected mailbox*, so a mail the box does not show is out of
+ * reach here too.
  */
 export const buildExpungeDeletedFilters = (
   user_id: string,
@@ -566,6 +572,66 @@ export const buildExpungeDeletedFilters = (
   [EXPUNGED]: false,
   ...membershipFilter(mailbox, sent),
 });
+
+/**
+ * The rows an EXPUNGE addresses on INBOX or a utility view of the received
+ * lane, with the `uid_domain` the view numbers them by: its `\Deleted` mails,
+ * less those filed somewhere else.
+ *
+ * INBOX shows every received mail, so a copy filed into Trash — `\Deleted` by
+ * being there — or into a user mailbox is listed in INBOX too, and the view's
+ * predicate alone let an INBOX EXPUNGE destroy everything the user had moved
+ * to Trash. A mail is the view's to expunge when
+ *
+ * - it holds a row in the INBOX tree: `INBOX`, or a per-address box when the
+ *   INBOX row was skipped on a `uid_domain` collision; or
+ * - it is not a copy and holds no row but the Starred / Trash pivots its own
+ *   flags add. That is mail stored before the mapping rows were written: the
+ *   STORE that flags it `\Deleted` files it into Trash like any other mail.
+ *
+ * Left out is a COPY / MOVE copy (`COPY_MESSAGE_ID_SUFFIX`) or a mail filed
+ * into a user mailbox, with no row in the INBOX tree. A mail APPENDed into
+ * Trash or Starred holds only that row, like old mail flagged in INBOX, and
+ * the two cannot be told apart, so it stays in reach.
+ */
+export const buildExpungeDeletedInboxQuery = (
+  user_id: string,
+  mailbox: string | null,
+  sent: boolean
+): { sql: string; values: ParamValue[] } => {
+  const selectSql = `
+      SELECT m.${MAIL_ID} as mail_id, m.${UID_DOMAIN} as uid FROM mails m
+      WHERE m.${USER_ID} = $1 AND m.${SENT} = $2
+        AND m.${DELETED} = TRUE AND m.${EXPUNGED} = FALSE${membershipCondition(mailbox, sent, "m.")}
+        AND (
+          EXISTS (
+            SELECT 1 FROM ${MAIL_MAILBOX_UID} x
+            WHERE x.${USER_ID} = m.${USER_ID} AND x.${MAIL_ID} = m.${MAIL_ID}
+              AND (x.${MAILBOX} = $3 OR x.${MAILBOX} LIKE $4)
+          )
+          OR (
+            m.${MESSAGE_ID} NOT LIKE $5
+            AND NOT EXISTS (
+              SELECT 1 FROM ${MAIL_MAILBOX_UID} x
+              WHERE x.${USER_ID} = m.${USER_ID} AND x.${MAIL_ID} = m.${MAIL_ID}
+                AND x.${MAILBOX} NOT IN ($6, $7)
+            )
+          )
+        )
+    `;
+  return {
+    sql: selectSql,
+    values: [
+      user_id,
+      sent,
+      INBOX_VIEW,
+      `${INBOX_ACCOUNTS_PREFIX}%`,
+      `%${COPY_MESSAGE_ID_SUFFIX}`,
+      STARRED_MAILBOX,
+      TRASH_MAILBOX,
+    ],
+  };
+};
 
 /** The mapped-box twin: resolves the mail_ids and their per-mailbox UIDs. */
 export const buildExpungeDeletedSelectQuery = (

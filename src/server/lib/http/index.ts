@@ -14,6 +14,7 @@ import {
   readJsonBody,
   requestTarget,
   resolveClientIp,
+  socketPeerAddress,
   type HttpRequest,
 } from "./request";
 import { conditional, send, text } from "./respond";
@@ -188,7 +189,7 @@ export const initializeHttp = async () => {
     port,
     idleTimeout: IDLE_TIMEOUT_SECONDS,
     maxRequestBodySize: MAX_REQUEST_BODY_SIZE,
-    fetch: (request, server) => app(request, server.requestIP(request)?.address ?? ""),
+    fetch: (request, server) => app(request, socketPeerAddress(server.requestIP(request)?.address ?? "")),
     error: serverErrorHandler,
   });
   logger.info(`${domain} mail server is listening`);

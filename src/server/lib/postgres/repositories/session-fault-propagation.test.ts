@@ -238,13 +238,27 @@ describe("PostgresSessionStore.get credential-version fence", () => {
     expect((session as { user: SignedUser }).user.id).toBe(USER.id);
   });
 
-  it("treats a missing user row as generation 1 (no behavior change)", async () => {
+  it("rejects a session whose user row is gone and destroys the row", async () => {
+    // A deleted account, or a soft-deleted one, which the user read leaves
+    // out: the session must not outlive it.
     userVersionMode = "missing";
 
     const { err, session } = await getResult(SESSION_ID);
 
     expect(err).toBeNull();
-    expect((session as { user: SignedUser }).user.id).toBe(USER.id);
+    expect(session).toBeNull();
+    expect(
+      issuedSql.some((sql) =>
+        sql.startsWith("DELETE FROM sessions WHERE session_id = $1")
+      )
+    ).toBe(true);
+  });
+
+  it("reads the user row without soft-deleted accounts", async () => {
+    await getResult(SESSION_ID);
+
+    const userRead = issuedSql.find((sql) => sql.includes("FROM users"));
+    expect(userRead).toContain("(is_deleted IS NULL OR is_deleted = FALSE)");
   });
 
   it("a session read back and saved again keeps the version it was stamped with", async () => {

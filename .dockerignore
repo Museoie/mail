@@ -3,3 +3,5 @@
 attachments
 build
 node_modules
+src/server-rs/target
+e2e

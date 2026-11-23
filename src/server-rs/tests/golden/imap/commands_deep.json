@@ -1,0 +1,20 @@
+[
+{"parts":[["a1 SEARCH ",1],["NOT ",2000],["SEEN",1]],"success":true,"length":54119,"sha256":"a2ac6498ae69779046da149a4fad6549f30a6f2b2ff0258e68f293c685414974","error":null},
+{"parts":[["a1 SEARCH ",1],["NOT ",16000],["SEEN",1]],"success":true,"length":432120,"sha256":"cad0b88180e4a191e11884563ae075dcedefece925491922265364057546e408","error":null},
+{"parts":[["a1 SEARCH ",1],["OR ",8000],["SEEN",1],[" FLAGGED",8000]],"success":true,"length":384120,"sha256":"375da7c55d62a7ca58b95d41c069c595ee07aabcd727560e45274de74d2c73d8","error":null},
+{"parts":[["a1 SEARCH ",1],["OR SEEN ",7000],["FLAGGED",1]],"success":true,"length":315123,"sha256":"1976270f4c47a57d061e39b517a68a3cb8f8c490ce5d88c28219a3ab5b571570","error":null},
+{"parts":[["a1 SEARCH ",1],["OR NOT SEEN NOT ",3000],["FLAGGED",1]],"success":true,"length":297123,"sha256":"7787116e61a4343e82e778a6d160913b9bd1168dfc161946d5ab67256374a5a8","error":null},
+{"parts":[["a1 UID SEARCH ",1],["NOT ",9000],["FROM \"a b\"",1]],"success":true,"length":243187,"sha256":"73f9047d9b69f300a768317554870a6595d0e6d68aede38f6ef6f0a7670a307a","error":null},
+{"parts":[["a1 ",1],["UID ",16000],["NOOP",1]],"success":true,"length":800081,"sha256":"6f25889d0a4777e7201ab5bfc030a8120cac9a12e2db96f6dee4c6a28ec3e0c5","error":null},
+{"parts":[["a1 ",1],["uid ",5000],["FETCH 1:* (FLAGS)",1]],"success":true,"length":250203,"sha256":"b920f4b1f08003935cab30ce646915bc5a302c98401f740ad6c1feceec83a23c","error":null},
+{"parts":[["a1 ",1],["UID ",4000],["SEARCH ",1],["NOT ",4000],["SEEN",1]],"success":true,"length":308123,"sha256":"a5d35ef51566fb90c522d2800e8ba900e57cf39803407a8d340bc2e3921cea49","error":null},
+{"parts":[["a1 ",1],["UID ",3000],["BOGUS",1]],"success":false,"length":63,"sha256":"77ff1eb5fa4ed1b6f118f3c7af3163332efb9ea9bbb2941c1f837538944927ca","error":"Unknown command: BOGUS"},
+{"parts":[["a1 ",1],["UID ",3000]],"success":false,"length":63,"sha256":"7826a98a40499c8ee941cada101d73b4f29a73838fe394178ce94a9692e8fde8","error":"Invalid UID subcommand"},
+{"parts":[["a1 SEARCH ",1],["NOT ",3000]],"success":false,"length":143,"sha256":"9971fc1b33b3cc0c35e2bb094be1c54aaf945003dd7299a9a0ae56e78f39f5f6","error":"Parse error: TypeError: undefined is not an object (evaluating 'parseAtom(context).value.toUpperCase')"},
+{"parts":[["a1 SEARCH ",1],["NOT ",3000],["FOO",1]],"success":false,"length":64,"sha256":"d5b7fd3d93bf7f643b2571f5f78567c4ffd86c29171125f645e11af05f57c3d8","error":"Invalid search criteria"},
+{"parts":[["a1 SEARCH ",1],["OR ",3000],["SEEN",1]],"success":false,"length":143,"sha256":"9971fc1b33b3cc0c35e2bb094be1c54aaf945003dd7299a9a0ae56e78f39f5f6","error":"Parse error: TypeError: undefined is not an object (evaluating 'parseAtom(context).value.toUpperCase')"},
+{"parts":[["a1 SEARCH ",1],["OR ",3000],["SEEN",1],[" (",1]],"success":false,"length":143,"sha256":"9971fc1b33b3cc0c35e2bb094be1c54aaf945003dd7299a9a0ae56e78f39f5f6","error":"Parse error: TypeError: undefined is not an object (evaluating 'parseAtom(context).value.toUpperCase')"},
+{"parts":[["a1 SEARCH ",1],["NOT ",150000],["SEEN",1]],"success":false,"length":99,"sha256":"3941566c4c794288c81dedfc8c9c1c8f60126a94e534e436e352746b204d3511","error":"Parse error: RangeError: Maximum call stack size exceeded."},
+{"parts":[["a1 SEARCH ",1],["OR ",150000],["SEEN",1]],"success":false,"length":99,"sha256":"3941566c4c794288c81dedfc8c9c1c8f60126a94e534e436e352746b204d3511","error":"Parse error: RangeError: Maximum call stack size exceeded."},
+{"parts":[["a1 ",1],["UID ",150000],["NOOP",1]],"success":false,"length":99,"sha256":"3941566c4c794288c81dedfc8c9c1c8f60126a94e534e436e352746b204d3511","error":"Parse error: RangeError: Maximum call stack size exceeded."}
+]

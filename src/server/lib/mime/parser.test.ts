@@ -100,6 +100,14 @@ describe("parseMessage headers", () => {
     expect(parsed.date!.getTime()).toBeGreaterThanOrEqual(before);
   });
 
+  it("reads a Message-ID too long to store as absent, so an earlier one stands", async () => {
+    const long = `<${"x".repeat(496)}@remote.example>`;
+    expect((await parse(message(`Message-ID: ${long}`, "", "x"))).messageId).toBeUndefined();
+    expect((await parse(message("Message-ID: <first@x>", `Message-ID: ${long}`, "", "x"))).messageId).toBe(
+      "<first@x>"
+    );
+  });
+
   it("reads raw UTF-8 header octets as UTF-8", async () => {
     expect((await parse(message("Subject: 8비트 제목", "", "body"))).subject).toBe("8비트 제목");
   });

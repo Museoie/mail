@@ -38,8 +38,10 @@ src/
 │   │   ├── spam/     # Spam classification (rules + Naive Bayes)
 │   │   └── smtp.ts   # SMTP server (single file)
 │   └── start.ts      # Server entry point
+├── server-rs/        # The same backend in Rust (see "The Rust server" below)
 └── common/           # Shared code
     └── models/       # Data models
+e2e/                  # Black-box suite, run against either backend
 ```
 
 ## Services
@@ -142,6 +144,26 @@ bun run test:coverage      # With coverage report
 
 > **Always use `bun run test`, not bare `bun test`.** The `test` npm script runs client and server tests in separate passes with correct preload setup. Bare `bun test` mixes client and server contexts and can cause spurious failures from mock leakage.
 
+### Black-box suite (`e2e/`)
+
+`e2e/` drives a running server from outside — over HTTP, SMTP and IMAP — and
+asserts on what it answers and what it leaves in the database. The same files
+run against the Bun server and the Rust server; a behaviour is only "done"
+when both pass.
+
+```bash
+bun run test:e2e        # both servers, one after the other
+bun run test:e2e:bun    # the Bun server only
+bun run test:e2e:rust   # builds the Rust server, then tests it
+bun scripts/e2e.ts --server rust --debug mails-   # debug build, files whose path contains "mails-"
+```
+
+It needs a PostgreSQL it may create databases on and `openssl` on the path;
+everything else (Mailgun, the alarm webhook, the identity provider) is stubbed.
+See `e2e/README.md`. Tests never branch on which server is under test, and a
+Bun behaviour that looks wrong is pinned as it is, with a `// NOTE:` saying
+why, rather than skipped.
+
 ### Test Location
 
 Tests are adjacent to source files:
@@ -191,6 +213,30 @@ useEffect(() => {
   return () => window.removeEventListener("focus", handler);
 }, []);
 ```
+
+## The Rust server (`src/server-rs`)
+
+`src/server-rs` is the whole backend — HTTP API, IMAP and SMTP — in Rust,
+built to replace the Bun server without anything else noticing: the same
+environment variables, ports, database schema, session cookies, password
+digests and attachment directory. Its module tree follows `src/server/lib`
+file for file, so a change on one side is easy to find on the other.
+
+Keeping the two in step:
+
+- **Schema.** The Rust server embeds `src/server-rs/schema.json`, the DDL the
+  Bun server issues at boot. After changing a table in
+  `src/server/lib/postgres/models`, run `bun run schema:snapshot`; the unit
+  test `scripts/schema-snapshot.test.ts` fails until you do.
+- **Behaviour.** A change to what a route, IMAP command or SMTP reply does
+  needs a test in `e2e/` and the same change in both servers.
+- **Golden fixtures.** Several Rust modules are checked against fixtures
+  recorded from the TypeScript (`src/server-rs/tests/golden/`). Changing the
+  TypeScript they mirror means re-running the generator next to the fixtures.
+
+`cargo test`, run in `src/server-rs` (its `rust-toolchain.toml` pins the
+compiler), runs the Rust unit and integration tests; set
+`MAIL_TEST_POSTGRES=1` to include the database-backed ones. Conventions for Rust code are in `src/server-rs/README.md`.
 
 ## Code Style
 

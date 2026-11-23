@@ -88,6 +88,21 @@ describe("ensureMessageIdFormat", () => {
     expect(ensureMessageIdFormat("<abc@x>")).toBe("<abc@x>");
     expect(ensureMessageIdFormat("")).toBeUndefined();
   });
+
+  it("drops an id longer than the message_id column, as the threading headers do", () => {
+    // Regression: a 513-character id was kept, and the INSERT failed with
+    // "value too long" on every retry of the delivery.
+    const fits = `<${"x".repeat(495)}@remote.example>`;
+    expect(fits.length).toBe(512);
+    expect(ensureMessageIdFormat(fits)).toBe(fits);
+    // Counted once the brackets are added.
+    expect(ensureMessageIdFormat(fits.slice(1, -1))).toBe(fits);
+    expect(ensureMessageIdFormat(`<${"x".repeat(496)}@remote.example>`)).toBeUndefined();
+    expect(ensureMessageIdFormat(`${"x".repeat(496)}@remote.example`)).toBeUndefined();
+    // In UTF-16 code units.
+    expect(ensureMessageIdFormat(`<${"😀".repeat(255)}@x>`)).toBeUndefined();
+    expect(ensureMessageIdFormat(`<${"😀".repeat(254)}@x>`)).toBeDefined();
+  });
 });
 
 describe("parseMessageIdList", () => {

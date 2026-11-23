@@ -1,0 +1,3898 @@
+{
+ "generatedBy": "src/server-rs/tests/golden/storage/scenario.ts",
+ "steps": [
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000001",
+     "admin",
+     "admin@example.com"
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000002",
+     "bob",
+     "bob@example.com"
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "legacy",
+     "legacy@example.com"
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000004",
+     "limits",
+     "limits@example.com"
+    ]
+   }
+  },
+  {
+   "op": "writeAttachment",
+   "args": {
+    "id": "scenario-attachment-on-disk",
+    "bytes": 1234
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "fresh.next.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "fresh.next.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": false
+    }
+   },
+   "as": "fresh.next.admin"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": true
+    }
+   },
+   "as": "fresh.next.admin.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "sales@example.com",
+     "sent": false
+    }
+   },
+   "as": "fresh.next.sales"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "Archive@example.com",
+     "sent": false
+    }
+   },
+   "as": "fresh.next.archive"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "fresh.next.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "fresh.next.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "fresh.modseq.domain.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "fresh.modseq.domain.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Junk",
+    "sent": false
+   },
+   "as": "fresh.modseq.Junk.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Drafts",
+    "sent": false
+   },
+   "as": "fresh.modseq.Drafts.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/admin",
+    "sent": false
+   },
+   "as": "fresh.modseq.INBOX/accounts/admin.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/sales",
+    "sent": false
+   },
+   "as": "fresh.modseq.INBOX/accounts/sales.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Sent Messages/accounts/admin",
+    "sent": true
+   },
+   "as": "fresh.modseq.Sent Messages/accounts/admin.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Archive",
+    "sent": false
+   },
+   "as": "fresh.modseq.Archive.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Starred",
+    "sent": false
+   },
+   "as": "fresh.modseq.Starred.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "sent": false
+   },
+   "as": "fresh.modseq.Trash.received"
+  },
+  {
+   "op": "getNextModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002"
+   },
+   "as": "bob.modseq.first"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r1.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "r1.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<full@example.com>",
+    "in_reply_to": "<parent@example.com>",
+    "reference_ids": [
+     "<root@example.com>",
+     "<parent@example.com>"
+    ],
+    "subject": "Quarterly report — ünïcode ✓",
+    "date": "2024-03-04T05:06:07.000Z",
+    "html": "<p>Hello <b>world</b> 😀</p>",
+    "text": "Hello world 😀",
+    "from_address": [
+     {
+      "address": "sender@example.com",
+      "name": "Sender Name"
+     }
+    ],
+    "from_text": "Sender Name <sender@example.com>",
+    "to_address": [
+     {
+      "address": "admin@example.com",
+      "name": ""
+     },
+     {
+      "address": "other@example.org",
+      "name": "Other"
+     }
+    ],
+    "to_text": "admin@example.com, Other <other@example.org>",
+    "cc_address": [
+     {
+      "address": "cc@example.com"
+     }
+    ],
+    "cc_text": "cc@example.com",
+    "bcc_address": [
+     {
+      "address": "bcc@example.com"
+     }
+    ],
+    "bcc_text": "bcc@example.com",
+    "reply_to_address": [
+     {
+      "address": "reply@example.com",
+      "name": "Reply"
+     }
+    ],
+    "reply_to_text": "Reply <reply@example.com>",
+    "envelope_from": [
+     {
+      "address": "bounce@example.com"
+     }
+    ],
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "attachments": [
+     {
+      "content": {
+       "data": "scenario-attachment-on-disk"
+      },
+      "contentType": "application/pdf",
+      "filename": "report.pdf",
+      "size": 1234
+     },
+     {
+      "content": {
+       "data": "missing-on-disk"
+      },
+      "contentType": "image/png",
+      "filename": "pic \"1\".png",
+      "size": 10
+     }
+    ],
+    "read": false,
+    "saved": false,
+    "sent": false,
+    "insight": {
+     "summary": "A report",
+     "tags": [
+      "work",
+      "q1"
+     ],
+     "score": 7
+    },
+    "uid_domain": {
+     "$ref": "r1.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r1.a"
+    },
+    "spam_score": 3,
+    "spam_reasons": [],
+    "is_spam": false,
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.full"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r2.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "r2.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<minimal@example.com>",
+    "uid_domain": {
+     "$ref": "r2.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r2.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.minimal"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r3.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "sales@example.com",
+    "sent": false
+   },
+   "as": "r3.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<empties@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "",
+    "html": "",
+    "text": "",
+    "from_address": [],
+    "from_text": "",
+    "to_address": null,
+    "cc_address": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "cc_text": "sales@example.com",
+    "bcc_address": [
+     {
+      "address": "hidden@example.com"
+     }
+    ],
+    "envelope_to": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "attachments": [],
+    "reference_ids": [],
+    "in_reply_to": "",
+    "insight": {},
+    "spam_reasons": null,
+    "uid_domain": {
+     "$ref": "r3.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r3.a"
+    },
+    "mailbox": "INBOX/accounts/sales",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.empties"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r4.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "r4.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<spam@example.com>",
+    "date": "2024-03-05T00:00:00.000Z",
+    "subject": "You won!!!",
+    "html": "<h1>Claim now</h1>",
+    "from_address": [
+     {
+      "address": "winner@spam.example"
+     }
+    ],
+    "from_text": "winner@spam.example",
+    "to_address": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "to_text": "admin@example.com",
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "r4.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r4.a"
+    },
+    "spam_score": 12,
+    "spam_reasons": [
+     "Suspicious subject",
+     "DNSBL: zen"
+    ],
+    "is_spam": true,
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.spam"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r5.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "r5.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<text-only@example.com>",
+    "date": "2024-03-06T10:00:00+09:00",
+    "subject": "Plain",
+    "text": "Only text\nwith two lines",
+    "from_address": [
+     {
+      "address": "a@example.com",
+      "name": "A"
+     }
+    ],
+    "from_text": "A <a@example.com>",
+    "to_address": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "to_text": "admin@example.com",
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "read": true,
+    "answered": true,
+    "uid_domain": {
+     "$ref": "r5.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r5.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.text"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "r6.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "",
+    "sent": false
+   },
+   "as": "r6.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<no-envelope@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "html": "<p>html only</p>",
+    "uid_domain": {
+     "$ref": "r6.d"
+    },
+    "uid_mailbox": {
+     "$ref": "r6.a"
+    },
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.noenvelope"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": true
+   },
+   "as": "s1.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": true
+   },
+   "as": "s1.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<sent-1@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Re: Quarterly report",
+    "html": "<p>Thanks</p>",
+    "text": "Thanks",
+    "in_reply_to": "<full@example.com>",
+    "reference_ids": [
+     "<root@example.com>",
+     "<parent@example.com>",
+     "<full@example.com>"
+    ],
+    "from_address": [
+     {
+      "name": "Admin",
+      "address": "admin@example.com"
+     }
+    ],
+    "from_text": "Admin <admin@example.com>",
+    "to_address": [
+     {
+      "address": "sender@example.com"
+     }
+    ],
+    "to_text": "sender@example.com",
+    "reply_to_address": [
+     {
+      "name": "Admin",
+      "address": "admin@example.com"
+     }
+    ],
+    "reply_to_text": "admin@example.com",
+    "envelope_from": [
+     {
+      "name": "Admin",
+      "address": "admin@example.com"
+     }
+    ],
+    "envelope_to": [
+     {
+      "address": "sender@example.com"
+     }
+    ],
+    "attachments": [],
+    "read": true,
+    "sent": true,
+    "saved": false,
+    "uid_domain": {
+     "$ref": "s1.d"
+    },
+    "uid_mailbox": {
+     "$ref": "s1.a"
+    },
+    "mailbox": "Sent Messages/accounts/admin",
+    "domain_mailbox": "INBOX",
+    "spam_score": 0,
+    "spam_reasons": null,
+    "is_spam": false
+   },
+   "as": "m.sent1"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": true
+   },
+   "as": "s2.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": true
+   },
+   "as": "s2.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<self@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Note to self",
+    "text": "remember",
+    "from_address": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "from_text": "admin@example.com",
+    "to_address": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "to_text": "admin@example.com",
+    "envelope_from": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "read": true,
+    "sent": true,
+    "uid_domain": {
+     "$ref": "s2.d"
+    },
+    "uid_mailbox": {
+     "$ref": "s2.a"
+    },
+    "mailbox": "Sent Messages/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.self.sent"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "s2r.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "s2r.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<self@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Note to self",
+    "text": "remember",
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     },
+     {
+      "address": "alias@example.com"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "s2r.d"
+    },
+    "uid_mailbox": {
+     "$ref": "s2r.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.self.received"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "d1.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "d1.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<fanout@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "To two accounts",
+    "text": "same message",
+    "from_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "from_text": "list@example.org",
+    "to_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "to_text": "list@example.org",
+    "envelope_to": [
+     {
+      "address": "admin@example.com",
+      "name": "Admin"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "d1.d"
+    },
+    "uid_mailbox": {
+     "$ref": "d1.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.fan.first"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "d2.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "sales@example.com",
+    "sent": false
+   },
+   "as": "d2.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<fanout@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Ignored: the first delivery's subject stays",
+    "text": "same message",
+    "from_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "from_text": "list@example.org",
+    "to_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "to_text": "list@example.org",
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     },
+     {
+      "address": "sales@example.com"
+     },
+     {
+      "address": "sales@example.com"
+     },
+     {
+      "name": "no address"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "d2.d"
+    },
+    "uid_mailbox": {
+     "$ref": "d2.a"
+    },
+    "mailbox": "INBOX/accounts/sales",
+    "domain_mailbox": "INBOX",
+    "read": true
+   },
+   "as": "m.fan.second"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "d3.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "sales@example.com",
+    "sent": false
+   },
+   "as": "d3.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<fanout@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "To two accounts",
+    "text": "same message",
+    "from_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "from_text": "list@example.org",
+    "to_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "to_text": "list@example.org",
+    "envelope_to": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "d3.d"
+    },
+    "uid_mailbox": {
+     "$ref": "d3.a"
+    },
+    "mailbox": "INBOX/accounts/sales",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.fan.third"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "sent": false
+   },
+   "as": "d4.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "account": "bob@bob.example.com",
+    "sent": false
+   },
+   "as": "d4.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "message_id": "<fanout@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "To two accounts",
+    "text": "same message",
+    "from_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "from_text": "list@example.org",
+    "to_address": [
+     {
+      "address": "list@example.org"
+     }
+    ],
+    "to_text": "list@example.org",
+    "envelope_to": [
+     {
+      "address": "bob@bob.example.com"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "d4.d"
+    },
+    "uid_mailbox": {
+     "$ref": "d4.a"
+    },
+    "mailbox": "INBOX/accounts/bob",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.fan.bob"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "i1.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "INBOX@example.com",
+    "sent": false
+   },
+   "as": "i1.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<appended-inbox@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Appended",
+    "text": "body",
+    "read": true,
+    "uid_domain": {
+     "$ref": "i1.d"
+    },
+    "uid_mailbox": {
+     "$ref": "i1.a"
+    },
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.append.inbox"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "i2.d"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<appended-drafts@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Draft",
+    "text": "unfinished",
+    "draft": false,
+    "uid_domain": {
+     "$ref": "i2.d"
+    },
+    "domain_mailbox": "INBOX",
+    "placement": {
+     "draft": true
+    }
+   },
+   "as": "m.append.drafts"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "i3.d"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<appended-junk@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Junk",
+    "text": "spam",
+    "uid_domain": {
+     "$ref": "i3.d"
+    },
+    "domain_mailbox": "INBOX",
+    "placement": {
+     "is_spam": true
+    }
+   },
+   "as": "m.append.junk"
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mailboxes (user_id, name) VALUES ($1, $2)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000001",
+     "Archive"
+    ]
+   }
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "c1.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "Archive@example.com",
+    "sent": false
+   },
+   "as": "c1.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "0123456789abcdef.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Quarterly report — ünïcode ✓",
+    "text": "Hello world 😀",
+    "to_address": [
+     {
+      "address": "Archive@example.com",
+      "name": ""
+     }
+    ],
+    "to_text": "admin@example.com, Other <other@example.org>",
+    "envelope_to": [
+     {
+      "address": "Archive@example.com",
+      "name": ""
+     }
+    ],
+    "cc_address": [],
+    "cc_text": "cc@example.com",
+    "read": true,
+    "saved": true,
+    "deleted": true,
+    "answered": true,
+    "uid_domain": {
+     "$ref": "c1.d"
+    },
+    "uid_mailbox": {
+     "$ref": "c1.a"
+    },
+    "mailbox": "Archive"
+   },
+   "as": "m.copy.c1"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "c2.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "Archive@example.com",
+    "sent": false
+   },
+   "as": "c2.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "0123456789abcdef.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Quarterly report — ünïcode ✓",
+    "text": "Hello world 😀",
+    "to_address": [
+     {
+      "address": "Archive@example.com",
+      "name": ""
+     }
+    ],
+    "to_text": "admin@example.com, Other <other@example.org>",
+    "envelope_to": [
+     {
+      "address": "Archive@example.com",
+      "name": ""
+     }
+    ],
+    "cc_address": [],
+    "cc_text": "cc@example.com",
+    "read": true,
+    "saved": true,
+    "deleted": true,
+    "answered": true,
+    "uid_domain": {
+     "$ref": "c2.d"
+    },
+    "uid_mailbox": {
+     "$ref": "c2.a"
+    },
+    "mailbox": "Archive"
+   },
+   "as": "m.copy.c2"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "c3.d"
+  },
+  {
+   "op": "getMailboxUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Starred"
+   },
+   "as": "c3.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "fedcba9876543210.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Starred copy",
+    "text": "x",
+    "uid_domain": {
+     "$ref": "c3.d"
+    },
+    "uid_mailbox": {
+     "$ref": "c3.a"
+    },
+    "mailbox": "Starred",
+    "placement": {
+     "saved": true
+    }
+   },
+   "as": "m.copy.starred"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "c4.d"
+  },
+  {
+   "op": "getMailboxUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash"
+   },
+   "as": "c4.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "aaaabbbbccccdddd.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "subject": "Trashed copy",
+    "text": "x",
+    "saved": true,
+    "uid_domain": {
+     "$ref": "c4.d"
+    },
+    "uid_mailbox": {
+     "$ref": "c4.a"
+    },
+    "mailbox": "Trash",
+    "placement": {
+     "deleted": true
+    }
+   },
+   "as": "m.copy.trash"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false
+   },
+   "as": "c5.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "account": "Archive@example.com",
+    "sent": false
+   },
+   "as": "c5.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "aaaabbbbccccdddd.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "uid_domain": {
+     "$ref": "c5.d"
+    },
+    "uid_mailbox": {
+     "$ref": "c5.a"
+    },
+    "mailbox": "Archive",
+    "placement": {
+     "saved": false,
+     "deleted": true
+    }
+   },
+   "as": "m.copy.trash.again"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "aaaabbbbccccdddd.copy@server",
+    "date": "2024-03-04T05:06:07.000Z",
+    "placement": {}
+   },
+   "as": "m.copy.trash.emptyplacement"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<dup-domain-uid@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "uid_domain": {
+     "$ref": "r1.d"
+    },
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.dupdomain"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<dup-mailbox-uid@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "uid_domain": 900,
+    "uid_mailbox": {
+     "$ref": "r1.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.dupmailbox"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<bad-date@example.com>",
+    "date": "not a date"
+   },
+   "as": "m.baddate"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "not-a-uuid",
+    "message_id": "<bad-user@example.com>",
+    "date": "2024-03-04T05:06:07.000Z"
+   },
+   "as": "m.baduser"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "c0000000-0000-4000-8000-00000000dead",
+    "message_id": "<no-such-user@example.com>",
+    "date": "2024-03-04T05:06:07.000Z"
+   },
+   "as": "m.nouser"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<fraction@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "spam_score": 2.5
+   },
+   "as": "m.fraction"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "after-saves.next.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "after-saves.next.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-saves.next.admin"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": true
+    }
+   },
+   "as": "after-saves.next.admin.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "sales@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-saves.next.sales"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "Archive@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-saves.next.archive"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "after-saves.next.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "after-saves.next.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "after-saves.modseq.domain.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "after-saves.modseq.domain.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Junk",
+    "sent": false
+   },
+   "as": "after-saves.modseq.Junk.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Drafts",
+    "sent": false
+   },
+   "as": "after-saves.modseq.Drafts.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/admin",
+    "sent": false
+   },
+   "as": "after-saves.modseq.INBOX/accounts/admin.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/sales",
+    "sent": false
+   },
+   "as": "after-saves.modseq.INBOX/accounts/sales.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Sent Messages/accounts/admin",
+    "sent": true
+   },
+   "as": "after-saves.modseq.Sent Messages/accounts/admin.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Archive",
+    "sent": false
+   },
+   "as": "after-saves.modseq.Archive.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Starred",
+    "sent": false
+   },
+   "as": "after-saves.modseq.Starred.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "sent": false
+   },
+   "as": "after-saves.modseq.Trash.received"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    }
+   },
+   "as": "read.full"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    }
+   },
+   "as": "read.minimal"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.full._id"
+    }
+   },
+   "as": "read.other-user"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead"
+   },
+   "as": "read.unknown"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "not-a-uuid"
+   },
+   "as": "read.bad-id"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<fanout@example.com>"
+   },
+   "as": "read.fanout"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "message_id": "<fanout@example.com>"
+   },
+   "as": "read.fanout.bob"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<self@example.com>"
+   },
+   "as": "read.self"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<nobody@example.com>"
+   },
+   "as": "read.missing"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "message_id": "<dup-mailbox-uid@example.com>"
+   },
+   "as": "read.dupmailbox"
+  },
+  {
+   "op": "findMailByAttachment",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "attachment_id": "scenario-attachment-on-disk"
+   },
+   "as": "read.by-attachment"
+  },
+  {
+   "op": "findMailByAttachment",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "attachment_id": "scenario-attachment-on-disk"
+   },
+   "as": "read.by-attachment.other-user"
+  },
+  {
+   "op": "findMailByAttachment",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "attachment_id": "no-such-attachment"
+   },
+   "as": "read.by-attachment.missing"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    }
+   },
+   "as": "flag.read.first"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    }
+   },
+   "as": "flag.read.again"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.text._id"
+    }
+   },
+   "as": "flag.read.already"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    }
+   },
+   "as": "flag.read.other-user"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead"
+   },
+   "as": "flag.read.unknown"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "not-a-uuid"
+   },
+   "as": "flag.read.bad-id"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "flag.read.modseq"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": true
+   },
+   "as": "flag.save.first"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": true
+   },
+   "as": "flag.save.again"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    },
+    "saved": true
+   },
+   "as": "flag.save.second-mail"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": false
+   },
+   "as": "flag.unsave"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": false
+   },
+   "as": "flag.unsave.again"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": true
+   },
+   "as": "flag.resave"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.sent1._id"
+    },
+    "saved": true
+   },
+   "as": "flag.save.sent"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "saved": true
+   },
+   "as": "flag.save.other-user"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead",
+    "saved": false
+   },
+   "as": "flag.save.unknown"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "flag.save.starred-next"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "is_spam": true
+   },
+   "as": "flag.spam.first"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "is_spam": true
+   },
+   "as": "flag.spam.again"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.spam._id"
+    },
+    "is_spam": false
+   },
+   "as": "flag.unspam"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.spam._id"
+    },
+    "is_spam": true
+   },
+   "as": "flag.spam.other-user"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead",
+    "is_spam": true
+   },
+   "as": "flag.spam.unknown"
+  },
+  {
+   "op": "markMailSpam",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "not-a-uuid",
+    "is_spam": true
+   },
+   "as": "flag.spam.bad-id"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Junk",
+    "sent": false
+   },
+   "as": "flag.spam.junk-modseq"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/admin",
+    "sent": false
+   },
+   "as": "flag.spam.box-modseq"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": true,
+    "unchangedSince": null,
+    "mailbox": null,
+    "start": 1,
+    "end": 4,
+    "setClause": "deleted = TRUE"
+   },
+   "as": "store.deleted.range"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": false,
+    "touchesSaved": true,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": "INBOX/accounts/admin",
+    "start": 2,
+    "end": 3,
+    "setClause": "saved = TRUE, answered = TRUE"
+   },
+   "as": "store.flagged.seq"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": true,
+    "touchesDeleted": true,
+    "unchangedSince": null,
+    "mailbox": "INBOX/accounts/admin",
+    "start": 1,
+    "end": 1,
+    "setClause": "\n        read = false,\n        saved = false,\n        deleted = false,\n        draft = false,\n        answered = false\n      "
+   },
+   "as": "store.replace"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": {
+     "$ref": "after-saves.modseq.domain.received"
+    },
+    "mailbox": null,
+    "start": 1,
+    "end": 1000,
+    "setClause": "answered = TRUE"
+   },
+   "as": "store.conditional"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": 0,
+    "mailbox": null,
+    "start": 1,
+    "end": 1000,
+    "setClause": "read = TRUE"
+   },
+   "as": "store.conditional.zero"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": "Junk",
+    "start": 1,
+    "end": 1000,
+    "setClause": "read = TRUE"
+   },
+   "as": "store.junk"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": false,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": "drafts",
+    "start": 1,
+    "end": 5,
+    "setClause": "draft = FALSE"
+   },
+   "as": "store.drafts.seq"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": false,
+    "touchesSaved": false,
+    "touchesDeleted": true,
+    "unchangedSince": null,
+    "mailbox": "Archive",
+    "start": 1,
+    "end": 9,
+    "setClause": "deleted = FALSE"
+   },
+   "as": "store.archive.seq"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": true,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": null,
+    "start": 1,
+    "end": 9,
+    "setClause": "answered = TRUE"
+   },
+   "as": "store.sent"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": true,
+    "useUid": false,
+    "touchesSaved": false,
+    "touchesDeleted": true,
+    "unchangedSince": null,
+    "mailbox": "Sent Messages/accounts/admin",
+    "start": 1,
+    "end": 1,
+    "setClause": "deleted = TRUE"
+   },
+   "as": "store.sent.box.seq"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": "INBOX/accounts/sales",
+    "start": 1,
+    "end": 9,
+    "setClause": ""
+   },
+   "as": "store.noop"
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "sent": false,
+    "useUid": true,
+    "touchesSaved": false,
+    "touchesDeleted": false,
+    "unchangedSince": null,
+    "mailbox": "Nowhere",
+    "start": 1,
+    "end": 9,
+    "setClause": "read = TRUE"
+   },
+   "as": "store.nomatch"
+  },
+  {
+   "op": "updateRfc822Size",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    },
+    "rfc822_size": 4096
+   },
+   "as": "size.update"
+  },
+  {
+   "op": "updateRfc822Size",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.full._id"
+    },
+    "rfc822_size": 1
+   },
+   "as": "size.other-user"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    }
+   },
+   "as": "size.read"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "after-flags.next.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "after-flags.next.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-flags.next.admin"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": true
+    }
+   },
+   "as": "after-flags.next.admin.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "sales@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-flags.next.sales"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "Archive@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-flags.next.archive"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "after-flags.next.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "after-flags.next.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "after-flags.modseq.domain.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "after-flags.modseq.domain.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Junk",
+    "sent": false
+   },
+   "as": "after-flags.modseq.Junk.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Drafts",
+    "sent": false
+   },
+   "as": "after-flags.modseq.Drafts.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/admin",
+    "sent": false
+   },
+   "as": "after-flags.modseq.INBOX/accounts/admin.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/sales",
+    "sent": false
+   },
+   "as": "after-flags.modseq.INBOX/accounts/sales.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Sent Messages/accounts/admin",
+    "sent": true
+   },
+   "as": "after-flags.modseq.Sent Messages/accounts/admin.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Archive",
+    "sent": false
+   },
+   "as": "after-flags.modseq.Archive.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Starred",
+    "sent": false
+   },
+   "as": "after-flags.modseq.Starred.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "sent": false
+   },
+   "as": "after-flags.modseq.Trash.received"
+  },
+  {
+   "op": "syncMailboxPivot",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "isPresent": true
+   },
+   "as": "pivot.trash.add"
+  },
+  {
+   "op": "syncMailboxPivot",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "isPresent": true
+   },
+   "as": "pivot.trash.again"
+  },
+  {
+   "op": "syncMailboxPivot",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "isPresent": false
+   },
+   "as": "pivot.trash.remove"
+  },
+  {
+   "op": "syncMailboxPivot",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "isPresent": false
+   },
+   "as": "pivot.trash.remove.again"
+  },
+  {
+   "op": "syncMailboxPivot",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead",
+    "isPresent": true
+   },
+   "as": "pivot.unknown-mail"
+  },
+  {
+   "op": "writeMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "uid": 50
+   },
+   "as": "map.write"
+  },
+  {
+   "op": "writeMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "uid": 51
+   },
+   "as": "map.write.again"
+  },
+  {
+   "op": "writeMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": {
+     "$ref": "m.minimal._id"
+    },
+    "uid": 50
+   },
+   "as": "map.write.taken"
+  },
+  {
+   "op": "writeMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": "c0000000-0000-4000-8000-00000000dead",
+    "uid": 60
+   },
+   "as": "map.write.unknown-mail"
+  },
+  {
+   "op": "deleteMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": {
+     "$ref": "m.text._id"
+    }
+   },
+   "as": "map.delete"
+  },
+  {
+   "op": "deleteMailboxUid",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Projects",
+    "mail_id": {
+     "$ref": "m.text._id"
+    }
+   },
+   "as": "map.delete.again"
+  },
+  {
+   "op": "recordMappings",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.text._id"
+    },
+    "writes": [
+     {
+      "mailbox": "Projects",
+      "uid": 70,
+      "scope": "mailbox"
+     },
+     {
+      "mailbox": "INBOX",
+      "uid": {
+       "$ref": "r2.d"
+      },
+      "scope": "domain"
+     }
+    ],
+    "mappedDestination": "Projects"
+   },
+   "as": "map.record.domain-taken"
+  },
+  {
+   "op": "recordMappings",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.spam._id"
+    },
+    "writes": [
+     {
+      "mailbox": "Projects",
+      "uid": 70,
+      "scope": "mailbox"
+     }
+    ],
+    "mappedDestination": "Projects"
+   },
+   "as": "map.record.mailbox-taken"
+  },
+  {
+   "op": "syncMappedPivotsForRow",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.spam._id"
+    },
+    "saved": true,
+    "deleted": true,
+    "destMailbox": "Starred"
+   },
+   "as": "pivot.row.skip-starred"
+  },
+  {
+   "op": "syncMappedPivotsForRow",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.spam._id"
+    },
+    "saved": false,
+    "deleted": false,
+    "destMailbox": null
+   },
+   "as": "pivot.row.clear"
+  },
+  {
+   "op": "deleteMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "mail_id": {
+     "$ref": "m.empties._id"
+    }
+   },
+   "as": "delete.other-user"
+  },
+  {
+   "op": "deleteMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.empties._id"
+    }
+   },
+   "as": "delete.first"
+  },
+  {
+   "op": "deleteMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.empties._id"
+    }
+   },
+   "as": "delete.again"
+  },
+  {
+   "op": "deleteMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.copy.trash._id"
+    }
+   },
+   "as": "delete.highest"
+  },
+  {
+   "op": "deleteMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": "not-a-uuid"
+   },
+   "as": "delete.bad-id"
+  },
+  {
+   "op": "getMailById",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mail_id": {
+     "$ref": "m.empties._id"
+    }
+   },
+   "as": "delete.read"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "after-delete.next.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "after-delete.next.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-delete.next.admin"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "admin@example.com",
+     "sent": true
+    }
+   },
+   "as": "after-delete.next.admin.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "sales@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-delete.next.sales"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "account",
+     "account": "Archive@example.com",
+     "sent": false
+    }
+   },
+   "as": "after-delete.next.archive"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "after-delete.next.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "after-delete.next.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "after-delete.modseq.domain.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "after-delete.modseq.domain.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Junk",
+    "sent": false
+   },
+   "as": "after-delete.modseq.Junk.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Drafts",
+    "sent": false
+   },
+   "as": "after-delete.modseq.Drafts.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/admin",
+    "sent": false
+   },
+   "as": "after-delete.modseq.INBOX/accounts/admin.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "INBOX/accounts/sales",
+    "sent": false
+   },
+   "as": "after-delete.modseq.INBOX/accounts/sales.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Sent Messages/accounts/admin",
+    "sent": true
+   },
+   "as": "after-delete.modseq.Sent Messages/accounts/admin.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Archive",
+    "sent": false
+   },
+   "as": "after-delete.modseq.Archive.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Starred",
+    "sent": false
+   },
+   "as": "after-delete.modseq.Starred.received"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "mailbox": "Trash",
+    "sent": false
+   },
+   "as": "after-delete.modseq.Trash.received"
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mails (mail_id, user_id, message_id, date, uid_domain, sent, modseq) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    "values": [
+     "b0000000-0000-4000-8000-000000000001",
+     "a0000000-0000-4000-8000-000000000003",
+     "<legacy-1@old>",
+     "2024-03-04T05:06:07.000Z",
+     40,
+     false,
+     1
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mails (mail_id, user_id, message_id, date, uid_domain, sent, modseq) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    "values": [
+     "b0000000-0000-4000-8000-000000000002",
+     "a0000000-0000-4000-8000-000000000003",
+     "<legacy-2@old>",
+     "2024-03-04T05:06:07.000Z",
+     41,
+     false,
+     6
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mails (mail_id, user_id, message_id, date, uid_domain, sent, modseq) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    "values": [
+     "b0000000-0000-4000-8000-000000000003",
+     "a0000000-0000-4000-8000-000000000003",
+     "<legacy-sent@old>",
+     "2024-03-04T05:06:07.000Z",
+     7,
+     true,
+     3
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mail_mailbox_uid (user_id, mailbox, mail_id, uid) VALUES ($1, $2, $3, $4)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "INBOX/accounts/old",
+     "b0000000-0000-4000-8000-000000000001",
+     12
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mail_mailbox_uid (user_id, mailbox, mail_id, uid) VALUES ($1, $2, $3, $4)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "old",
+     "b0000000-0000-4000-8000-000000000002",
+     15
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mail_mailbox_uid (user_id, mailbox, mail_id, uid) VALUES ($1, $2, $3, $4)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "Starred",
+     "b0000000-0000-4000-8000-000000000001",
+     3
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mail_mailbox_uid (user_id, mailbox, mail_id, uid) VALUES ($1, $2, $3, $4)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "Sent Messages/accounts/old",
+     "b0000000-0000-4000-8000-000000000003",
+     5
+    ]
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "legacy.peek.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "legacy.peek.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "old@legacy.example.com",
+     "sent": false
+    }
+   },
+   "as": "legacy.peek.account"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "old@legacy.example.com",
+     "sent": true
+    }
+   },
+   "as": "legacy.peek.account.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "new@legacy.example.com",
+     "sent": false
+    }
+   },
+   "as": "legacy.peek.account.new"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "legacy.peek.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "legacy.peek.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "legacy.peek.modseq"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "legacy.peek.modseq.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": "INBOX/accounts/old",
+    "sent": false
+   },
+   "as": "legacy.peek.modseq.box"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "sent": false
+   },
+   "as": "legacy.domain"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "sent": true
+   },
+   "as": "legacy.domain.sent"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "account": "old@legacy.example.com",
+    "sent": false
+   },
+   "as": "legacy.account"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "account": "old@legacy.example.com",
+    "sent": true
+   },
+   "as": "legacy.account.sent"
+  },
+  {
+   "op": "getMailboxUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": "Starred"
+   },
+   "as": "legacy.starred"
+  },
+  {
+   "op": "getNextModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003"
+   },
+   "as": "legacy.modseq.reserve"
+  },
+  {
+   "op": "markMailSaved",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mail_id": "b0000000-0000-4000-8000-000000000002",
+    "saved": true
+   },
+   "as": "legacy.save"
+  },
+  {
+   "op": "markMailRead",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mail_id": "b0000000-0000-4000-8000-000000000001"
+   },
+   "as": "legacy.read"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "legacy.after.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "domain",
+     "sent": true
+    }
+   },
+   "as": "legacy.after.domain.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "old@legacy.example.com",
+     "sent": false
+    }
+   },
+   "as": "legacy.after.account"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "old@legacy.example.com",
+     "sent": true
+    }
+   },
+   "as": "legacy.after.account.sent"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "account",
+     "account": "new@legacy.example.com",
+     "sent": false
+    }
+   },
+   "as": "legacy.after.account.new"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "legacy.after.starred"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Trash"
+    }
+   },
+   "as": "legacy.after.trash"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": null,
+    "sent": false
+   },
+   "as": "legacy.after.modseq"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": null,
+    "sent": true
+   },
+   "as": "legacy.after.modseq.sent"
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003",
+    "mailbox": "INBOX/accounts/old",
+    "sent": false
+   },
+   "as": "legacy.after.modseq.box"
+  },
+  {
+   "op": "concurrentReservations",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "kind": "domain",
+    "sent": false,
+    "count": 12
+   },
+   "as": "conc.domain"
+  },
+  {
+   "op": "concurrentReservations",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "kind": "account",
+    "account": "bob@bob.example.com",
+    "sent": false,
+    "count": 12
+   },
+   "as": "conc.account"
+  },
+  {
+   "op": "concurrentReservations",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "kind": "mailbox",
+    "mailbox": "Starred",
+    "count": 12
+   },
+   "as": "conc.mailbox"
+  },
+  {
+   "op": "concurrentReservations",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "kind": "modseq",
+    "count": 12
+   },
+   "as": "conc.modseq"
+  },
+  {
+   "op": "concurrentSaves",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "account": "bob@bob.example.com",
+    "mailbox": "INBOX/accounts/bob",
+    "count": 8,
+    "saved": true
+   },
+   "as": "conc.saves"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "sent": false
+   },
+   "as": "race.d"
+  },
+  {
+   "op": "concurrentDuplicates",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "account": "bob@bob.example.com",
+    "mailbox": "INBOX/accounts/bob",
+    "count": 6,
+    "uid_domain": {
+     "$ref": "race.d"
+    }
+   },
+   "as": "conc.duplicates"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "scope": {
+     "kind": "domain",
+     "sent": false
+    }
+   },
+   "as": "conc.next.domain"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "scope": {
+     "kind": "account",
+     "account": "bob@bob.example.com",
+     "sent": false
+    }
+   },
+   "as": "conc.next.account"
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "scope": {
+     "kind": "mailbox",
+     "mailbox": "Starred"
+    }
+   },
+   "as": "conc.next.starred"
+  },
+  {
+   "op": "getNextModseq",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002"
+   },
+   "as": "conc.next.modseq"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Projects"
+   },
+   "as": "box.projects"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "projects"
+   },
+   "as": "box.projects.case"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "PROJECTS",
+    "subscribed": false
+   },
+   "as": "box.projects.upper"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Receipts 2024",
+    "subscribed": false
+   },
+   "as": "box.receipts"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "receipts-2023",
+    "subscribed": true
+   },
+   "as": "box.receipts.old"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Étoile"
+   },
+   "as": "box.etoile"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "etoile"
+   },
+   "as": "box.etoile.plain"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "日本語"
+   },
+   "as": "box.japanese"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "_drafts-old"
+   },
+   "as": "box.underscore"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "10"
+   },
+   "as": "box.ten"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "9"
+   },
+   "as": "box.nine"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Team",
+    "address": "team@example.com",
+    "special_use": "\\Archive"
+   },
+   "as": "box.team"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Projects/Alpha",
+    "parent_id": {
+     "$ref": "box.projects.mailbox.mailbox_id"
+    }
+   },
+   "as": "box.child"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Projects/Beta",
+    "parent_id": {
+     "$ref": "box.projects.mailbox.mailbox_id"
+    },
+    "address": null,
+    "special_use": null
+   },
+   "as": "box.child.beta"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Orphan",
+    "parent_id": "c0000000-0000-4000-8000-00000000dead"
+   },
+   "as": "box.bad-parent"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "name": "Projects"
+   },
+   "as": "box.bob.projects"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "c0000000-0000-4000-8000-00000000dead",
+    "name": "Nobody"
+   },
+   "as": "box.no-user"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   },
+   "as": "box.too-long"
+  },
+  {
+   "op": "getMailboxesByUser",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001"
+   },
+   "as": "box.list"
+  },
+  {
+   "op": "getMailboxesByUser",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000003"
+   },
+   "as": "box.list.empty"
+  },
+  {
+   "op": "getMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "ARCHIVE"
+   },
+   "as": "box.byname"
+  },
+  {
+   "op": "getMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "étoile"
+   },
+   "as": "box.byname.accent"
+  },
+  {
+   "op": "getMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "missing"
+   },
+   "as": "box.byname.missing"
+  },
+  {
+   "op": "getMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "name": "Archive"
+   },
+   "as": "box.byname.other-user"
+  },
+  {
+   "op": "getMailboxByAddress",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "address": "team@example.com"
+   },
+   "as": "box.byaddress"
+  },
+  {
+   "op": "getMailboxByAddress",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "address": "TEAM@example.com"
+   },
+   "as": "box.byaddress.case"
+  },
+  {
+   "op": "getMailboxByAddress",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "address": "team@example.com"
+   },
+   "as": "box.byaddress.other-user"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "receipts 2024",
+    "newName": "Receipts"
+   },
+   "as": "box.rename"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "Receipts",
+    "newName": "Receipts 2025"
+   },
+   "as": "box.rename.again"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "Receipts 2025",
+    "newName": "ARCHIVE"
+   },
+   "as": "box.rename.taken"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "Receipts 2025",
+    "newName": "receipts 2025"
+   },
+   "as": "box.rename.same-name"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "Nope",
+    "newName": "Whatever"
+   },
+   "as": "box.rename.missing"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "oldName": "team",
+    "newName": "Crew"
+   },
+   "as": "box.rename.protected"
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "oldName": "Archive",
+    "newName": "Stolen"
+   },
+   "as": "box.rename.other-user"
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "projects",
+    "subscribed": false
+   },
+   "as": "box.unsubscribe"
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "projects",
+    "subscribed": false
+   },
+   "as": "box.unsubscribe.again"
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "PROJECTS/ALPHA",
+    "subscribed": false
+   },
+   "as": "box.unsubscribe.child"
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Receipts 2025",
+    "subscribed": true
+   },
+   "as": "box.subscribe"
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "missing",
+    "subscribed": true
+   },
+   "as": "box.subscribe.missing"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "TEAM"
+   },
+   "as": "box.delete.protected"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "missing"
+   },
+   "as": "box.delete.missing"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "9"
+   },
+   "as": "box.delete"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "9"
+   },
+   "as": "box.delete.again"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "name": "etoile"
+   },
+   "as": "box.delete.other-user"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "projects"
+   },
+   "as": "box.delete.parent"
+  },
+  {
+   "op": "getMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001",
+    "name": "Projects/Alpha"
+   },
+   "as": "box.delete.child-gone"
+  },
+  {
+   "op": "getMailboxesByUser",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000001"
+   },
+   "as": "box.list.after"
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO mailboxes (user_id, name) SELECT $1::uuid, 'bulk-' || n FROM generate_series(1, 998) AS n",
+    "values": [
+     "a0000000-0000-4000-8000-000000000004"
+    ]
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "Almost"
+   },
+   "as": "limit.999"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "Last"
+   },
+   "as": "limit.1000"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "One too many"
+   },
+   "as": "limit.refused"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "LAST"
+   },
+   "as": "limit.exists"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000002",
+    "name": "Unaffected"
+   },
+   "as": "limit.other-user"
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "bulk-1"
+   },
+   "as": "limit.make-room"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "One too many"
+   },
+   "as": "limit.room"
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "name": "Again too many"
+   },
+   "as": "limit.refused.again"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "sent": false
+   },
+   "as": "nul.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "account": "admin@example.com",
+    "sent": false
+   },
+   "as": "nul.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "message_id": "<nul\u0000@example.com>",
+    "in_reply_to": "<pa\u0000rent@example.com>",
+    "reference_ids": [
+     "<ro\u0000ot@example.com>",
+     "<pa\u0000rent@example.com>"
+    ],
+    "subject": "nu\u0000l",
+    "date": "2024-03-04T05:06:07.000Z",
+    "html": "<p>a\u0000b</p>",
+    "text": "a\u0000b\u0000",
+    "from_address": [
+     {
+      "address": "sender@example.com",
+      "name": "Jo\u0000e"
+     }
+    ],
+    "from_text": "Jo\u0000e <sender@example.com>",
+    "to_address": [
+     {
+      "address": "admin@example.com",
+      "name": ""
+     }
+    ],
+    "to_text": "admin@example.com",
+    "reply_to_address": [
+     {
+      "address": "reply@example.com",
+      "name": "Re\u0000ply"
+     }
+    ],
+    "reply_to_text": "Re\u0000ply <reply@example.com>",
+    "envelope_from": [
+     {
+      "address": "bounce@example.com"
+     }
+    ],
+    "envelope_to": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "attachments": [
+     {
+      "content": {
+       "data": "scenario-attachment-on-disk"
+      },
+      "contentType": "application/pdf",
+      "filename": "re\u0000port.pdf",
+      "size": 1234
+     }
+    ],
+    "insight": {
+     "summary": "nu\u0000l",
+     "tags": [
+      "a\u0000"
+     ]
+    },
+    "uid_domain": {
+     "$ref": "nul.d"
+    },
+    "uid_mailbox": {
+     "$ref": "nul.a"
+    },
+    "mailbox": "INBOX/accounts/admin",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.nul"
+  },
+  {
+   "op": "getDomainUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "sent": false
+   },
+   "as": "nul.again.d"
+  },
+  {
+   "op": "getAccountUidNext",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "account": "sales@example.com",
+    "sent": false
+   },
+   "as": "nul.again.a"
+  },
+  {
+   "op": "saveMail",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "message_id": "<n\u0000ul@example.com>",
+    "date": "2024-03-04T05:06:07.000Z",
+    "envelope_to": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "uid_domain": {
+     "$ref": "nul.again.d"
+    },
+    "uid_mailbox": {
+     "$ref": "nul.again.a"
+    },
+    "mailbox": "INBOX/accounts/sales",
+    "domain_mailbox": "INBOX"
+   },
+   "as": "m.nul.again"
+  },
+  {
+   "op": "getMailByMessageId",
+   "args": {
+    "user_id": "a0000000-0000-4000-8000-000000000004",
+    "message_id": "<nul@example.com>"
+   },
+   "as": "read.nul"
+  }
+ ]
+}

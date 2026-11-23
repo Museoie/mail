@@ -9,7 +9,10 @@ import {
   KEYS_P256DH,
   KEYS_AUTH,
   LAST_NOTIFIED,
+  UPDATED,
+  DB_NOW,
 } from "../models";
+import type { PreparedQuery } from "../database";
 import { ComputedPushSubscription, SignedUser } from "common";
 
 /**
@@ -135,17 +138,38 @@ export const getSubscriptions = async (
   }
 };
 
+const refreshArgs = (
+  push_subscription_id: string,
+  user_id: string
+): Parameters<typeof pushSubscriptionsTable.updateWhere> => [
+  { [PUSH_SUBSCRIPTION_ID]: push_subscription_id, [USER_ID]: user_id },
+  { [UPDATED]: DB_NOW },
+  [PUSH_SUBSCRIPTION_ID],
+];
+
+/** The statement `refreshSubscription` runs, from the same arguments. */
+export const buildRefreshSubscription = (
+  push_subscription_id: string,
+  user_id: string
+): PreparedQuery =>
+  pushSubscriptionsTable.prepareUpdateWhere(...refreshArgs(push_subscription_id, user_id))!;
+
 /**
- * Refreshes a subscription's updated timestamp
- * @param push_subscription_id
- * @returns Success boolean
+ * Marks a subscription as still in use: moves its `updated` stamp, the column
+ * `cleanSubscriptions` sweeps by, to now. Scoped to its owner like
+ * `deleteSubscriptionForUser`, since the id alone is a bearer capability.
+ * @returns true when the caller's subscription was refreshed; false for an
+ * unknown id, someone else's subscription, or a fault.
  */
 export const refreshSubscription = async (
-  push_subscription_id: string
+  push_subscription_id: string,
+  user_id: string
 ): Promise<boolean> => {
   try {
-    const result = await pushSubscriptionsTable.update(push_subscription_id, {});
-    return result !== null;
+    const rows = await pushSubscriptionsTable.updateWhere(
+      ...refreshArgs(push_subscription_id, user_id)
+    );
+    return rows.length > 0;
   } catch (error) {
     logger.error("Failed to refresh push subscription", {}, error);
     return false;

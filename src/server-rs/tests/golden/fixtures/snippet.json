@@ -1,0 +1,639 @@
+{
+"buildSnippet": [
+["Hello, this is the body.","Hello, this is the body."],
+["First line\nsecond   line\n\n  third line  ","First line second line third line"],
+["My reply is here.\n> Quoted original\n>> Nested quote\n> More quote","My reply is here."],
+["See below.\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n> old text","See below."],
+["See below.\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n> old text","See below."],
+["New content here.\n-----Original Message-----\nFrom: old@x.com\nOld body","New content here."],
+["Forwarding this along.\nBegin forwarded message:\nFrom: old@x.com","Forwarding this along."],
+["See below.\n---------- Forwarded message ---------\nFrom: old@x.com\nOld body","See below."],
+["---------- Forwarded message ---------\nFrom: old@x.com\nOld body",null],
+["word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24 word25 word26 word27 word28 word29","word0 word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23…"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+["",null],
+["   \n  ",null],
+["> only quotes\n> here",null],
+[null,null],
+["a\r\nb\rc\r\n","a b c"],
+["a\r","a"],
+["\r\n",null],
+["a\r\r\nb","a b"],
+["On a wrote:\r",null],
+["On a wrote:\r\nb","b"],
+["First line","First line"],
+["second   line","second line"],
+["  third line  ","third line"],
+["My reply is here.","My reply is here."],
+["> Quoted original",null],
+[">> Nested quote",null],
+[" > indented quote",null],
+["\t>tab quote",null],
+[" > nbsp quote",null],
+["See below.","See below."],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:",null],
+["On wrote:",null],
+["On x wrote:",null],
+["Onx wrote:","Onx wrote:"],
+["On_ wrote:","On_ wrote:"],
+["On: wrote:",null],
+["  On a wrote:  ",null],
+["On a wrote: b","On a wrote: b"],
+["On a\rb wrote:","On a b wrote:"],
+["On a b wrote:","On a b wrote:"],
+["On a wrote: ",null],
+["on a wrote:","on a wrote:"],
+["ON a wrote:","ON a wrote:"],
+["On a Wrote:","On a Wrote:"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :",null],
+["Le x a écrit:",null],
+["Le x a écrit  :  ",null],
+["Lex a écrit :","Lex a écrit :"],
+["Le a écrit :",null],
+["Le x a écrit :","Le x a écrit :"],
+["le x a écrit :","le x a écrit :"],
+["Le x a écrit : y","Le x a écrit : y"],
+["-----Original Message-----",null],
+["-- Original Message",null],
+["- Original Message","- Original Message"],
+["--   original message",null],
+["--Forwarded Message",null],
+["---------- Forwarded message ---------",null],
+["-- Forwarded message",null],
+["-- Forwarded meſſage","-- Forwarded meſſage"],
+["__",null],
+["___________",null],
+["_","_"],
+[" __","__"],
+["Begin forwarded message:",null],
+["begin FORWARDED message",null],
+[" Begin forwarded message","Begin forwarded message"],
+["--","--"],
+["-- ","--"],
+["---","---"],
+[" ",null],
+["\t",null],
+["word","word"],
+["한글 문장입니다","한글 문장입니다"],
+["😀😀😀","😀😀😀"],
+["éééééééééééééééééééééééééééééé","éééééééééééééééééééééééééééééé"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab"],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","ab…"],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","a…"],
+["a b　c d﻿ef\u000bg","a b c d ef g"],
+["😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\nOn: wrote:\nOnx wrote:\nsecond   line\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nLe x a écrit :","😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab…"],
+["---------- Forwarded message ---------\n\nOn: wrote:\n\nbegin FORWARDED message",null],
+[" > nbsp quote\r \rHello, this is the body.\r\rbegin FORWARDED message\r---------- Forwarded message ---------",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+[" __\rLe a écrit :\r__\r\rLe x a écrit :\r- Original Message","__ Le a écrit : __ Le x a écrit : - Original Message"],
+["-- Original Message\r\nOn x wrote:",null],
+["___________\r\n > nbsp quote\r\n한글 문장입니다\r\n-- \r\nLe x a écrit :",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n > indented quote\nMy reply is here.","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\nLe x a écrit:\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+["  On a wrote:  \n\nLe x a écrit:\n\nOnx wrote:\n\n-- Original Message","Onx wrote:"],
+["On a wrote: \nOn a wrote: b","On a wrote: b"],
+["-- Original Message\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\nword\n\n-- \n\na b　c d﻿ef\u000bg\n\n--Forwarded Message",null],
+["> Quoted original\nOn_ wrote:","On_ wrote:"],
+["a b　c d﻿ef\u000bg\na b　c d﻿ef\u000bg\nOn a Wrote:","a b c d ef g a b c d ef g On a Wrote:"],
+["\t\n\nMy reply is here.\n\nFirst line\n\nOnx wrote:\n\n---\n\nOn_ wrote:","My reply is here. First line Onx wrote: --- On_ wrote:"],
+["a b　c d﻿ef\u000bg\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n Begin forwarded message\n--   original message\n > nbsp quote\nsecond   line","a b c d ef g…"],
+["On x wrote:\n\n__\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",null],
+["-- Forwarded meſſage\nHello, this is the body.\nOn a Wrote:","-- Forwarded meſſage Hello, this is the body. On a Wrote:"],
+["__\n\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\nOn a wrote: \n\nOn: wrote:\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n--   original message",null],
+["Lex a écrit :\r\n- Original Message\r\n ","Lex a écrit : - Original Message"],
+["ON a wrote:\n __\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n-- ","ON a wrote: __…"],
+[" \r\n-----Original Message-----\r\n > indented quote\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\nLex a écrit :",null],
+["___________\r\n  third line  \r\nOn: wrote:\r\n\t>tab quote\r\n-- Forwarded message",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n \n __\n__","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+[" > indented quote\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nLe x a écrit :","a…"],
+[" > nbsp quote\r\nFirst line\r\nBegin forwarded message:\r\n- Original Message\r\n_\r\nLe x a écrit :","First line"],
+["le x a écrit :\n\t>tab quote\n-- \nsecond   line\nOn a\rb wrote:","le x a écrit : -- second line On a b wrote:"],
+["word\nLe x a écrit:\n___________\nbegin FORWARDED message\nLe x a écrit : y\n > nbsp quote","word"],
+["Le a écrit :\n\nLe x a écrit :\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n---------- Forwarded message ---------\n\nLe a écrit :\n\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","Le x a écrit :…"],
+["On x wrote:\n\n--\n\n\n\nOn_ wrote:\n\nLe a écrit :","-- On_ wrote:"],
+["second   line\r\nOn x wrote:\r\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","second line"],
+["> Quoted original\n--   original message\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n-----Original Message-----\nLe x a écrit:\nBegin forwarded message:",null],
+["word\n\nOnx wrote:\n\nLe a écrit :\n\nsecond   line\n\nOn a Wrote:","word Onx wrote: second line On a Wrote:"],
+["--\rbegin FORWARDED message\r Begin forwarded message\r > indented quote\r Begin forwarded message\rOn wrote:","-- begin FORWARDED message Begin forwarded message > indented quote Begin forwarded message On wrote:"],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n-----Original Message-----","a…"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\nLex a écrit :\r\nLe a écrit :","Lex a écrit :"],
+[" __\n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","__…"],
+["-----Original Message-----\rword",null],
+["First line\n\nON a wrote:\n\n-- Original Message\n\nOn a wrote: \n\n---","First line ON a wrote:"],
+["한글 문장입니다\n-- Forwarded message","한글 문장입니다"],
+["éééééééééééééééééééééééééééééé\n\nFirst line\n\nLe x a écrit :","éééééééééééééééééééééééééééééé First line Le x a écrit :"],
+["See below.\rLe x a écrit : y\rLe x a écrit :","See below. Le x a écrit : y Le x a écrit :"],
+["First line\n-- Forwarded meſſage\nbegin FORWARDED message","First line -- Forwarded meſſage"],
+["\non a wrote:\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n---\nOn wrote:","on a wrote:…"],
+["---------- Forwarded message ---------\n\t>tab quote\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n-- Original Message\nLe x a écrit :\nbegin FORWARDED message",null],
+["___________\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\nOn wrote:",null],
+["> Quoted original\n--Forwarded Message\nOn wrote:\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nBegin forwarded message:",null],
+["On a\rb wrote:\r\nOn a\rb wrote:","On a b wrote: On a b wrote:"],
+["-- Forwarded message\n > nbsp quote\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["-- Original Message\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\nOn a b wrote:\r\n Begin forwarded message\r\non a wrote:",null],
+["on a wrote:\n\nLe x a écrit:\n\n Begin forwarded message\n\nsecond   line\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n\nOn a b wrote:","on a wrote: Begin forwarded message second line On a b wrote:"],
+["-- Original Message\r\n  On a wrote:  \r\na b　c d﻿ef\u000bg\r\n--",null],
+["- Original Message\r__\r>> Nested quote\rbegin FORWARDED message\rSee below.\rOn: wrote:","- Original Message __ >> Nested quote begin FORWARDED message See below. On: wrote:"],
+["\t>tab quote\n \nLe x a écrit  :  ",null],
+["__\nOn a Wrote:\nOn a b wrote:\n--   original message",null],
+["See below.\n\n- Original Message\n\nMy reply is here.\n\n __","See below. - Original Message My reply is here. __"],
+[">> Nested quote\nLe x a écrit  :  \naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nOn a\rb wrote:\n\t\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+[" > indented quote\r\n--\r\non a wrote:","-- on a wrote:"],
+["On a Wrote:\r- Original Message\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\r>> Nested quote","On a Wrote: - Original Message…"],
+["See below.\rLex a écrit :\rbegin FORWARDED message\rSee below.","See below. Lex a écrit : begin FORWARDED message See below."],
+["--Forwarded Message\r Begin forwarded message\r--\r___________\rLe x a écrit : y\rLe x a écrit : y",null],
+["My reply is here.\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","My reply is here. word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["On x wrote:\n\nOn a wrote: b\n\n __","On a wrote: b __"],
+["  On a wrote:  \r\néééééééééééééééééééééééééééééé\r\n __\r\n-- Original Message\r\n-----Original Message-----\r\n--Forwarded Message","éééééééééééééééééééééééééééééé __"],
+["On: wrote:\r😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\ra b　c d﻿ef\u000bg\rOn a b wrote:","On: wrote:…"],
+["Begin forwarded message:\nSee below.",null],
+["Le x a écrit : y\n\n--Forwarded Message\n\n--","Le x a écrit : y"],
+["Le a écrit :\n\non a wrote:\n\n __\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nOn: wrote:","on a wrote: __…"],
+["My reply is here.\n\n > nbsp quote\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n> Quoted original\n\n_\n\n>> Nested quote","My reply is here.…"],
+["On a\rb wrote:\n-- Forwarded message","On a b wrote:"],
+["Le x a écrit  :  \rOn wrote:\r--   original message","Le x a écrit : On wrote: -- original message"],
+["See below.\nLe x a écrit:\non a wrote:","See below. on a wrote:"],
+["  third line  \n-- Forwarded meſſage\n--   original message","third line -- Forwarded meſſage"],
+["-- Forwarded meſſage\n > nbsp quote\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n __\nSee below.","-- Forwarded meſſage…"],
+["On_ wrote:\nOn a\rb wrote:\nLe x a écrit:","On_ wrote: On a b wrote:"],
+[" > indented quote\n Begin forwarded message\n __\nOn a wrote: b\nFirst line","Begin forwarded message __ On a wrote: b First line"],
+[" > nbsp quote\n\nsecond   line\n\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n\nHello, this is the body.\n\n- Original Message","second line Hello, this is the body. - Original Message"],
+["-- Forwarded message\r\na b　c d﻿ef\u000bg\r\n__\r\nLe x a écrit : y",null],
+["Begin forwarded message:\n\nFirst line\n\n>> Nested quote\n\n\t",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nOn a wrote: b\n\n __\n\nLe x a écrit : y","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["word\n\n\t\n\n>> Nested quote","word"],
+["on a wrote:\n\nsecond   line\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nON a wrote:\n\nOn wrote:\n\n>> Nested quote","on a wrote: second line…"],
+["Hello, this is the body.\n한글 문장입니다\nOn a Wrote:","Hello, this is the body. 한글 문장입니다 On a Wrote:"],
+["- Original Message\n  third line  \n😀😀😀\n> Quoted original\n\t>tab quote","- Original Message third line 😀😀😀"],
+["---------- Forwarded message ---------\r--   original message",null],
+["_\nword","_ word"],
+["Le x a écrit  :  \r\t>tab quote\r--Forwarded Message\rLe x a écrit :","Le x a écrit : >tab quote --Forwarded Message Le x a écrit :"],
+["On_ wrote:\n\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\nsecond   line\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\nword\n\n","On_ wrote: a…"],
+["--\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r __","-- a…"],
+["\t>tab quote\r\n\t\r\n--Forwarded Message",null],
+["😀😀😀\r\nOn a wrote: b","😀😀😀 On a wrote: b"],
+[" > indented quote\r\n > indented quote\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\r\n __\r\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nHello, this is the body.\nON a wrote:\néééééééééééééééééééééééééééééé","ab…"],
+["ON a wrote:\n> Quoted original\nLe x a écrit :\n_","ON a wrote: Le x a écrit : _"],
+["On a wrote: b\n\n-- \n\n>> Nested quote\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","On a wrote: b --…"],
+["On_ wrote:\rOn wrote:\r😀😀😀\rFirst line","On_ wrote: On wrote: 😀😀😀 First line"],
+["--Forwarded Message\nON a wrote:\n-----Original Message-----\n-----Original Message-----\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["\t\n\n  third line  \n\n_","third line _"],
+["  On a wrote:  \r\n > nbsp quote\r\nBegin forwarded message:\r\nOn x wrote:",null],
+["Lex a écrit :\n-- Original Message\n__","Lex a écrit :"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+["On_ wrote:\r\n-----Original Message-----","On_ wrote:"],
+["On a b wrote:\r_","On a b wrote: _"],
+["On a\rb wrote:\r aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r- Original Message\r  On a wrote:  \r Begin forwarded message","On a b wrote:…"],
+["Le a écrit :\nOn a Wrote:\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nOn wrote:","On a Wrote: word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["On x wrote:\r\n-- Original Message\r\n--",null],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n-- Original Message\nLe x a écrit : y\nLex a écrit :\nMy reply is here.\nword","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["  On a wrote:  \n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\nOn_ wrote:\n\n> Quoted original\n\n---","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+[" > indented quote\nOn a wrote: \nOn a\rb wrote:\nMy reply is here.\n>> Nested quote","On a b wrote: My reply is here."],
+["_\r\nMy reply is here.\r\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\n___________\r\n > indented quote\r\nBegin forwarded message:","_ My reply is here."],
+["  On a wrote:  \n-- Original Message\n> Quoted original\nLe a écrit :\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["word\n\nOn: wrote:\n\nOn a b wrote:\n\n_","word On a b wrote: _"],
+["  On a wrote:  \nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nOn a\rb wrote:\n😀😀😀","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["Onx wrote:\r\n--   original message\r\nOn a Wrote:","Onx wrote:"],
+["--   original message\n---------- Forwarded message ---------\nOn a b wrote:\nFirst line\nLe x a écrit : y",null],
+["My reply is here.\n\nOn a b wrote:\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","My reply is here. On a b wrote: word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+[" \rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r한글 문장입니다","ab…"],
+["\t\n \n  third line  \nle x a écrit :\nOn a wrote: ","third line le x a écrit :"],
+["le x a écrit :\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","le x a écrit : ab…"],
+["Lex a écrit :\r\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\nLex a écrit :\r\nOn a wrote: ","Lex a écrit : Lex a écrit :"],
+["On: wrote:\n\n- Original Message\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n\nOn a wrote: b\n\n한글 문장입니다","- Original Message…"],
+["Le x a écrit:\non a wrote:\nOn a b wrote:","on a wrote: On a b wrote:"],
+[">> Nested quote\nMy reply is here.\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n---------- Forwarded message ---------\n---------- Forwarded message ---------\n--","My reply is here. word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["on a wrote:\r\t>tab quote","on a wrote: >tab quote"],
+["Onx wrote:\r\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\nON a wrote:\r\nOn a wrote: b","Onx wrote:…"],
+["See below.\r\nBegin forwarded message:\r\n Begin forwarded message\r\nMy reply is here.\r\n---\r\n\t>tab quote","See below."],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nOn wrote:","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r\n>> Nested quote\r\nsecond   line\r\n  On a wrote:  ","a…"],
+["-----Original Message-----\n--   original message\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nOn a b wrote:",null],
+["\t>tab quote\n\nle x a écrit :\n\nBegin forwarded message:","le x a écrit :"],
+["  third line  \n > nbsp quote\nOn_ wrote:","third line On_ wrote:"],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r> Quoted original\r> Quoted original\r---\rOn a b wrote:","ab…"],
+["-----Original Message-----\n > indented quote\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n--\nMy reply is here.",null],
+[" Begin forwarded message\r  third line  \rLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\ra😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\ra b　c d﻿ef\u000bg\r  third line  ","Begin forwarded message third line Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :…"],
+["__\néééééééééééééééééééééééééééééé\nLe a écrit :\n  third line  \nLe x a écrit:",null],
+["__\n  On a wrote:  \nsecond   line\nOnx wrote:",null],
+[" Begin forwarded message\rLe x a écrit:\r😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","Begin forwarded message Le x a écrit:…"],
+["\rword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \r--\r---------- Forwarded message ---------\r>> Nested quote\r___________","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\nLe x a écrit  :  \nBegin forwarded message:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\néééééééééééééééééééééééééééééé","😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab"],
+["- Original Message\nBegin forwarded message:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\t>tab quote\na b　c d﻿ef\u000bg","- Original Message"],
+["__\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",null],
+["--\n\nLex a écrit :\n\nword\n\nbegin FORWARDED message\n\nSee below.\n\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","-- Lex a écrit : word"],
+["> Quoted original\n\nOn a wrote: ",null],
+["My reply is here.\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","My reply is here.…"],
+["word\nOn_ wrote:\n__\n> Quoted original","word On_ wrote:"],
+["Le x a écrit :\n\n \n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\nle x a écrit :\n\n  On a wrote:  ","Le x a écrit :…"],
+[" > nbsp quote\r-- Original Message",null],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nbegin FORWARDED message\n😀😀😀\nOn a b wrote:\n--   original message","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["--Forwarded Message\r\nOn_ wrote:",null],
+["\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+[" > nbsp quote\r\nFirst line\r\n- Original Message\r\n __","First line - Original Message __"],
+["On a\rb wrote:\néééééééééééééééééééééééééééééé\n\nBegin forwarded message:\nLe a écrit :","On a b wrote: éééééééééééééééééééééééééééééé"],
+["second   line\n\nHello, this is the body.\n\n __","second line Hello, this is the body. __"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\r\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \r\nHello, this is the body.\r\nLe a écrit :","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  On a wrote:  \nOn a wrote: b\n--Forwarded Message\n😀😀😀\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["-----Original Message-----\nsecond   line\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n Begin forwarded message\non a wrote:",null],
+["> Quoted original\n\n\t>tab quote\n\nOn a wrote: b\n\nsecond   line\n\n_","On a wrote: b second line _"],
+["on a wrote:\r\nMy reply is here.","on a wrote: My reply is here."],
+[" Begin forwarded message\rLe x a écrit:\rHello, this is the body.\r  third line  \ron a wrote:","Begin forwarded message Le x a écrit: Hello, this is the body. third line on a wrote:"],
+["See below.\r---\rLex a écrit :","See below. --- Lex a écrit :"],
+["éééééééééééééééééééééééééééééé\n Begin forwarded message\nLe x a écrit : y\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n---","éééééééééééééééééééééééééééééé Begin forwarded message Le x a écrit : y…"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\n-- Original Message\r\nOn_ wrote:",null],
+["-- Forwarded meſſage\n-- Original Message","-- Forwarded meſſage"],
+["😀😀😀\n\nBegin forwarded message:\n\n-- Original Message\n\n__","😀😀😀"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n\n-- Forwarded meſſage\n\n한글 문장입니다\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["  On a wrote:  \n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["\t\nsecond   line\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","second line…"],
+["  third line  \r\nBegin forwarded message:\r\n > indented quote\r\n \r\nLe x a écrit :","third line"],
+[" > nbsp quote\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\nsecond   line\n-- Forwarded meſſage\nOn_ wrote:","second line -- Forwarded meſſage On_ wrote:"],
+["On a b wrote:\nOn a Wrote:\n--   original message\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","On a b wrote: On a Wrote:"],
+["Begin forwarded message:\rBegin forwarded message:\rsecond   line\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["See below.\nOn wrote:\n--\n- Original Message\n-----Original Message-----\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","See below. -- - Original Message"],
+["on a wrote:\nLe x a écrit :","on a wrote: Le x a écrit :"],
+["On a Wrote:\n > indented quote\n > indented quote\nOn a\rb wrote:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n  On a wrote:  ","On a Wrote: On a b wrote:…"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\non a wrote:\n\n-- \n\néééééééééééééééééééééééééééééé\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["On a Wrote:\r\n--Forwarded Message\r\n ","On a Wrote:"],
+["On a wrote: \rLex a écrit :\ra😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\rOn a wrote: ","On a wrote: Lex a écrit :…"],
+["on a wrote:\r\nON a wrote:\r\nBegin forwarded message:\r\n___________\r\n__","on a wrote: ON a wrote:"],
+["Le x a écrit  :  \n___________",null],
+["second   line\n\nLex a écrit :\n\nOn_ wrote:\n\nLe x a écrit  :  \n\n_\n\nLex a écrit :","second line Lex a écrit : On_ wrote: _ Lex a écrit :"],
+["---\nLe a écrit :","---"],
+["éééééééééééééééééééééééééééééé\n\n-- Original Message","éééééééééééééééééééééééééééééé"],
+["  On a wrote:  \r\n-- Forwarded message\r\nOn a wrote: \r\nle x a écrit :",null],
+["Hello, this is the body.\n한글 문장입니다\nMy reply is here.\nLe a écrit :\n--   original message\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Hello, this is the body. 한글 문장입니다 My reply is here."],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\nOn x wrote:\n\nMy reply is here.\n\n-- ","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["word\nOn_ wrote:\n-- Forwarded message\n ","word On_ wrote:"],
+["second   line\n\nMy reply is here.\n\n--Forwarded Message","second line My reply is here."],
+["-- Original Message\n--\n--   original message\nOn wrote:\n-- Original Message",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nLe a écrit :","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+["--\n\n- Original Message\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","-- - Original Message…"],
+[" Begin forwarded message\n-- \n \n  third line  \n  third line  \nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","Begin forwarded message -- third line third line…"],
+["한글 문장입니다\n--Forwarded Message\n-- Forwarded message\nword","한글 문장입니다"],
+["On a b wrote:\nFirst line\n  On a wrote:  ","On a b wrote: First line"],
+["Begin forwarded message:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n>> Nested quote",null],
+["On a wrote: \r__\rOn a b wrote:\rOn a b wrote:\rBegin forwarded message:\rsecond   line","On a wrote: __ On a b wrote: On a b wrote: Begin forwarded message: second line"],
+["Le a écrit :\na b　c d﻿ef\u000bg","a b c d ef g"],
+["Lex a écrit :\nON a wrote:\nHello, this is the body.\n--Forwarded Message\n__","Lex a écrit : ON a wrote: Hello, this is the body."],
+["-----Original Message-----\r\n_\r\néééééééééééééééééééééééééééééé\r\n_",null],
+[" __\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","__"],
+["second   line\rLe x a écrit : y\rLe x a écrit:\rLex a écrit :\rMy reply is here.","second line Le x a écrit : y Le x a écrit: Lex a écrit : My reply is here."],
+["-----Original Message-----\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",null],
+["--\r\n--   original message\r\n\t\r\nbegin FORWARDED message\r\nON a wrote:","--"],
+["---\r\n-- Forwarded message","---"],
+["On: wrote:\n __\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nLe a écrit :","__ a…"],
+["--   original message\r\n-----Original Message-----\r\nLe x a écrit : y\r\nOn a b wrote:\r\nLe a écrit :",null],
+["Begin forwarded message:\r\n>> Nested quote\r\n--Forwarded Message",null],
+["-- Forwarded message\n\nBegin forwarded message:\n\nOn a wrote: b\n\nLe x a écrit : y",null],
+["\t>tab quote\nbegin FORWARDED message\na b　c d﻿ef\u000bg\nMy reply is here.",null],
+["Le a écrit :\n-----Original Message-----\nOn a b wrote:\n\t>tab quote\n--Forwarded Message\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab",null],
+["  third line  \n\nle x a écrit :\n\nSee below.\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","third line le x a écrit : See below."],
+["On x wrote:\nOn: wrote:\n---------- Forwarded message ---------",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nOn wrote:","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n  On a wrote:  ","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["한글 문장입니다\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\rMy reply is here.\rLe x a écrit :\rLe x a écrit :","한글 문장입니다 a…"],
+["-- \nLe x a écrit : y\nOn a\rb wrote:\néééééééééééééééééééééééééééééé\n- Original Message\n--   original message","-- Le x a écrit : y On a b wrote: éééééééééééééééééééééééééééééé - Original Message"],
+["> Quoted original\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\n  On a wrote:  ","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["___________\n\n\n\nbegin FORWARDED message\n\nFirst line",null],
+["second   line\n-----Original Message-----\n\t\nOn: wrote:","second line"],
+["On: wrote:\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  third line  ","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["😀😀😀\n___________\n--Forwarded Message\n--Forwarded Message\nword","😀😀😀"],
+["-----Original Message-----\rOn a Wrote:\r--\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\rMy reply is here.",null],
+["éééééééééééééééééééééééééééééé\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","éééééééééééééééééééééééééééééé word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \r\nOn x wrote:","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["-- Forwarded meſſage\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n_","-- Forwarded meſſage ab…"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\néééééééééééééééééééééééééééééé\n > indented quote\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nOn: wrote:","éééééééééééééééééééééééééééééé…"],
+["word\r\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","word a…"],
+["Lex a écrit :\n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\nOn: wrote:\n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\n","Lex a écrit :…"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\r\nLe a écrit :\r\n-- Forwarded message\r\n  On a wrote:  \r\n- Original Message",null],
+["On a Wrote:\n\nLe a écrit :\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","On a Wrote:"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nsecond   line\nword\n___________","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["On a\rb wrote:\nSee below.\n--Forwarded Message\n😀😀😀\nOn a wrote: b\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","On a b wrote: See below."],
+["On a wrote: \n> Quoted original",null],
+["> Quoted original\n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n-- Forwarded meſſage\n\n---------- Forwarded message ---------","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["le x a écrit :\nOnx wrote:","le x a écrit : Onx wrote:"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\néééééééééééééééééééééééééééééé\n\nFirst line\n\nLe a écrit :","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n_\n\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\n > nbsp quote\n\nOn a b wrote:","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+[" > nbsp quote\r---\r-- Forwarded message\r---",null],
+[" __\r\nbegin FORWARDED message\r\nOn a wrote: \r\nOn a b wrote:\r\nFirst line","__"],
+[" \nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\nOn a Wrote:","On a Wrote:"],
+["on a wrote:\r\nOn: wrote:\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\r\nOn wrote:\r\n--Forwarded Message\r\n ","on a wrote:…"],
+["😀😀😀\rle x a écrit :\r-- Original Message\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","😀😀😀 le x a écrit : -- Original Message…"],
+[" Begin forwarded message\n\non a wrote:\n\n-- Original Message\n\nOn a wrote: \n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n Begin forwarded message","Begin forwarded message on a wrote:"],
+["--\rword\rOn a b wrote:\r-- Original Message\r-- ","-- word On a b wrote: -- Original Message --"],
+["- Original Message\r-- Original Message","- Original Message -- Original Message"],
+["word\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\n---","word…"],
+["second   line\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\nOn: wrote:\néééééééééééééééééééééééééééééé\nOn a b wrote:\néééééééééééééééééééééééééééééé","second line…"],
+["\nOn x wrote:\nSee below.\nOn a\rb wrote:\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","See below. On a b wrote: ab…"],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\t>tab quote","a…"],
+["\t\n\nOn a Wrote:\n\nOnx wrote:\n\nOn a\rb wrote:","On a Wrote: Onx wrote: On a b wrote:"],
+["--Forwarded Message\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\t\n\t>tab quote\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀",null],
+["Hello, this is the body.\n\nOn a\rb wrote:\n\nOn a b wrote:\n\nLe x a écrit :\n\na b　c d﻿ef\u000bg\n\nOn wrote:","Hello, this is the body. On a b wrote: On a b wrote: Le x a écrit : a b c d ef g"],
+["😀😀😀\n\nLe x a écrit:","😀😀😀"],
+["begin FORWARDED message\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\rLe x a écrit:",null],
+["__\n--\n\t>tab quote\non a wrote:",null],
+["---\n\n- Original Message\n\nLe a écrit :","--- - Original Message"],
+["--Forwarded Message\r--Forwarded Message\r-- Forwarded meſſage",null],
+[" __\n \n_\néééééééééééééééééééééééééééééé\nsecond   line","__ _ éééééééééééééééééééééééééééééé second line"],
+["a b　c d﻿ef\u000bg\n\nle x a écrit :\n\nOn a b wrote:\n\n-- Forwarded message\n\nLe x a écrit :","a b c d ef g le x a écrit : On a b wrote:"],
+["word\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","word ab…"],
+["\n😀😀😀\n\t\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","😀😀😀…"],
+["le x a écrit :\r\na b　c d﻿ef\u000bg\r\n  third line  \r\n\r\nle x a écrit :\r\n-- Original Message","le x a écrit : a b c d ef g third line le x a écrit :"],
+["-- \rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rbegin FORWARDED message","--…"],
+["On a b wrote:\r\n-- Forwarded message\r\nLe x a écrit : y\r\nLe a écrit :","On a b wrote:"],
+["-- Original Message\n>> Nested quote\n __\nLe x a écrit :",null],
+[" > nbsp quote\nle x a écrit :","le x a écrit :"],
+["On: wrote:\nOn a Wrote:\n- Original Message\nOn a wrote: ","On a Wrote: - Original Message"],
+["-- Forwarded meſſage\nLe x a écrit:\n_\n > indented quote\n\t>tab quote\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","-- Forwarded meſſage _ word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["ON a wrote:\r--   original message\rOn x wrote:\rOn a\rb wrote:\r","ON a wrote: -- original message On x wrote: On a b wrote:"],
+["Lex a écrit :\rLe x a écrit : y\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r한글 문장입니다","Lex a écrit : Le x a écrit : y ab…"],
+[" Begin forwarded message\n--Forwarded Message\n😀😀😀\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","Begin forwarded message"],
+["\n\n-- Original Message\n\nOn a\rb wrote:\n\na b　c d﻿ef\u000bg",null],
+["On a wrote: \nLe x a écrit : y\n---\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n ","Le x a écrit : y ---…"],
+["- Original Message\n\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","- Original Message…"],
+["On: wrote:\n-- Original Message\n>> Nested quote\nOn a b wrote:",null],
+["First line\nOn x wrote:\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\t\nOn: wrote:","First line word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["Le x a écrit : y\r\n ","Le x a écrit : y"],
+["Le x a écrit : y\nLe x a écrit:\n ","Le x a écrit : y"],
+["éééééééééééééééééééééééééééééé\réééééééééééééééééééééééééééééé\rword\rLe x a écrit :\r___________","éééééééééééééééééééééééééééééé éééééééééééééééééééééééééééééé word Le x a écrit : ___________"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n---------- Forwarded message ---------","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["word\nOn a wrote: b\n> Quoted original\n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nOn a Wrote:\nOn_ wrote:","word On a wrote: b…"],
+["Le a écrit :\r\n-- \r\n-----Original Message-----\r\n-- Original Message\r\nsecond   line\r\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","--"],
+["\n--Forwarded Message\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",null],
+["-- Original Message\n Begin forwarded message\n\t>tab quote\nLex a écrit :\nOn x wrote:",null],
+["한글 문장입니다\nOn: wrote:\nSee below.","한글 문장입니다 See below."],
+["begin FORWARDED message\n\n-- ",null],
+["On: wrote:\r\t\r aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","On: wrote:…"],
+["--   original message\r--Forwarded Message",null],
+["- Original Message\nBegin forwarded message:\nsecond   line\nLe x a écrit:\n-- Original Message\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","- Original Message"],
+["Le a écrit :\n\nsecond   line\n\n---------- Forwarded message ---------","second line"],
+["-- Forwarded meſſage\r  On a wrote:  \r_\rSee below.\r😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","-- Forwarded meſſage On a wrote: _ See below.…"],
+["First line\rHello, this is the body.","First line Hello, this is the body."],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r😀😀😀\rLe x a écrit : y\rLe x a écrit:","ab…"],
+["__\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab",null],
+["\t\nOn a wrote: b","On a wrote: b"],
+["a b　c d﻿ef\u000bg\n---\nLe a écrit :\nON a wrote:","a b c d ef g --- ON a wrote:"],
+[" Begin forwarded message\nsecond   line\non a wrote:","Begin forwarded message second line on a wrote:"],
+["Le x a écrit : y\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n\nLe x a écrit  :  \n\n > nbsp quote\n\n-- ","Le x a écrit : y…"],
+["-----Original Message-----\n\n  On a wrote:  \n\nBegin forwarded message:\n\non a wrote:",null],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nOn a b wrote:","a…"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\n_\n\nOnx wrote:\n\n\t>tab quote\n\nLe x a écrit :\n\nOn wrote:","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+[" Begin forwarded message\r\n-----Original Message-----\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\r\n \r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","Begin forwarded message"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rBegin forwarded message:","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["--Forwarded Message\n\n- Original Message\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n> Quoted original\n\nOn a wrote: \n\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",null],
+["a b　c d﻿ef\u000bg\rLe a écrit :\rLe x a écrit:\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\rOn a\rb wrote:\r-- Forwarded meſſage","a b c d ef g Le a écrit : Le x a écrit:…"],
+[" \n한글 문장입니다\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n  On a wrote:  ","한글 문장입니다"],
+["한글 문장입니다\n\nOn a wrote: b\n\nMy reply is here.\n\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\n---------- Forwarded message ---------\n\n--","한글 문장입니다 On a wrote: b My reply is here. a…"],
+["On a wrote: b\r\nLe x a écrit :\r\n\t\r\nLex a écrit :","On a wrote: b Le x a écrit : Lex a écrit :"],
+["le x a écrit :\n😀😀😀","le x a écrit : 😀😀😀"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n  On a wrote:  \n\t",null],
+["On_ wrote:\rOn: wrote:\r---------- Forwarded message ---------\rHello, this is the body.\rle x a écrit :\rsecond   line","On_ wrote: On: wrote: ---------- Forwarded message --------- Hello, this is the body. le x a écrit : second line"],
+["---\r\nOnx wrote:\r\n--\r\n--Forwarded Message\r\n>> Nested quote","--- Onx wrote: --"],
+["Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\rLe x a écrit :","Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit : ab…"],
+["_\r\nLe x a écrit:\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\n---\r\n---------- Forwarded message ---------","_ ab…"],
+["> Quoted original\nOnx wrote:\n\t>tab quote\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","Onx wrote:"],
+["__\r\t\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀",null],
+["___________\nle x a écrit :\n > indented quote\n > nbsp quote\nsecond   line\na b　c d﻿ef\u000bg",null],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","a…"],
+["---\r\nFirst line\r\n-----Original Message-----\r\nLex a écrit :\r\nLe a écrit :\r\n---------- Forwarded message ---------","--- First line"],
+["On a Wrote:\n\non a wrote:\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","On a Wrote: on a wrote:…"],
+["___________\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀",null],
+["begin FORWARDED message\n\nBegin forwarded message:\n\n Begin forwarded message\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\n한글 문장입니다",null],
+["On a wrote: \n\n😀😀😀\n\nle x a écrit :\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","😀😀😀 le x a écrit :…"],
+["-----Original Message-----\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\n---",null],
+["_\n한글 문장입니다\n  On a wrote:  \n\t\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","_ 한글 문장입니다…"],
+["-----Original Message-----\r-----Original Message-----\r___________\r-- ",null],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n---","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["- Original Message\n\nLe x a écrit :\n\n--   original message\n\n- Original Message","- Original Message Le x a écrit :"],
+["Le x a écrit :\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n--   original message","Le x a écrit : a…"],
+["__\rOn a\rb wrote:\rLe x a écrit  :  \rOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:",null],
+["on a wrote:\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","on a wrote:…"],
+["word\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n  On a wrote:  ","word ab…"],
+["---\n___________\n > nbsp quote\n\nOn wrote:\nOn a b wrote:","---"],
+["Le a écrit :\r\n\t>tab quote\r\n > indented quote\r\n-- Forwarded meſſage","-- Forwarded meſſage"],
+["  third line  \n\n-----Original Message-----\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","third line"],
+[" __\n\n > nbsp quote\n\nOn a Wrote:","__ On a Wrote:"],
+["__\n\nLe x a écrit : y",null],
+["Le x a écrit  :  \n  On a wrote:  ",null],
+["My reply is here.\n\nOn_ wrote:\n\n Begin forwarded message\n\n__\n\nOn wrote:","My reply is here. On_ wrote: Begin forwarded message"],
+["ON a wrote:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nOn a wrote: ","ON a wrote:…"],
+["---\nLe x a écrit :\non a wrote:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n","--- Le x a écrit : on a wrote:…"],
+["  third line  \n---------- Forwarded message ---------\n--   original message\n--","third line"],
+["Hello, this is the body.\n\n---------- Forwarded message ---------\n\nle x a écrit :","Hello, this is the body."],
+["Lex a écrit :\r\nSee below.\r\n--   original message\r\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\n\r\nOn: wrote:","Lex a écrit : See below."],
+["\r\nOn x wrote:\r\n한글 문장입니다\r\nOn_ wrote:\r\nHello, this is the body.","한글 문장입니다 On_ wrote: Hello, this is the body."],
+["-- Original Message\n\nLex a écrit :",null],
+["-- Forwarded meſſage\rOn_ wrote:\r  third line  \rHello, this is the body.\rLe a écrit :\r---------- Forwarded message ---------","-- Forwarded meſſage On_ wrote: third line Hello, this is the body. Le a écrit : ---------- Forwarded message ---------"],
+["begin FORWARDED message\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n-- Forwarded meſſage\nOn a b wrote:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀",null],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\nLe a écrit :\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["-- Forwarded message\n\n-- \n\nOnx wrote:",null],
+["\t>tab quote\nOn x wrote:\n\t>tab quote",null],
+["-- \n\n Begin forwarded message\n\n > indented quote\n\n\t>tab quote\n\n---\n\nle x a écrit :","-- Begin forwarded message --- le x a écrit :"],
+["-- Forwarded message\r\nsecond   line\r\nOn a wrote: ",null],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\n\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nOn a\rb wrote:\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","a…"],
+["___________\r\nMy reply is here.\r\n---\r\n>> Nested quote",null],
+["Le x a écrit :\r\n-----Original Message-----\r\nLe x a écrit  :  \r\néééééééééééééééééééééééééééééé\r\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","Le x a écrit :"],
+["See below.\nLe a écrit :\n __\nOn a b wrote:","See below. __ On a b wrote:"],
+["\t\n \n> Quoted original\n\t>tab quote",null],
+["On: wrote:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["On_ wrote:\nMy reply is here.\nOn x wrote:\nOn x wrote:\n> Quoted original\n> Quoted original","On_ wrote: My reply is here."],
+["On a Wrote:\n\n😀😀😀\n\nSee below.\n\néééééééééééééééééééééééééééééé\n\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","On a Wrote: 😀😀😀 See below. éééééééééééééééééééééééééééééé"],
+["Le x a écrit : y\n\nOn a wrote: b","Le x a écrit : y On a wrote: b"],
+["a b　c d﻿ef\u000bg\néééééééééééééééééééééééééééééé\nLex a écrit :\nword\nOn a wrote: \nON a wrote:","a b c d ef g éééééééééééééééééééééééééééééé Lex a écrit : word ON a wrote:"],
+["Hello, this is the body.\n\n\n\nword\n\n- Original Message\n\nOn wrote:","Hello, this is the body. word - Original Message"],
+["On a\rb wrote:\r aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\rLe x a écrit  :  \ron a wrote:","On a b wrote:…"],
+["Begin forwarded message:\n\n\t>tab quote\n\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\nHello, this is the body.\n\n\t>tab quote\n\nOn a Wrote:",null],
+["_\r\non a wrote:\r\nLe x a écrit:\r\nFirst line","_ on a wrote: First line"],
+["begin FORWARDED message\r___________\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",null],
+["---------- Forwarded message ---------\r\nSee below.",null],
+["On x wrote:\nsecond   line\nOn wrote:","second line"],
+["On a wrote: \r\n---\r\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r\nMy reply is here.","--- My reply is here."],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \rword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \r>> Nested quote\r\ra b　c d﻿ef\u000bg","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["--Forwarded Message\n\n-- Forwarded message\n\nHello, this is the body.\n\nSee below.\n\n_\n\n",null],
+["On_ wrote:\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\nOn: wrote:\n  third line  \non a wrote:","On_ wrote: third line on a wrote:"],
+[">> Nested quote\r\nLex a écrit :","Lex a écrit :"],
+["\t\n😀😀😀\nSee below.\n--\nLe x a écrit : y","😀😀😀 See below. -- Le x a écrit : y"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\r\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\r\néééééééééééééééééééééééééééééé\r\n😀😀😀","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["See below.\nOn a wrote: \n😀😀😀","See below. 😀😀😀"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n\non a wrote:","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["Le x a écrit  :  \rMy reply is here.\r___________\r > nbsp quote\rOnx wrote:\rOn wrote:","Le x a écrit : My reply is here. ___________ > nbsp quote Onx wrote: On wrote:"],
+["-- Original Message\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\n  On a wrote:  \r\n\t>tab quote\r\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",null],
+["> Quoted original\n\t>tab quote",null],
+["> Quoted original\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\nSee below.","See below."],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nLe x a écrit : y\nBegin forwarded message:","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\n-- Forwarded message\nBegin forwarded message:\nLex a écrit :","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["--Forwarded Message\r\n-- Original Message",null],
+[" > nbsp quote\rLe x a écrit:\r- Original Message\rbegin FORWARDED message\rOnx wrote:\rOn wrote:",null],
+["-- Original Message\r\n\t\r\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab",null],
+["Le x a écrit  :  \nOn a Wrote:\nLe a écrit :\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","On a Wrote: a…"],
+["On a wrote: \rON a wrote:\rword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ","On a wrote: ON a wrote: word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["word\rLe a écrit :\r--   original message","word Le a écrit : -- original message"],
+["--\r  On a wrote:  ","-- On a wrote:"],
+["  On a wrote:  \nword\nOnx wrote:\nON a wrote:\nsecond   line\na b　c d﻿ef\u000bg","word Onx wrote: ON a wrote: second line a b c d ef g"],
+["ON a wrote:\r\n\r\nOn x wrote:","ON a wrote:"],
+[">> Nested quote\r aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ra😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\rLex a écrit :",null],
+[">> Nested quote\n_\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","_…"],
+["See below.\n \nBegin forwarded message:","See below."],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rBegin forwarded message:\rOn a Wrote:\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r> Quoted original\rBegin forwarded message:","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n___________\n\n-- Forwarded message\n\n  third line  \n\nOn_ wrote:","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["--Forwarded Message\r __\ra b　c d﻿ef\u000bg\r __\r-----Original Message-----",null],
+["\t\nLe x a écrit : y\nLe a écrit :\nLe x a écrit  :  \n  third line  ","Le x a écrit : y third line"],
+["---------- Forwarded message ---------\nBegin forwarded message:",null],
+["second   line\r\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\n-- Forwarded meſſage\r\non a wrote:\r\nLex a écrit :","second line…"],
+["-- Original Message\n- Original Message\nOn_ wrote:\n-----Original Message-----\n-----Original Message-----\nOn: wrote:",null],
+["> Quoted original\rOn a wrote: \rOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r😀😀😀\r_",null],
+["-----Original Message-----\néééééééééééééééééééééééééééééé",null],
+["😀😀😀\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n > nbsp quote\nLe a écrit :\n\t\nsecond   line","😀😀😀…"],
+["> Quoted original\n-- \nOn a wrote: b\na b　c d﻿ef\u000bg\n---","-- On a wrote: b a b c d ef g ---"],
+["  On a wrote:  \rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\rle x a écrit :\rOn a wrote: ","On a wrote: ab…"],
+["Le x a écrit:\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\n---------- Forwarded message ---------\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n---------- Forwarded message ---------\n\n---------- Forwarded message ---------","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["on a wrote:\r\nOn a\rb wrote:\r\n  third line  \r\nOn a b wrote:\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","on a wrote: On a b wrote: third line On a b wrote:…"],
+["On a\rb wrote:\r-- \r  On a wrote:  \r-- Forwarded meſſage","On a b wrote: -- On a wrote: -- Forwarded meſſage"],
+["  third line  \nOn a\rb wrote:\nHello, this is the body.\na b　c d﻿ef\u000bg","third line On a b wrote: Hello, this is the body. a b c d ef g"],
+["On_ wrote:\n\n\n\nLe a écrit :\n\n\t\n\n-- Forwarded message","On_ wrote:"],
+["le x a écrit :\nMy reply is here.\nOn x wrote:","le x a écrit : My reply is here."],
+[">> Nested quote\n\nbegin FORWARDED message\n\n_",null],
+["---\rLe x a écrit:\rLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\rOn a\rb wrote:\rLe x a écrit : y\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","--- Le x a écrit: Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit : On a b wrote: Le x a écrit : y…"],
+["\t\rOn a Wrote:","On a Wrote:"],
+["\t>tab quote\n__\nOn wrote:\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nOn x wrote:\nOn x wrote:",null],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nOn a wrote: b\nOn a wrote: \naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\t","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["le x a écrit :\r\nMy reply is here.\r\n > indented quote\r\n--","le x a écrit : My reply is here. --"],
+["On a Wrote:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","On a Wrote:…"],
+["> Quoted original\nLe a écrit :\n>> Nested quote",null],
+["Onx wrote:\r-- Original Message\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","Onx wrote: -- Original Message…"],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n  On a wrote:  \n > nbsp quote\nOn a wrote: \n __","ab…"],
+["éééééééééééééééééééééééééééééé\r_\rON a wrote:\r aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","éééééééééééééééééééééééééééééé _ ON a wrote:…"],
+["__\n😀😀😀",null],
+["On a Wrote:\n\nMy reply is here.\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n\n___________\n\n Begin forwarded message","On a Wrote: My reply is here.…"],
+["Begin forwarded message:\r\n- Original Message\r\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\nLex a écrit :\r\n> Quoted original",null],
+[" __\n\na b　c d﻿ef\u000bg\n\n  On a wrote:  \n\nLex a écrit :\n\nLe x a écrit:\n\n_","__ a b c d ef g Lex a écrit : _"],
+["--   original message\n\n---------- Forwarded message ---------\n\nOn a b wrote:\n\nOnx wrote:",null],
+[" \n\n--Forwarded Message\n\n\t\n\n-- Forwarded meſſage\n\nLe x a écrit :",null],
+["ab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ab…"],
+["---------- Forwarded message ---------\n  third line  \nOn x wrote:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n_\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["-- Forwarded meſſage\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n \n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab","-- Forwarded meſſage word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["-- Forwarded meſſage\r>> Nested quote\rLe a écrit :\rsecond   line\ra b　c d﻿ef\u000bg\rOn a Wrote:","-- Forwarded meſſage >> Nested quote Le a écrit : second line a b c d ef g On a Wrote:"],
+["word\n\nLe x a écrit:\n\n--Forwarded Message\n\n\t>tab quote\n\na b　c d﻿ef\u000bg","word"],
+["한글 문장입니다\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\nLe a écrit :\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\non a wrote:","한글 문장입니다…"],
+["___________\nsecond   line\nOn_ wrote:\nOn x wrote:\nSee below.\nOn a\rb wrote:",null],
+["Onx wrote:\réééééééééééééééééééééééééééééé\rLe x a écrit :","Onx wrote: éééééééééééééééééééééééééééééé Le x a écrit :"],
+["a b　c d﻿ef\u000bg\r\rLe x a écrit :","a b c d ef g Le x a écrit :"],
+[">> Nested quote\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n > nbsp quote\nHello, this is the body.","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["Le x a écrit :\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rOn a b wrote:\r--Forwarded Message\r  third line  \r___________","Le x a écrit :…"],
+["On a Wrote:\n > indented quote\nLe x a écrit  :  \nle x a écrit :","On a Wrote: le x a écrit :"],
+["-- Forwarded message\rword",null],
+[" > nbsp quote\nLe x a écrit : y","Le x a écrit : y"],
+["Le x a écrit :\r\nLe x a écrit :","Le x a écrit : Le x a écrit :"],
+["Le x a écrit  :  \rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","Le x a écrit :…"],
+[" > indented quote\r  On a wrote:  \raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\r > indented quote\ron a wrote:",null],
+["Le a écrit :\nLe x a écrit  :  \n-- Forwarded message\n- Original Message",null],
+["Le x a écrit :\nLe x a écrit : y\nOn a wrote: b\n > nbsp quote\nsecond   line\nBegin forwarded message:","Le x a écrit : Le x a écrit : y On a wrote: b second line"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\ra😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r __","On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:…"],
+[" \r\n > nbsp quote\r\non a wrote:\r\nword\r\nOn_ wrote:","on a wrote: word On_ wrote:"],
+["\nMy reply is here.","My reply is here."],
+[" \n-- Original Message\n\n\t",null],
+["__\r\non a wrote:\r\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\r\nON a wrote:\r\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word ",null],
+[" > nbsp quote\n-- Forwarded message",null],
+["Le x a écrit :\r\nMy reply is here.\r\nOn x wrote:","Le x a écrit : My reply is here."],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n \n __\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["begin FORWARDED message\nLe x a écrit:\n-- Original Message\n--Forwarded Message",null],
+[" > nbsp quote\r__\r > nbsp quote\r > indented quote\r---\r---------- Forwarded message ---------",null],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r한글 문장입니다\r","a…"],
+["word\réééééééééééééééééééééééééééééé\rBegin forwarded message:","word éééééééééééééééééééééééééééééé Begin forwarded message:"],
+["--\rOn a wrote: \rLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\r---------- Forwarded message ---------\rle x a écrit :","-- On a wrote: Le 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit : ---------- Forwarded message --------- le x a écrit :"],
+["on a wrote:\n\n-- Forwarded meſſage\n\n---------- Forwarded message ---------","on a wrote: -- Forwarded meſſage"],
+["> Quoted original\rBegin forwarded message:\r > indented quote\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["---------- Forwarded message ---------\r\n😀😀😀",null],
+["__\rle x a écrit :\r > nbsp quote\rLe x a écrit  :  \r-- ",null],
+["word\nbegin FORWARDED message\n__\nLe a écrit :","word"],
+["-- Forwarded meſſage\non a wrote:\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nOn a wrote: b","-- Forwarded meſſage on a wrote:…"],
+["_\r\t>tab quote\rword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \r Begin forwarded message\r\rOnx wrote:","_ >tab quote word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["\t>tab quote\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",null],
+["On a\rb wrote:\n  third line  \n- Original Message","On a b wrote: third line - Original Message"],
+["Le x a écrit :\réééééééééééééééééééééééééééééé\rOn: wrote:\rword\rLe x a écrit:\r-----Original Message-----","Le x a écrit : éééééééééééééééééééééééééééééé On: wrote: word Le x a écrit: -----Original Message-----"],
+[" \r> Quoted original\r_\raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\r_",null],
+["On wrote:\r_\r\r\t","On wrote: _"],
+["---\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","---…"],
+["On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\rHello, this is the body.\rOn a wrote: b\r--\ron a wrote:\r한글 문장입니다","On Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote: Hello, this is the body. On a wrote: b -- on a wrote: 한글 문장입니다"],
+["  On a wrote:  \r---------- Forwarded message ---------\ron a wrote:\r-----Original Message-----\r___________\ra b　c d﻿ef\u000bg","On a wrote: ---------- Forwarded message --------- on a wrote: -----Original Message----- ___________ a b c d ef g"],
+["éééééééééééééééééééééééééééééé\r\n-- Forwarded meſſage\r\n __","éééééééééééééééééééééééééééééé -- Forwarded meſſage __"],
+["한글 문장입니다\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\nLe x a écrit:\nle x a écrit :","한글 문장입니다 ab…"],
+["word\n\n-- Original Message\n\n > nbsp quote\n\n---\n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n-- Forwarded meſſage","word"],
+["second   line\n\nsecond   line\n\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\néééééééééééééééééééééééééééééé\n\nLe x a écrit : y\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","second line second line ab…"],
+["On: wrote:\r\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"],
+["Lex a écrit :\nOn a Wrote:\nOnx wrote:\nOn wrote:\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","Lex a écrit : On a Wrote: Onx wrote:…"],
+[" __\n\n한글 문장입니다\n\nLe x a écrit :\n\nOn a\rb wrote:\n\n--   original message\n\nab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","__ 한글 문장입니다 Le x a écrit : On a b wrote:"],
+["On a Wrote:\r\n-- Original Message","On a Wrote:"],
+["-----Original Message-----\n\n---------- Forwarded message ---------\n\n > nbsp quote\n\n  third line  ",null],
+["한글 문장입니다\n\n한글 문장입니다","한글 문장입니다 한글 문장입니다"],
+["a bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r  On a wrote:  \r-----Original Message-----\r__\r Begin forwarded message\rHello, this is the body.","a…"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rSee below.\rOn a wrote: b\rword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \rOn a b wrote:\rOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["> Quoted original\n > indented quote\nle x a écrit :\nOn a wrote: b\nOn: wrote:","le x a écrit : On a wrote: b"],
+["First line\n--   original message","First line"],
+["word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \n > nbsp quote","word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nBegin forwarded message:\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\t\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["\t>tab quote\r\nLe x a écrit  :  ",null],
+["___________\n\t>tab quote\néééééééééééééééééééééééééééééé\nMy reply is here.",null],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\rOn a wrote: b","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["begin FORWARDED message\r\nLe x a écrit :\r\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\non a wrote:\r\nOn x wrote:",null],
+["--   original message\r\n\r\nOn wrote:\r\n > indented quote\r\n Begin forwarded message\r\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :",null],
+["on a wrote:\r\nLe x a écrit:\r\n__\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","on a wrote:"],
+["Le x a écrit  :  \r> Quoted original\rON a wrote:\rLe x a écrit:\r한글 문장입니다","Le x a écrit : > Quoted original ON a wrote: Le x a écrit: 한글 문장입니다"],
+["on a wrote:\r\nOn a wrote: \r\nOn a wrote: \r\nLe x a écrit :\r\nLe x a écrit :","on a wrote: Le x a écrit : Le x a écrit :"],
+["Le x a écrit :\r\n- Original Message","Le x a écrit : - Original Message"],
+["begin FORWARDED message\rMy reply is here.\r---",null],
+["On wrote:\nON a wrote:","ON a wrote:"],
+["-- \nOn a\rb wrote:\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n--   original message\nLe a écrit :\nLe x a écrit:","-- On a b wrote:"],
+[" > indented quote\r__\r-- Original Message\rOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\r> Quoted original\r Begin forwarded message",null],
+["On wrote:\n\n--\n\n---\n\n  On a wrote:  \n\nOn a\rb wrote:\n\nOn a Wrote:","-- --- On a b wrote: On a Wrote:"],
+["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\n___________","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"],
+["  third line  \n\nword\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :","third line word"],
+[" > nbsp quote\rxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",null],
+["-----Original Message-----\n\n\n\nOn Tue, Jan 5, 2021 at 3:00 PM, John <john@x.com> wrote:\n\n--Forwarded Message",null],
+["First line\n_\n- Original Message","First line _ - Original Message"],
+["begin FORWARDED message\rHello, this is the body.\r-- \r-- Forwarded meſſage\rLe x a écrit :\r--",null],
+["_\rOn_ wrote:\rle x a écrit :\r-----Original Message-----\r___________","_ On_ wrote: le x a écrit : -----Original Message----- ___________"],
+["First line\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀","First line ab…"],
+["-- Forwarded meſſage\rLe x a écrit  :  \r__\r> Quoted original\rON a wrote:\rle x a écrit :","-- Forwarded meſſage Le x a écrit : __ > Quoted original ON a wrote: le x a écrit :"],
+["Lex a écrit :\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\rHello, this is the body.\r  On a wrote:  ","Lex a écrit : a…"],
+["Le x a écrit : y\nOn a wrote: ","Le x a écrit : y"],
+["On: wrote:\r\na b　c d﻿ef\u000bg","a b c d ef g"],
+["Lex a écrit :\réééééééééééééééééééééééééééééé\r_","Lex a écrit : éééééééééééééééééééééééééééééé _"],
+["On a\rb wrote:\n\néééééééééééééééééééééééééééééé\n\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","On a b wrote: éééééééééééééééééééééééééééééé…"],
+["  third line  \r\nbegin FORWARDED message\r\nOn wrote:\r\nOn wrote:\r\nLe x a écrit  :  ","third line"],
+["- Original Message\n\nMy reply is here.","- Original Message My reply is here."],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\nLe x a écrit : y\nsecond   line\n-- Forwarded message\nLex a écrit :\n  third line  ","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["  third line  \n_\nbegin FORWARDED message\n __","third line _"],
+["  On a wrote:  \n_\n > nbsp quote\nLe x a écrit  :  \nLe x a écrit :","_ Le x a écrit :"],
+["> Quoted original\r\nHello, this is the body.\r\n-- Forwarded message\r\nLe a écrit :\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\r\n __","Hello, this is the body."],
+["My reply is here.\nBegin forwarded message:\nLe a écrit :\nOn a\rb wrote:","My reply is here."],
+["On: wrote:\r\nLe x a écrit  :  ",null],
+["First line\rab 😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\rSee below.\r__\r \rOn a Wrote:","First line ab…"],
+[" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n---------- Forwarded message ---------","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["--Forwarded Message\r\n_\r\n\t",null],
+[" __\r\nSee below.\r\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\r\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","__ See below. a…"],
+["Lex a écrit :\n\nLe 5 janv. 2021 à 15:00, Jean <jean@x.com> a écrit :\n\nBegin forwarded message:","Lex a écrit :"],
+["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀\n--\n","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa…"],
+["Le x a écrit  :  \raaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 😀","Le x a écrit :…"],
+["éééééééééééééééééééééééééééééé\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nSee below.\n-- Forwarded message\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀\n- Original Message","éééééééééééééééééééééééééééééé a…"],
+["ON a wrote:\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ON a wrote: a…"],
+["Onx wrote:\r--\r- Original Message","Onx wrote: -- - Original Message"],
+[" Begin forwarded message\ra bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\r__\r___________\r___________\r--Forwarded Message","Begin forwarded message a…"],
+["😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab\r\nHello, this is the body.\r\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀","😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀ab…"],
+["- Original Message\r\nLex a écrit :\r\nOn a wrote: \r\nOn_ wrote:\r\na😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\r\nsecond   line","- Original Message Lex a écrit : On_ wrote:…"],
+["My reply is here.\na b　c d﻿ef\u000bg\n---\n-- ","My reply is here. a b c d ef g --- --"],
+["---\n---","--- ---"],
+["- Original Message\na bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nMy reply is here.\n-- \n--","- Original Message a…"],
+["On_ wrote:\nword word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word \nHello, this is the body.\n___________\n_","On_ wrote: word word word word word word word word word word word word word word word word word word word word word word word word word word word word word…"],
+["Le x a écrit  :  \n __\n😀😀😀\néééééééééééééééééééééééééééééé","__ 😀😀😀 éééééééééééééééééééééééééééééé"],
+["  third line  \n\nLe a écrit :","third line"]
+]
+}

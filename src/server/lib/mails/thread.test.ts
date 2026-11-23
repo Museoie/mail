@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll } from "bun:test";
 import { SignedUser } from "common";
 import { getThread, ownAddressesOf, ThreadRepository } from "./thread";
+import { getDomain } from "../util";
 import type { ThreadRow } from "../postgres/repositories/mails/thread";
 
 const USER = new SignedUser({
@@ -99,6 +100,15 @@ describe("getThread", () => {
     expect(result.map((m) => m.id)).toEqual(["a", "b", "c"]);
     expect(result[1].sent).toBe(true);
     expect(result[0].snippet).toBe("hello");
+  });
+
+  // Regression: the thread returned each row's whole stored envelope.
+  it("shows each row's envelope only as far as it names the user", async () => {
+    const domain = getDomain();
+    const own = { address: `hello@${domain}` };
+    const hidden = { address: `hidden@bob.${domain}` };
+    const result = await thread("a", [row("a", { envelope_to: [own, hidden] })]);
+    expect(result[0].envelopeTo).toEqual({ value: [own], text: "" });
   });
 
   it("follows links found in later rounds", async () => {

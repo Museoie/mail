@@ -363,6 +363,26 @@ describe("getUser", () => {
     );
   });
 
+  it("finds a sign-up that has no password yet, which cannot be signed", async () => {
+    mockQuery.mockResolvedValueOnce(
+      rows(
+        makeUserRow({
+          user_id: "u-1",
+          username: "user_abc12345",
+          email: "a@b.c",
+          password: null,
+          token: "tok",
+        })
+      )
+    );
+    const result = await getUser({ email: "a@b.c" });
+    expect(result?.id).toBe("u-1");
+    expect(result?.username).toBe("user_abc12345");
+    expect(result?.token).toBe("tok");
+    expect(result?.password).toBeUndefined();
+    expect(result?.getSigned()).toBeUndefined();
+  });
+
   it("coerces a null pg email to undefined on the returned User", async () => {
     mockQuery.mockResolvedValueOnce(
       rows(makeUserRow({ user_id: "u-1", email: null, password: "hashed" }))
@@ -431,6 +451,12 @@ describe("getActiveUsers", () => {
     const result = await getActiveUsers([{ id: "u-missing" }]);
     expect(result).toEqual([]);
   });
+
+  it("drops a sign-up that has no password yet", async () => {
+    mockQuery.mockResolvedValueOnce(rows(makeUserRow({ password: null })));
+    const result = await getActiveUsers([{ id: "u-1" }]);
+    expect(result).toEqual([]);
+  });
 });
 
 describe("createToken", () => {
@@ -459,6 +485,33 @@ describe("createToken", () => {
     const [sql, values] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(sql).toContain("UPDATE");
     expect(values).toEqual(expect.arrayContaining([result.token, "u-existing"]));
+  });
+
+  it("re-issues the token onto an unfinished sign-up's row instead of failing", async () => {
+    mockQuery
+      .mockResolvedValueOnce(
+        rows(
+          makeUserRow({
+            user_id: "u-pending",
+            username: "user_abc12345",
+            email: "new@example.com",
+            password: null,
+            token: "first-token",
+          })
+        )
+      )
+      .mockResolvedValueOnce(rows({ user_id: "u-pending" }));
+
+    const result = await createToken("new@example.com");
+    expect(result.id).toBe("u-pending");
+    // The placeholder is nobody's chosen name: the link leaves it out, as
+    // the first sign-up mail does, so the person still picks one.
+    expect(result.username).toBeUndefined();
+    expect(result.token).not.toBe("first-token");
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    const [sql, values] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(sql).toContain("UPDATE");
+    expect(values).toEqual(expect.arrayContaining([result.token, "u-pending"]));
   });
 
   it("issues INSERT for a new email, returns a UUID id and undefined username", async () => {
@@ -627,22 +680,19 @@ describe("setUserInfo", () => {
     expect(deletes).toHaveLength(0);
   });
 
-  it("never reaches the expiry gate for an unclaimed sign-up", async () => {
-    // `getUser` routes through `toUser`, which rejects a password-less row, so
-    // a placeholder cannot get as far as the expiry check. Reclaiming those
-    // rows is the timer's job.
-    mockQuery.mockResolvedValueOnce(
-      rows(
-        makeUserRow({
-          user_id: "u-1",
-          username: "user_abc12345",
-          email: "a@b.c",
-          password: null,
-          token: "stale-token",
-          expiry: new Date(Date.now() - 1000).toISOString(),
-        })
-      )
-    );
+  it("reclaims an unclaimed sign-up whose token expired, and refuses it", async () => {
+    const expiredPlaceholder = makeUserRow({
+      user_id: "u-1",
+      username: "user_abc12345",
+      email: "a@b.c",
+      password: null,
+      token: "stale-token",
+      expiry: new Date(Date.now() - 1000).toISOString(),
+    });
+    mockQuery
+      .mockResolvedValueOnce(rows(expiredPlaceholder))
+      .mockResolvedValueOnce(rows(expiredPlaceholder))
+      .mockResolvedValueOnce(rows({ user_id: "u-1" }));
 
     await expect(
       setUserInfo({
@@ -651,9 +701,112 @@ describe("setUserInfo", () => {
         password: "p",
         token: "stale-token",
       })
-    ).rejects.toThrow(/no password set/);
+    ).rejects.toThrow(/token is expired/);
 
-    expect(mockQuery).toHaveBeenCalledTimes(1);
+    // The placeholder row is the unclaimed sign-up: it goes, so the address
+    // can sign up afresh.
+    const deletes = mockQuery.mock.calls.filter(([sql]) =>
+      /^\s*DELETE\s+FROM\s+users/i.test(sql)
+    );
+    expect(deletes).toHaveLength(1);
+  });
+
+  const placeholderRow = () =>
+    makeUserRow({
+      user_id: "u-1",
+      username: "user_abc12345",
+      email: "a@b.c",
+      password: null,
+      token: "tok",
+      expiry: new Date(Date.now() + 60_000).toISOString(),
+    });
+
+  it("completes a sign-up under the name the person chose", async () => {
+    // A placeholder has no password, which the lookup used to throw on, so a
+    // sign-up could never be completed; and its `user_<id>` name is nobody's
+    // choice, so it does not win over the requested one.
+    mockQuery
+      .mockResolvedValueOnce(rows(placeholderRow()))
+      .mockResolvedValueOnce(rows())
+      .mockResolvedValueOnce(rows())
+      .mockResolvedValueOnce(rows({ user_id: "u-1", password_version: 2 }));
+
+    const signed = await setUserInfo({
+      email: "a@b.c",
+      username: "chosen",
+      password: "first-password",
+      token: "tok",
+    });
+
+    expect(signed).toMatchObject({
+      id: "u-1",
+      email: "a@b.c",
+      username: "chosen",
+      passwordVersion: 2,
+    });
+    // The name is looked up first, to refuse one another account has.
+    const [lookup, lookupValues] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(lookup).toContain("SELECT");
+    expect(lookupValues).toContain("chosen");
+    const [sql, values] = mockQuery.mock.calls[3] as [string, unknown[]];
+    expect(sql).toContain("UPDATE");
+    expect(values[0]).toBe("u-1");
+    expect(values[1]).toMatch(/^\$2[aby]\$/);
+    expect(values[2]).toBe("chosen");
+    expect(values).toContain(null);
+  });
+
+  it("refuses a name another account has, and leaves the sign-up pending and its reclaim scheduled", async () => {
+    const reclaim = setTimeout(() => {}, 60_000);
+    expiryTimer["u-1"] = reclaim;
+    const clearTimeoutSpy = spyOn(globalThis, "clearTimeout");
+    mockQuery
+      .mockResolvedValueOnce(rows(placeholderRow()))
+      .mockResolvedValueOnce(rows(makeUserRow({ user_id: "u-other", username: "alice" })));
+
+    try {
+      await expect(
+        setUserInfo({ email: "a@b.c", username: "alice", password: "p", token: "tok" })
+      ).rejects.toThrow(/username already exists/);
+
+      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(clearTimeoutSpy).not.toHaveBeenCalledWith(reclaim);
+    } finally {
+      clearTimeoutSpy.mockRestore();
+      clearTimeout(reclaim);
+      delete expiryTimer["u-1"];
+    }
+  });
+
+  it("refuses a reserved name for a sign-up, even where no row holds it yet", async () => {
+    // A sign-up named `admin-ro` would sign in as the read-only view of admin.
+    for (const username of ["admin", "admin-ro"]) {
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue(rows());
+      mockQuery.mockResolvedValueOnce(rows(placeholderRow()));
+
+      await expect(
+        setUserInfo({ email: "a@b.c", username, password: "p", token: "tok" })
+      ).rejects.toThrow(/username is reserved/);
+      expect(mockQuery).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("lets a sign-up keep its own placeholder name if that is the one asked for", async () => {
+    mockQuery
+      .mockResolvedValueOnce(rows(placeholderRow()))
+      .mockResolvedValueOnce(rows(placeholderRow()))
+      .mockResolvedValueOnce(rows())
+      .mockResolvedValueOnce(rows({ user_id: "u-1", password_version: 2 }));
+
+    const signed = await setUserInfo({
+      email: "a@b.c",
+      username: "user_abc12345",
+      password: "p",
+      token: "tok",
+    });
+
+    expect(signed.username).toBe("user_abc12345");
   });
 
   it("updates the row on matching token for a user whose username is already set", async () => {

@@ -17,6 +17,10 @@ import { ParamValue } from "../../database";
  * told a mail changed when nothing did. The flip is a membership change — it
  * moves the mail out of INBOX — so it has to stamp `modseq` or the client
  * reads an unchanged HIGHESTMODSEQ and never resyncs.
+ *
+ * An expunged row matches neither this nor {@link buildMailExistsQuery}: it is
+ * kept only so the delta can report it gone, and to a route that takes a mail
+ * id it is as missing as one that never existed.
  */
 export const buildMarkMailSpamQuery = (
   user_id: string,
@@ -25,7 +29,8 @@ export const buildMarkMailSpamQuery = (
   modseq: number
 ): { sql: string; values: ParamValue[] } => ({
   sql: `UPDATE mails SET is_spam = $1, updated = NOW(), modseq = $4
-       WHERE mail_id = $2 AND user_id = $3 AND is_spam IS DISTINCT FROM $1
+       WHERE mail_id = $2 AND user_id = $3 AND expunged = FALSE
+         AND is_spam IS DISTINCT FROM $1
        RETURNING mail_id`,
   values: [is_spam, mail_id, user_id, modseq],
 });
@@ -35,6 +40,6 @@ export const buildMailExistsQuery = (
   user_id: string,
   mail_id: string
 ): { sql: string; values: ParamValue[] } => ({
-  sql: `SELECT 1 FROM mails WHERE mail_id = $1 AND user_id = $2 LIMIT 1`,
+  sql: `SELECT 1 FROM mails WHERE mail_id = $1 AND user_id = $2 AND expunged = FALSE LIMIT 1`,
   values: [mail_id, user_id],
 });

@@ -482,9 +482,14 @@ describe("UserModel.toUser", () => {
     expect(user.user_id).toBe(u.user_id);
   });
 
-  it("throws if password is null", () => {
-    const u = new UserModel(makeUserData({ password: null }));
-    expect(() => u.toUser()).toThrow("no password set");
+  it("reads a sign-up that has no password yet, with a null password", () => {
+    // It used to throw, which made every route that met such a row a 500 and
+    // left the sign-up impossible to finish.
+    const u = new UserModel(makeUserData({ password: null, token: "tok" }));
+    const user = u.toUser();
+    expect(user.password).toBeNull();
+    expect(user.user_id).toBe(u.user_id);
+    expect(user.token).toBe("tok");
   });
 
   it("propagates token + expiry when present", () => {

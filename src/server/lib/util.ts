@@ -39,6 +39,16 @@ export const addressToUsername = (address: string) => {
 };
 
 /**
+ * The username an envelope recipient is delivered to, or `undefined` for an
+ * address outside `domain`: {@link isLocalAddress}, then
+ * {@link addressToUsername}. Delivery files a message under each recipient's
+ * user by this, and the mail lists show a received row's envelope only as far
+ * as it names the row's own user by the same rule.
+ */
+export const recipientUsername = (address: string, domain: string): string | undefined =>
+  isLocalAddress(address, domain) ? addressToUsername(address) : undefined;
+
+/**
  * Whether `username` can name a mailbox: {@link getUserDomain} makes it a DNS
  * label under the served domain and {@link addressToUsername} reads it back
  * lower-cased, so only a lower-case label routes mail to the account.

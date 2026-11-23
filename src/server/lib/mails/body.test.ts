@@ -19,6 +19,33 @@ describe("getMailBody", () => {
     expect(result).toBeUndefined();
   });
 
+  // Regression: an expunged row was served (and then marked read) by id
+  // although every list hides it.
+  it("returns undefined for an expunged mail, as for a missing one", async () => {
+    mockGetMailById.mockResolvedValue({
+      mail_id: "mail-gone",
+      html: "<p>gone</p>",
+      attachments: null,
+      message_id: "<gone@example.com>",
+      insight: null,
+      expunged: true,
+    });
+    expect(await getMailBody("user-123", "mail-gone")).toBeUndefined();
+  });
+
+  it("serves a deleted (Trash) mail, which is not expunged", async () => {
+    mockGetMailById.mockResolvedValue({
+      mail_id: "mail-trash",
+      html: "<p>in trash</p>",
+      attachments: null,
+      message_id: "<trash@example.com>",
+      insight: null,
+      deleted: true,
+      expunged: false,
+    });
+    expect((await getMailBody("user-123", "mail-trash"))!.id).toBe("mail-trash");
+  });
+
   it("should call getMailById with correct userId and mailId", async () => {
     mockGetMailById.mockResolvedValue(null);
     await getMailBody("user-abc", "mail-xyz");

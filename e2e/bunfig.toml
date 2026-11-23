@@ -1,0 +1,3 @@
+# The black-box suite has no unit-test preload: it drives a server process
+# from outside and imports nothing from src/.
+[test]

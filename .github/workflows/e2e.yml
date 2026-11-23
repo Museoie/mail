@@ -1,0 +1,98 @@
+name: E2E
+
+# The black-box suite in e2e/ runs unchanged against both backends: the Bun
+# server in src/server and the Rust server in src/server-rs. A behaviour is
+# only "done" when both pass.
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  rust-unit:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/server-rs/target
+          key: cargo-debug-${{ hashFiles('src/server-rs/Cargo.lock', 'src/server-rs/rust-toolchain.toml') }}
+          restore-keys: cargo-debug-
+      - name: Rust toolchain from rust-toolchain.toml
+        working-directory: src/server-rs
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Rust unit and integration tests
+        working-directory: src/server-rs
+        env:
+          # Runs the database-backed tests too, against the service above.
+          MAIL_TEST_POSTGRES: "1"
+        run: cargo test --locked
+
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        server: [bun, rust]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Cache cargo
+        if: matrix.server == 'rust'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/server-rs/target
+          key: cargo-release-${{ hashFiles('src/server-rs/Cargo.lock', 'src/server-rs/rust-toolchain.toml') }}
+          restore-keys: cargo-release-
+      - name: Rust toolchain from rust-toolchain.toml
+        if: matrix.server == 'rust'
+        working-directory: src/server-rs
+        run: rustup show active-toolchain || rustup toolchain install
+      # Builds the web client (the static-file tests read it) and, for the
+      # Rust run, the release binary; then runs every e2e/*.e2e.ts file.
+      - name: Black-box suite against the ${{ matrix.server }} server
+        run: bun scripts/e2e.ts --server ${{ matrix.server }}

@@ -142,8 +142,8 @@ export const createPush = (
     return repo.getSubscriptions(users);
   };
 
-  const refreshSubscription = async (id: string) => {
-    return repo.refreshSubscription(id);
+  const refreshSubscription = async (id: string, userId: string) => {
+    return repo.refreshSubscription(id, userId);
   };
 
   const notifyNewMails = async (usernames: string[], mailboxes?: string[]) => {

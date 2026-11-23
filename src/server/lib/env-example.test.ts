@@ -24,11 +24,22 @@ const TEST_FILE = /\.test\.[mc]?[jt]sx?$/;
 const SKIP_DIR = /^(?:node_modules|build|dist|coverage|\.git)$/;
 
 /**
+ * The Rust server. Its env reads are Rust, which this walk cannot see (it reads
+ * the names the Bun server reads), and its only TypeScript is the recorders
+ * that write its golden fixtures: run by hand, like a script, with an env
+ * surface of their own.
+ */
+const SKIP_PATH = /^src\/server-rs(?:\/|$)/;
+
+/**
  * Files that hand the env object itself to a reader static extraction cannot
  * follow, each with the names that reader supplies.
  */
 const ENV_HANDOFFS: Record<string, string[]> = {
   "src/server/lib/push.ts": ["PUSH_VAPID_PUBLIC_KEY", "PUSH_VAPID_PRIVATE_KEY"],
+  // Passes its environment on to the server under test, whose own reads are
+  // scanned where it lives.
+  "scripts/e2e.ts": [],
 };
 
 /** `readdirSync` / `statSync` have no `Bun.*` equivalent; file contents are read
@@ -37,7 +48,8 @@ const sourceFiles = (dir: string, recurse: boolean): string[] =>
   readdirSync(dir).flatMap((entry) => {
     const full = path.join(dir, entry);
     if (statSync(full).isDirectory()) {
-      return recurse && !SKIP_DIR.test(entry) ? sourceFiles(full, true) : [];
+      const skipped = SKIP_DIR.test(entry) || SKIP_PATH.test(path.relative(REPO_ROOT, full));
+      return recurse && !skipped ? sourceFiles(full, true) : [];
     }
     if (!SOURCE_FILE.test(entry) || TEST_FILE.test(entry)) return [];
     return [full];

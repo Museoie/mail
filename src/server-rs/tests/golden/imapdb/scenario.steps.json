@@ -1,0 +1,11234 @@
+{
+ "generatedBy": "src/server-rs/tests/golden/imapdb/scenario.ts",
+ "steps": [
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000001",
+     "admin",
+     "admin@example.com"
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000002",
+     "alice",
+     "alice@alice.example.com"
+    ]
+   }
+  },
+  {
+   "op": "sql",
+   "args": {
+    "sql": "INSERT INTO users (user_id, username, email) VALUES ($1, $2, $3)",
+    "values": [
+     "a0000000-0000-4000-8000-000000000003",
+     "bob",
+     "bob@bob.example.com"
+    ]
+   }
+  },
+  {
+   "op": "ddl",
+   "args": {
+    "sql": "ALTER TABLE mails SET (autovacuum_enabled = false)"
+   }
+  },
+  {
+   "op": "ddl",
+   "args": {
+    "sql": "ALTER TABLE mail_mailbox_uid SET (autovacuum_enabled = false)"
+   }
+  },
+  {
+   "op": "ddl",
+   "args": {
+    "sql": "ALTER TABLE mail_uid_counters SET (autovacuum_enabled = false)"
+   }
+  },
+  {
+   "op": "ddl",
+   "args": {
+    "sql": "ALTER TABLE mailboxes SET (autovacuum_enabled = false)"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "bob"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "bob"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "inbox"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "drafts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "bob",
+    "box": ""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts/bob"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts/bob"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts/bob"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts/bob"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "INBOX/accounts/bob"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "line": "a FETCH 1:* (FLAGS)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "bob",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "bob",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "expungeUids",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "uids": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "op": "expungeUids",
+   "args": {
+    "user": "bob",
+    "box": "Archive",
+    "uids": []
+   }
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "start": 1,
+    "end": 5,
+    "flags": [
+     "\\Seen"
+    ],
+    "useUid": true,
+    "operation": "+FLAGS"
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "bob",
+    "box": "INBOX",
+    "messageIds": []
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a1@outside.test>",
+    "subject": "Quarterly report — ünïcode ✓",
+    "date": "2024-01-02T08:30:00.000Z",
+    "text": "Hello world 😀 quarterly needle",
+    "html": "<p>Hello <b>world</b> 😀</p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": ""
+      }
+     ],
+     "text": "admin@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "cc": {
+     "value": [
+      {
+       "address": "cc@outside.test",
+       "name": "Cc"
+      }
+     ],
+     "text": "Cc <cc@outside.test>"
+    },
+    "replyTo": {
+     "value": [
+      {
+       "address": "reply@outside.test",
+       "name": "Reply"
+      }
+     ],
+     "text": "Reply <reply@outside.test>"
+    },
+    "attachments": [
+     {
+      "content": {
+       "data": "missing-attachment"
+      },
+      "contentType": "application/pdf",
+      "filename": "report.pdf",
+      "size": 1234
+     }
+    ],
+    "insight": {
+     "summary": "A report"
+    },
+    "inReplyTo": "<parent@outside.test>",
+    "references": [
+     "<root@outside.test>",
+     "<parent@outside.test>"
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a2@outside.test>",
+    "subject": "Subject of <a2@outside.test>",
+    "date": "2024-01-03T08:30:00.000Z",
+    "text": "Plain only, 100% _real_",
+    "html": "",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": ""
+      }
+     ],
+     "text": "admin@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "admin@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a3@outside.test>",
+    "subject": "Sales lead",
+    "date": "2024-01-04T08:30:00.000Z",
+    "text": "Body of <a3@outside.test>",
+    "html": "<p>Body of <a3@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "lead@buyer.test",
+       "name": "Lead"
+      }
+     ],
+     "text": "Lead <lead@buyer.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "sales@example.com",
+       "name": ""
+      }
+     ],
+     "text": "sales@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "bcc": {
+     "value": [
+      {
+       "address": "sales@example.com",
+       "name": ""
+      }
+     ],
+     "text": "sales@example.com"
+    },
+    "read": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a4@outside.test>",
+    "subject": "Sales follow-up",
+    "date": "2024-01-05T08:30:00.000Z",
+    "text": "Body of <a4@outside.test>",
+    "html": "<p>Body of <a4@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "sales@example.com",
+       "name": ""
+      }
+     ],
+     "text": "sales@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "saved": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a5@outside.test>",
+    "subject": "Buy now",
+    "date": "2024-01-06T08:30:00.000Z",
+    "text": "Body of <a5@outside.test>",
+    "html": "<p>Body of <a5@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": ""
+      }
+     ],
+     "text": "admin@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "isSpam": true,
+    "spamScore": 9,
+    "spamReasons": [
+     "URIBL",
+     "BAYES_99"
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a6@outside.test>",
+    "subject": "HTML only",
+    "date": "2024-01-07T08:30:00.000Z",
+    "text": "",
+    "html": "<p>only html</p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": ""
+      }
+     ],
+     "text": "admin@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "admin@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<a7@outside.test>",
+    "subject": "Reply all",
+    "date": "2024-01-08T08:30:00.000Z",
+    "text": "Body of <a7@outside.test>",
+    "html": "<p>Body of <a7@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": ""
+      }
+     ],
+     "text": "admin@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "read": true,
+    "deleted": false
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": true,
+    "messageId": "<s1@example.com>",
+    "subject": "Sent <s1@example.com>",
+    "date": "2024-01-09T08:30:00.000Z",
+    "text": "Sent body of <s1@example.com>",
+    "html": "<p>Sent body of <s1@example.com></p>",
+    "from": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": "Me"
+      }
+     ],
+     "text": "Me <admin@example.com>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "friend@outside.test",
+       "name": "Friend"
+      }
+     ],
+     "text": "Friend <friend@outside.test>"
+    },
+    "envelopeFrom": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "friend@outside.test"
+     }
+    ],
+    "read": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": true,
+    "messageId": "<s2@example.com>",
+    "subject": "Second sent",
+    "date": "2024-01-10T08:30:00.000Z",
+    "text": "Sent body of <s2@example.com>",
+    "html": "<p>Sent body of <s2@example.com></p>",
+    "from": {
+     "value": [
+      {
+       "address": "admin@example.com",
+       "name": "Me"
+      }
+     ],
+     "text": "Me <admin@example.com>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "friend@outside.test",
+       "name": "Friend"
+      }
+     ],
+     "text": "Friend <friend@outside.test>"
+    },
+    "envelopeFrom": [
+     {
+      "address": "admin@example.com"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "friend@outside.test"
+     }
+    ],
+    "read": false
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": true,
+    "messageId": "<s3@example.com>",
+    "subject": "Sent <s3@example.com>",
+    "date": "2024-01-11T08:30:00.000Z",
+    "text": "Sent body of <s3@example.com>",
+    "html": "<p>Sent body of <s3@example.com></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sales@example.com",
+       "name": "Me"
+      }
+     ],
+     "text": "Me <sales@example.com>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "friend@outside.test",
+       "name": "Friend"
+      }
+     ],
+     "text": "Friend <friend@outside.test>"
+    },
+    "envelopeFrom": [
+     {
+      "address": "sales@example.com"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "friend@outside.test"
+     }
+    ],
+    "read": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "alice",
+    "sent": false,
+    "messageId": "<w1@outside.test>",
+    "subject": "Subject of <w1@outside.test>",
+    "date": "2024-01-12T08:30:00.000Z",
+    "text": "Body of <w1@outside.test>",
+    "html": "<p>Body of <w1@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "work@alice.example.com",
+       "name": ""
+      }
+     ],
+     "text": "work@alice.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "work@alice.example.com"
+     }
+    ],
+    "cc": {
+     "value": [
+      {
+       "address": "home@alice.example.com",
+       "name": ""
+      },
+      {
+       "address": "other@outside.test",
+       "name": "Other"
+      }
+     ],
+     "text": "home@alice.example.com, Other <other@outside.test>"
+    }
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "alice",
+    "sent": false,
+    "messageId": "<h1@outside.test>",
+    "subject": "Subject of <h1@outside.test>",
+    "date": "2024-01-13T08:30:00.000Z",
+    "text": "Body of <h1@outside.test>",
+    "html": "<p>Body of <h1@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "home@alice.example.com",
+       "name": ""
+      }
+     ],
+     "text": "home@alice.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "home@alice.example.com"
+     }
+    ],
+    "read": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "alice",
+    "sent": true,
+    "messageId": "<ws1@alice.example.com>",
+    "subject": "Sent <ws1@alice.example.com>",
+    "date": "2024-01-14T08:30:00.000Z",
+    "text": "Sent body of <ws1@alice.example.com>",
+    "html": "<p>Sent body of <ws1@alice.example.com></p>",
+    "from": {
+     "value": [
+      {
+       "address": "work@alice.example.com",
+       "name": "Me"
+      }
+     ],
+     "text": "Me <work@alice.example.com>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "friend@outside.test",
+       "name": "Friend"
+      }
+     ],
+     "text": "Friend <friend@outside.test>"
+    },
+    "envelopeFrom": [
+     {
+      "address": "work@alice.example.com"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "friend@outside.test"
+     }
+    ],
+    "read": true
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "bob",
+    "sent": false,
+    "messageId": "<long@outside.test>",
+    "subject": "Long",
+    "date": "2024-01-15T08:30:00.000Z",
+    "text": "Body of <long@outside.test>",
+    "html": "<p>short</p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "bob@bob.example.com",
+       "name": ""
+      }
+     ],
+     "text": "bob@bob.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "bob@bob.example.com"
+     }
+    ],
+    "textRepeat": {
+     "unit": "a€😀b",
+     "count": 7501
+    }
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "bob",
+    "sent": false,
+    "messageId": "<short@outside.test>",
+    "subject": "Short",
+    "date": "2024-01-16T08:30:00.000Z",
+    "text": "x😀y",
+    "html": "",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "bob@bob.example.com",
+       "name": ""
+      }
+     ],
+     "text": "bob@bob.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "bob@bob.example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Archive"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Projects",
+    "subscribed": false
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "trash"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Sent Messages"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": " Padded "
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Role",
+    "special_use": "\\Archive"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Tied",
+    "address": "tied@example.com"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "alice",
+    "name": "Archive"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "alice",
+    "name": "Later",
+    "subscribed": false
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "inbox"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Inbox"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "drafts"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "STARRED"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "sent messages"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/sales"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/Admin"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Projects"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": " Padded "
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Padded"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Role"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "Tied"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": "trash"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "admin",
+    "box": ""
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/other"
+   }
+  },
+  {
+   "op": "mailboxExists",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages/accounts/work"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages/accounts/work"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages/accounts/work"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages/accounts/work"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "Sent Messages/accounts/work"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "alice",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "alice",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "alice",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "alice",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "alice",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* FLAGS"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* FLAGS"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* FLAGS"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (FLAGS INTERNALDATE RFC822.SIZE ENVELOPE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID RFC822.SIZE FLAGS BODY.PEEK[HEADER.FIELDS (From To Cc Bcc Subject Date Message-ID Priority X-Priority References Newsgroups In-Reply-To Content-Type Reply-To)])"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (UID RFC822.SIZE FLAGS BODY.PEEK[HEADER.FIELDS (From To Cc Bcc Subject Date Message-ID Priority X-Priority References Newsgroups In-Reply-To Content-Type Reply-To)])"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (UID RFC822.SIZE FLAGS BODY.PEEK[HEADER.FIELDS (From To Cc Bcc Subject Date Message-ID Priority X-Priority References Newsgroups In-Reply-To Content-Type Reply-To)])"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODY.PEEK[]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODY.PEEK[]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODY.PEEK[]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODY.PEEK[]<0.2048>"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODY.PEEK[]<0.2048>"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODY.PEEK[]<0.2048>"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (BODY.PEEK[TEXT] BODYSTRUCTURE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (BODY.PEEK[TEXT] BODYSTRUCTURE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (BODY.PEEK[TEXT] BODYSTRUCTURE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODY.PEEK[1]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODY.PEEK[1]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODY.PEEK[1]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER.FIELDS.NOT (Received)]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER.FIELDS.NOT (Received)]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODY.PEEK[HEADER.FIELDS.NOT (Received)]"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (RFC822.HEADER RFC822.SIZE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (RFC822.HEADER RFC822.SIZE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (RFC822.HEADER RFC822.SIZE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID MODSEQ)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* (UID MODSEQ)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* (UID MODSEQ)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* ALL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* ALL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* ALL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* FULL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* FULL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* FULL"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* FAST"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* FAST"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* FAST"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* ENVELOPE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* ENVELOPE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* ENVELOPE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* BODYSTRUCTURE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* BODYSTRUCTURE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* BODYSTRUCTURE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* INTERNALDATE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID FETCH 1:* INTERNALDATE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID FETCH 1:* INTERNALDATE"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH * (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH * (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH * (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH * (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH * (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH * (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH * (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH * (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 2:4 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 2:4 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 2:4 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 2:4 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 2:4 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 2:4 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 2:4 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 2:4 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 4:2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 4:2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 4:2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 4:2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 4:2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 4:2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 4:2 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 4:2 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1,3,5 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 1,3,5 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 1,3,5 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 1,3,5 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 1,3,5 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 1,3,5 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 1,3,5 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 1,3,5 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 3:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 3:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 3:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 3:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 3:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 3:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 3:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 3:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 99:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 99:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 99:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 99:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 99:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 99:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 99:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 99:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:2,2:3 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 1:2,2:3 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 1:2,2:3 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 1:2,2:3 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 1:2,2:3 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 1:2,2:3 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 1:2,2:3 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 1:2,2:3 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH *:1 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH *:1 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH *:1 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH *:1 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH *:1 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH *:1 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH *:1 (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH *:1 (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 5:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a FETCH 5:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 5:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a FETCH 5:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID FETCH 5:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a FETCH 5:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID FETCH 5:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a FETCH 5:* (FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS) (CHANGEDSINCE 0)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a FETCH 1:* (UID) (CHANGEDSINCE 0)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS) (CHANGEDSINCE 1)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a FETCH 1:* (UID) (CHANGEDSINCE 1)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS) (CHANGEDSINCE 5)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a FETCH 1:* (UID) (CHANGEDSINCE 5)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS) (CHANGEDSINCE 12)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a FETCH 1:* (UID) (CHANGEDSINCE 12)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (FLAGS) (CHANGEDSINCE 999)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a FETCH 1:* (UID) (CHANGEDSINCE 999)"
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "start": 2,
+    "end": 3,
+    "useUid": false,
+    "fields": [
+     "uid",
+     "read"
+    ],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "start": 1,
+    "end": 2,
+    "useUid": false,
+    "fields": [
+     "uid",
+     "subject"
+    ],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "start": 1,
+    "end": 9007199254740991,
+    "useUid": true,
+    "fields": [
+     "*"
+    ],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "start": 1,
+    "end": 9007199254740991,
+    "useUid": true,
+    "fields": [
+     "*"
+    ],
+    "changedSince": 3
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "start": 1,
+    "end": 9007199254740991,
+    "useUid": true,
+    "fields": [],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "start": 1,
+    "end": 9007199254740991,
+    "useUid": true,
+    "fields": [
+     "sent",
+     "envelopeTo",
+     "rfc822_size",
+     "bogus"
+    ],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "getMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "start": 0,
+    "end": 0,
+    "useUid": true,
+    "fields": [
+     "uid"
+    ],
+    "changedSince": null
+   }
+  },
+  {
+   "op": "concurrentFetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "fields": [
+     "uid",
+     "subject",
+     "text_octets"
+    ],
+    "count": 6
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID FLAGS ENVELOPE)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "chunkChars": null
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "chunkChars": 7
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "html",
+    "chunkChars": null
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<short@outside.test>",
+    "source": "text",
+    "chunkChars": 1
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<short@outside.test>",
+    "source": "html",
+    "chunkChars": null
+   }
+  },
+  {
+   "op": "byteChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "startByte": null,
+    "chunkBytes": null
+   }
+  },
+  {
+   "op": "byteChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "startByte": 49153,
+    "chunkBytes": null
+   }
+  },
+  {
+   "op": "byteChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "startByte": 5,
+    "chunkBytes": 3
+   }
+  },
+  {
+   "op": "byteChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<short@outside.test>",
+    "source": "text",
+    "startByte": 2,
+    "chunkBytes": 2
+   }
+  },
+  {
+   "op": "byteChunks",
+   "args": {
+    "user": "bob",
+    "messageId": "<short@outside.test>",
+    "source": "html",
+    "startByte": null,
+    "chunkBytes": null
+   }
+  },
+  {
+   "op": "textChunks",
+   "args": {
+    "user": "alice",
+    "messageId": "<long@outside.test>",
+    "source": "text",
+    "chunkChars": null
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH ANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NEW"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OLD"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH RECENT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNDELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNFLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNSEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH DRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNDRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH KEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNKEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH ON 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SINCE 5-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SENTBEFORE 6-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SENTON 9-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SENTSINCE 10-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BEFORE 31-Feb-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SINCE 1-Jan-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH ON 13-Sep-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH TO \"sales@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH CC cc@"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BCC sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SUBJECT \"100% _real_\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SUBJECT ünïcode"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BODY needle"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BODY \"100%\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH BODY _real_"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH TEXT quarterly"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH TEXT Sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH HEADER Subject Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH HEADER FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH HEADER to admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH HEADER Message-ID \"<a2@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH HEADER X-Mailer z"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID 1,3:5,9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID 5:*"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID 9:2"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UID 99999999999999999999999"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH LARGER 100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SMALLER 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT UID 3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT 2:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT KEYWORD k"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT HEADER X-Spam yes"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR FROM lead TO admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR ALL SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR KEYWORD k SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR KEYWORD a KEYWORD b"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR SUBJECT Sales ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR UID 1:2 UID 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR NOT SEEN NOT FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR OR SEEN FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR SEEN OR FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR 1:2 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR LARGER 5 SMALLER 9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH OR BEFORE 31-Feb-2024 ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH UNSEEN FROM sender SINCE 1-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH NOT DELETED SUBJECT Sales OR FROM lead FROM sender UID 1:100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH MODSEQ 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH FOO"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID SEARCH CHARSET UTF-8 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH ANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NEW"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OLD"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH RECENT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNDELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNFLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNSEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH DRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNDRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH KEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNKEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH ON 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SINCE 5-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SENTBEFORE 6-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SENTON 9-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SENTSINCE 10-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BEFORE 31-Feb-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SINCE 1-Jan-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH ON 13-Sep-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH TO \"sales@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH CC cc@"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BCC sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SUBJECT \"100% _real_\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SUBJECT ünïcode"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BODY needle"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BODY \"100%\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH BODY _real_"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH TEXT quarterly"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH TEXT Sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH HEADER Subject Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH HEADER FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH HEADER to admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH HEADER Message-ID \"<a2@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH HEADER X-Mailer z"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID 1,3:5,9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID 5:*"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID 9:2"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UID 99999999999999999999999"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH LARGER 100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SMALLER 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT UID 3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT 2:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT KEYWORD k"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT HEADER X-Spam yes"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR FROM lead TO admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR ALL SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR KEYWORD k SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR KEYWORD a KEYWORD b"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR SUBJECT Sales ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR UID 1:2 UID 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR NOT SEEN NOT FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR OR SEEN FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR SEEN OR FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR 1:2 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR LARGER 5 SMALLER 9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH OR BEFORE 31-Feb-2024 ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH UNSEEN FROM sender SINCE 1-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH NOT DELETED SUBJECT Sales OR FROM lead FROM sender UID 1:100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH MODSEQ 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH FOO"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID SEARCH CHARSET UTF-8 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH ANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NEW"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OLD"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH RECENT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNDELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNFLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNSEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH DRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNDRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH KEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNKEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH ON 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SINCE 5-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SENTBEFORE 6-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SENTON 9-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SENTSINCE 10-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BEFORE 31-Feb-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SINCE 1-Jan-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH ON 13-Sep-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH TO \"sales@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH CC cc@"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BCC sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SUBJECT \"100% _real_\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SUBJECT ünïcode"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BODY needle"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BODY \"100%\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH BODY _real_"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH TEXT quarterly"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH TEXT Sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH HEADER Subject Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH HEADER FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH HEADER to admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH HEADER Message-ID \"<a2@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH HEADER X-Mailer z"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID 1,3:5,9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID 5:*"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID 9:2"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UID 99999999999999999999999"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH LARGER 100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SMALLER 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT UID 3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT 2:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT KEYWORD k"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT HEADER X-Spam yes"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR FROM lead TO admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR ALL SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR KEYWORD k SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR KEYWORD a KEYWORD b"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR SUBJECT Sales ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR UID 1:2 UID 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR NOT SEEN NOT FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR OR SEEN FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR SEEN OR FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR 1:2 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR LARGER 5 SMALLER 9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH OR BEFORE 31-Feb-2024 ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH UNSEEN FROM sender SINCE 1-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH NOT DELETED SUBJECT Sales OR FROM lead FROM sender UID 1:100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH MODSEQ 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH FOO"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID SEARCH CHARSET UTF-8 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH ANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NEW"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OLD"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH RECENT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNANSWERED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNDELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNFLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNSEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH DRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNDRAFT"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH KEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNKEYWORD $Forwarded"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH ON 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SINCE 5-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SENTBEFORE 6-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SENTON 9-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SENTSINCE 10-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BEFORE 31-Feb-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SINCE 1-Jan-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH ON 13-Sep-275760"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH TO \"sales@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH CC cc@"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BCC sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SUBJECT \"100% _real_\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SUBJECT ünïcode"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BODY needle"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BODY \"100%\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH BODY _real_"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH TEXT quarterly"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH TEXT Sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH HEADER Subject Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH HEADER FROM lead"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH HEADER to admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH HEADER Message-ID \"<a2@\""
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH HEADER X-Mailer z"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID 1,3:5,9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID 5:*"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID 9:2"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UID 99999999999999999999999"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH 1:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH *"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH LARGER 100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SMALLER 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT UID 3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT 2:3"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT KEYWORD k"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT NOT SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT BEFORE 4-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT HEADER X-Spam yes"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR FROM lead TO admin"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR ALL SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR KEYWORD k SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR KEYWORD a KEYWORD b"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR SUBJECT Sales ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR UID 1:2 UID 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR NOT SEEN NOT FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR OR SEEN FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR SEEN OR FLAGGED DELETED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR 1:2 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR LARGER 5 SMALLER 9"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH OR BEFORE 31-Feb-2024 ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH SEEN FLAGGED"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH UNSEEN FROM sender SINCE 1-Jan-2024"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH NOT DELETED SUBJECT Sales OR FROM lead FROM sender UID 1:100"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH MODSEQ 5"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH FOO"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID SEARCH CHARSET UTF-8 SUBJECT Sales"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID SEARCH FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID SEARCH FROM sender"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID SEARCH TEXT Sent"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID SEARCH TEXT Sent"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID SEARCH SEEN"
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Drafts",
+    "flags": [],
+    "mail": {
+     "messageId": "<d1@example.com>",
+     "subject": "Appended <d1@example.com>",
+     "date": "2024-01-17T08:30:00.000Z",
+     "text": "Appended body <d1@example.com>",
+     "html": "<p>Appended body <d1@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "drafts",
+    "flags": [
+     "\\Draft",
+     "\\Seen"
+    ],
+    "mail": {
+     "messageId": "<d2@example.com>",
+     "subject": "Appended <d2@example.com>",
+     "date": "2024-01-18T08:30:00.000Z",
+     "text": "Appended body <d2@example.com>",
+     "html": "<p>Appended body <d2@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "INBOX",
+    "flags": [
+     "\\Seen",
+     "\\Flagged"
+    ],
+    "mail": {
+     "messageId": "<p1@example.com>",
+     "subject": "Appended <p1@example.com>",
+     "date": "2024-01-19T08:30:00.000Z",
+     "text": "Appended body <p1@example.com>",
+     "html": "<p>Appended body <p1@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "inbox",
+    "flags": [],
+    "mail": {
+     "messageId": "<p2@example.com>",
+     "subject": "Appended <p2@example.com>",
+     "date": "2024-01-20T08:30:00.000Z",
+     "text": "Appended body <p2@example.com>",
+     "html": "<p>Appended body <p2@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Junk",
+    "flags": [],
+    "mail": {
+     "messageId": "<p3@example.com>",
+     "subject": "Appended <p3@example.com>",
+     "date": "2024-01-21T08:30:00.000Z",
+     "text": "Appended body <p3@example.com>",
+     "html": "<p>Appended body <p3@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Starred",
+    "flags": [],
+    "mail": {
+     "messageId": "<p4@example.com>",
+     "subject": "Appended <p4@example.com>",
+     "date": "2024-01-22T08:30:00.000Z",
+     "text": "Appended body <p4@example.com>",
+     "html": "<p>Appended body <p4@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Trash",
+    "flags": [
+     "\\Seen"
+    ],
+    "mail": {
+     "messageId": "<p5@example.com>",
+     "subject": "Appended <p5@example.com>",
+     "date": "2024-01-23T08:30:00.000Z",
+     "text": "Appended body <p5@example.com>",
+     "html": "<p>Appended body <p5@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Sent Messages",
+    "flags": [
+     "\\Seen"
+    ],
+    "mail": {
+     "messageId": "<p6@example.com>",
+     "subject": "Appended <p6@example.com>",
+     "date": "2024-01-24T08:30:00.000Z",
+     "text": "Appended body <p6@example.com>",
+     "html": "<p>Appended body <p6@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Sent Messages/accounts/admin",
+    "flags": [],
+    "mail": {
+     "messageId": "<p7@example.com>",
+     "subject": "Appended <p7@example.com>",
+     "date": "2024-01-25T08:30:00.000Z",
+     "text": "Appended body <p7@example.com>",
+     "html": "<p>Appended body <p7@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "INBOX/accounts/admin",
+    "flags": [
+     "\\Answered",
+     "\\Deleted"
+    ],
+    "mail": {
+     "messageId": "<p8@example.com>",
+     "subject": "Appended <p8@example.com>",
+     "date": "2024-01-26T08:30:00.000Z",
+     "text": "Appended body <p8@example.com>",
+     "html": "<p>Appended body <p8@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     },
+     "inReplyTo": "<a1@outside.test>",
+     "references": [
+      "<root@outside.test>",
+      "<a1@outside.test>"
+     ],
+     "attachments": [
+      {
+       "content": {
+        "data": "appended-attachment"
+       },
+       "contentType": "text/plain",
+       "filename": "a.txt",
+       "size": 3
+      }
+     ],
+     "cc": {
+      "value": [
+       {
+        "address": "cc@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "cc@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "INBOX/accounts",
+    "flags": [],
+    "mail": {
+     "messageId": "<p9@example.com>",
+     "subject": "Appended <p9@example.com>",
+     "date": "2024-01-27T08:30:00.000Z",
+     "text": "Appended body <p9@example.com>",
+     "html": "<p>Appended body <p9@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Archive",
+    "flags": [
+     "\\Flagged",
+     "\\Deleted",
+     "\\Draft"
+    ],
+    "mail": {
+     "messageId": "<p10@example.com>",
+     "subject": "Appended <p10@example.com>",
+     "date": "2024-01-28T08:30:00.000Z",
+     "text": "Appended body <p10@example.com>",
+     "html": "<p>Appended body <p10@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Projects/Wörk \"2024\"",
+    "flags": [
+     "$Forwarded",
+     "\\seen"
+    ],
+    "mail": {
+     "messageId": "<p11@example.com>",
+     "subject": "Appended <p11@example.com>",
+     "date": "2024-01-29T08:30:00.000Z",
+     "text": "Appended body <p11@example.com>",
+     "html": "<p>Appended body <p11@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Nope",
+    "flags": [],
+    "mail": {
+     "messageId": "<p12@example.com>",
+     "subject": "Appended <p12@example.com>",
+     "date": "2024-01-30T08:30:00.000Z",
+     "text": "Appended body <p12@example.com>",
+     "html": "<p>Appended body <p12@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "append",
+   "args": {
+    "user": "admin",
+    "mailbox": "Archive",
+    "flags": [],
+    "mail": {
+     "messageId": "<p1@example.com>",
+     "subject": "Appended <p1@example.com>",
+     "date": "2024-01-31T08:30:00.000Z",
+     "text": "Appended body <p1@example.com>",
+     "html": "<p>Appended body <p1@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     }
+    }
+   }
+  },
+  {
+   "op": "storeMail",
+   "args": {
+    "user": "admin",
+    "destination": null,
+    "mail": {
+     "messageId": "<direct1@example.com>",
+     "subject": "Appended <direct1@example.com>",
+     "date": "2024-02-01T08:30:00.000Z",
+     "text": "Appended body <direct1@example.com>",
+     "html": "<p>Appended body <direct1@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     },
+     "uid": {
+      "domain": 0,
+      "account": 0
+     }
+    }
+   }
+  },
+  {
+   "op": "storeMail",
+   "args": {
+    "user": "admin",
+    "destination": "",
+    "mail": {
+     "messageId": "<direct2@example.com>",
+     "subject": "Appended <direct2@example.com>",
+     "date": "2024-02-02T08:30:00.000Z",
+     "text": "Appended body <direct2@example.com>",
+     "html": "<p>Appended body <direct2@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     },
+     "uid": {
+      "domain": 77,
+      "account": 0
+     }
+    }
+   }
+  },
+  {
+   "op": "storeMail",
+   "args": {
+    "user": "admin",
+    "destination": "Archive",
+    "mail": {
+     "messageId": "<direct3@example.com>",
+     "subject": "Appended <direct3@example.com>",
+     "date": "2024-02-03T08:30:00.000Z",
+     "text": "Appended body <direct3@example.com>",
+     "html": "<p>Appended body <direct3@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     },
+     "uid": {
+      "domain": 501,
+      "account": 0
+     }
+    }
+   }
+  },
+  {
+   "op": "storeMail",
+   "args": {
+    "user": "bob",
+    "destination": "INBOX",
+    "mail": {
+     "messageId": "<bad-date@example.com>",
+     "subject": "Appended <bad-date@example.com>",
+     "date": "not a date",
+     "text": "Appended body <bad-date@example.com>",
+     "html": "<p>Appended body <bad-date@example.com></p>",
+     "from": {
+      "value": [
+       {
+        "address": "admin@example.com",
+        "name": "Admin"
+       }
+      ],
+      "text": "Admin <admin@example.com>"
+     },
+     "to": {
+      "value": [
+       {
+        "address": "friend@outside.test",
+        "name": ""
+       }
+      ],
+      "text": "friend@outside.test"
+     },
+     "uid": {
+      "domain": 5,
+      "account": 0
+     }
+    }
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID STORE 1:* +FLAGS.SILENT (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1 -FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 2:3 +FLAGS (\\Flagged)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID STORE 3 FLAGS (\\Flagged \\Deleted)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1 +FLAGS ()"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1 +FLAGS ($Forwarded)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1 +FLAGS (\\seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 2 FLAGS ()"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 99 +FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID STORE 99:* +FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a STORE 1:* +FLAGS (\\Answered)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID STORE 1 -FLAGS (\\Flagged)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a STORE 1:2 +FLAGS (\\Draft)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a STORE 1 -FLAGS (\\Draft)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a STORE 1:* +FLAGS (\\Flagged)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a STORE 1 -FLAGS (\\Flagged)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a STORE 1 +FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a STORE 1:* +FLAGS (\\Seen \\Answered)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1:* (UNCHANGEDSINCE 0) +FLAGS (\\Answered)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1:* (UNCHANGEDSINCE 3) +FLAGS (\\Answered)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID STORE 1:* (UNCHANGEDSINCE 999) -FLAGS (\\Answered)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1,1:2 (UNCHANGEDSINCE 20) +FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1:* (UNCHANGEDSINCE 5) +FLAGS ()"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1:* (UNCHANGEDSINCE 999) +FLAGS ($Junk)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID STORE 1:* (UNCHANGEDSINCE 1) FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID STORE 1:* (UNCHANGEDSINCE 999) FLAGS (\\Seen)"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a STORE 1:* (UNCHANGEDSINCE 999) -FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "start": 2,
+    "end": 3,
+    "flags": [
+     "\\Seen"
+    ],
+    "useUid": false,
+    "operation": "-FLAGS"
+   }
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "start": 1,
+    "end": 9007199254740991,
+    "flags": [
+     "\\Seen"
+    ],
+    "useUid": false,
+    "operation": "+FLAGS"
+   }
+  },
+  {
+   "op": "setFlags",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "start": 1,
+    "end": 2,
+    "flags": [],
+    "useUid": false,
+    "operation": null,
+    "unchangedSince": 999
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "messageIds": [
+     "<a1@outside.test>",
+     "<a3@outside.test>",
+     "<s1@example.com>"
+    ]
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "messageIds": [
+     "<a3@outside.test>",
+     "<a4@outside.test>",
+     "<a1@outside.test>"
+    ]
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "messageIds": [
+     "<a4@outside.test>",
+     "<p4@example.com>",
+     "<a1@outside.test>"
+    ]
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "messageIds": [
+     "<s1@example.com>",
+     "<a1@outside.test>"
+    ]
+   }
+  },
+  {
+   "op": "getMailFlagUpdates",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "messageIds": [
+     "<d1@example.com>",
+     "<d2@example.com>"
+    ]
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"INBOX\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"INBOX/accounts/sales\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Sent Messages\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Sent Messages/accounts/admin\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"drafts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Junk\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Starred\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Trash\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Archive\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"INBOX/accounts\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID COPY * \"Nope\""
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY 3:5,4:6 Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a COPY 2,1 Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a COPY 999 Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID COPY 999 Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "alice",
+    "box": "INBOX/accounts/work",
+    "line": "a UID COPY 1:* Archive"
+   }
+  },
+  {
+   "op": "copy",
+   "args": {
+    "user": "alice",
+    "box": "INBOX",
+    "line": "a UID COPY 1:* INBOX/accounts/home"
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<latest-INBOXaccounts-admin@outside.test>",
+    "subject": "Subject of <latest-INBOXaccounts-admin@outside.test>",
+    "date": "2024-02-05T08:30:00.000Z",
+    "text": "Body of <latest-INBOXaccounts-admin@outside.test>",
+    "html": "<p>Body of <latest-INBOXaccounts-admin@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "INBOX/accounts@example.com",
+       "name": ""
+      }
+     ],
+     "text": "INBOX/accounts@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "INBOX/accounts@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<latest-ProjectsWrk-admin@outside.test>",
+    "subject": "Subject of <latest-ProjectsWrk-admin@outside.test>",
+    "date": "2024-02-06T08:30:00.000Z",
+    "text": "Body of <latest-ProjectsWrk-admin@outside.test>",
+    "html": "<p>Body of <latest-ProjectsWrk-admin@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "Projects/Wörk \"2024\"@example.com",
+       "name": ""
+      }
+     ],
+     "text": "Projects/Wörk \"2024\"@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "Projects/Wörk \"2024\"@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<latest-Archive-admin@outside.test>",
+    "subject": "Subject of <latest-Archive-admin@outside.test>",
+    "date": "2024-02-07T08:30:00.000Z",
+    "text": "Body of <latest-Archive-admin@outside.test>",
+    "html": "<p>Body of <latest-Archive-admin@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "Archive@example.com",
+       "name": ""
+      }
+     ],
+     "text": "Archive@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "Archive@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "admin",
+    "sent": false,
+    "messageId": "<latest-sales-admin@outside.test>",
+    "subject": "Subject of <latest-sales-admin@outside.test>",
+    "date": "2024-02-08T08:30:00.000Z",
+    "text": "Body of <latest-sales-admin@outside.test>",
+    "html": "<p>Body of <latest-sales-admin@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "sales@example.com",
+       "name": ""
+      }
+     ],
+     "text": "sales@example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "sales@example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "alice",
+    "sent": false,
+    "messageId": "<latest-Archive-alice@outside.test>",
+    "subject": "Subject of <latest-Archive-alice@outside.test>",
+    "date": "2024-02-09T08:30:00.000Z",
+    "text": "Body of <latest-Archive-alice@outside.test>",
+    "html": "<p>Body of <latest-Archive-alice@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "Archive@alice.example.com",
+       "name": ""
+      }
+     ],
+     "text": "Archive@alice.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "Archive@alice.example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "deliver",
+   "args": {
+    "user": "alice",
+    "sent": false,
+    "messageId": "<latest-home-alice@outside.test>",
+    "subject": "Subject of <latest-home-alice@outside.test>",
+    "date": "2024-02-10T08:30:00.000Z",
+    "text": "Body of <latest-home-alice@outside.test>",
+    "html": "<p>Body of <latest-home-alice@outside.test></p>",
+    "from": {
+     "value": [
+      {
+       "address": "sender@outside.test",
+       "name": "Sender"
+      }
+     ],
+     "text": "Sender <sender@outside.test>"
+    },
+    "to": {
+     "value": [
+      {
+       "address": "home@alice.example.com",
+       "name": ""
+      }
+     ],
+     "text": "home@alice.example.com"
+    },
+    "envelopeFrom": [
+     {
+      "address": "bounce@outside.test"
+     }
+    ],
+    "envelopeTo": [
+     {
+      "address": "home@alice.example.com"
+     }
+    ]
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID MOVE 1:2 \"Projects/Wörk \\\"2024\\\"\""
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a MOVE 1 Archive"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin",
+    "line": "a UID MOVE * Trash"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a MOVE 1 INBOX"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a MOVE 1 Starred"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a MOVE 1 Archive"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a MOVE 1 INBOX"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin",
+    "line": "a MOVE 1 \"Sent Messages\""
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a MOVE 1 Archive"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID MOVE 1 INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a MOVE 1 inbox"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a MOVE 1 Nope"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a MOVE 999 Archive"
+   }
+  },
+  {
+   "op": "move",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a MOVE 1:* Trash"
+   }
+  },
+  {
+   "op": "expungeUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "uids": [
+     1,
+     999
+    ]
+   }
+  },
+  {
+   "op": "expungeUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "uids": [
+     998,
+     999
+    ]
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Drafts",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Junk",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "store",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a STORE 1 +FLAGS (\\Deleted)"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "expunge",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "renameMailbox",
+   "args": {
+    "user": "admin",
+    "oldName": "Archive",
+    "newName": "Archive 2"
+   }
+  },
+  {
+   "op": "deleteMailboxByName",
+   "args": {
+    "user": "admin",
+    "name": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user": "admin",
+    "name": "Projects",
+    "subscribed": true
+   }
+  },
+  {
+   "op": "setMailboxSubscribed",
+   "args": {
+    "user": "admin",
+    "name": "Archive 2",
+    "subscribed": false
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Archive"
+   }
+  },
+  {
+   "op": "createMailbox",
+   "args": {
+    "user": "admin",
+    "name": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive 2"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Archive",
+    "line": "a UID FETCH 1:* (UID FLAGS ENVELOPE)"
+   }
+  },
+  {
+   "op": "search",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\"",
+    "line": "a UID SEARCH ALL"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "admin"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "alice"
+   }
+  },
+  {
+   "op": "listMailboxes",
+   "args": {
+    "user": "bob"
+   }
+  },
+  {
+   "op": "listMailboxEntries",
+   "args": {
+    "user": "bob"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Drafts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Junk"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Starred"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Trash"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts/sales"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts/admin"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "INBOX/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Sent Messages/accounts"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Archive"
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Projects/Wörk \"2024\""
+   }
+  },
+  {
+   "op": "countMessages",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getUidNext",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getAllUids",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getFirstUnseenUid",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "getHighestModseq",
+   "args": {
+    "user": "admin",
+    "box": "Nope"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "INBOX",
+    "line": "a UID FETCH 1:* (UID FLAGS MODSEQ)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Trash",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  },
+  {
+   "op": "fetch",
+   "args": {
+    "user": "admin",
+    "box": "Starred",
+    "line": "a UID FETCH 1:* (UID FLAGS)"
+   }
+  }
+ ]
+}

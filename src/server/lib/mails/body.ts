@@ -8,7 +8,8 @@ export const getMailBody = async (
 ): Promise<MailBodyData | undefined> => {
   const mailModel = await getMailById(userId, mailId);
 
-  if (!mailModel) return undefined;
+  // An expunged row survives only so the delta can report it gone.
+  if (!mailModel || mailModel.expunged) return undefined;
 
   return new MailBodyData({
     id: mailModel.mail_id,

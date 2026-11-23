@@ -25,8 +25,8 @@ import {
   getUser,
   getText,
   getDomain,
-  addressToUsername,
   isLocalAddress,
+  recipientUsername,
 } from "server";
 import {
   ATTACHMENT_FOLDER,
@@ -418,8 +418,8 @@ const getUsernamesFromIncomingMail = (data: IncomingMail): string[] => {
   else array.push(envelopeTo);
   const domain = getDomain();
   return array
-    .filter((e) => e.address && isLocalAddress(e.address, domain))
-    .map((e) => addressToUsername(e.address as string));
+    .map((e) => (e.address ? recipientUsername(e.address, domain) : undefined))
+    .filter((username): username is string => username !== undefined);
 };
 
 const getMailboxesFromIncomingMail = (data: IncomingMail): string[] => {

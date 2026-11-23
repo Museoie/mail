@@ -7,6 +7,7 @@ import {
   readTextBody,
   requestTarget,
   resolveClientIp,
+  socketPeerAddress,
   trustLoopbackAndPrivate,
   trustNoProxy,
 } from "./request";
@@ -50,6 +51,21 @@ describe("trustLoopbackAndPrivate", () => {
       "localhost"
     ];
     expect(untrusted.filter((address) => trustLoopbackAndPrivate(address))).toEqual([]);
+  });
+});
+
+describe("socketPeerAddress", () => {
+  it("names an IPv4-mapped peer by its IPv4 address", () => {
+    expect(socketPeerAddress("::ffff:127.0.0.1")).toBe("127.0.0.1");
+    expect(socketPeerAddress("::FFFF:203.0.113.5")).toBe("203.0.113.5");
+  });
+
+  it("leaves every other address as it is", () => {
+    expect(socketPeerAddress("127.0.0.1")).toBe("127.0.0.1");
+    expect(socketPeerAddress("::1")).toBe("::1");
+    expect(socketPeerAddress("2001:db8::ffff:1.2.3.4")).toBe("2001:db8::ffff:1.2.3.4");
+    expect(socketPeerAddress("::ffff:999.0.0.1")).toBe("::ffff:999.0.0.1");
+    expect(socketPeerAddress("")).toBe("");
   });
 });
 

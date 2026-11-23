@@ -205,9 +205,29 @@ export const recordMappings = async (
   return persisted.find(({ mailbox }) => mailbox === mappedDestination)?.uid;
 };
 
+/**
+ * `value` with the NUL characters taken out of every string in it, at any
+ * depth. PostgreSQL text cannot hold one and JSONB refuses `\u0000`, so a
+ * single NUL anywhere in a message fails its INSERT, and a sender retrying
+ * the delivery meets the same failure every time. The character carries
+ * nothing a reader would miss.
+ */
+export const withoutNul = <T>(value: T): T => {
+  if (typeof value === "string") return value.replaceAll("\0", "") as T;
+  if (Array.isArray(value)) return value.map(withoutNul) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, withoutNul(entry)])
+    ) as T;
+  }
+  return value;
+};
+
 export const saveMail = async (
-  input: SaveMailInput
+  given: SaveMailInput
 ): Promise<{ _id: string; uid_mailbox?: number; uid_domain?: number } | undefined> => {
+  // Every mail row is written here, whichever protocol it came in by.
+  const input = withoutNul(given);
   try {
     const mail_id = crypto.randomUUID();
     // Stamp the new message with a fresh mod-sequence so it advances the

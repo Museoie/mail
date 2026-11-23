@@ -97,21 +97,40 @@ describe("getPublicKeyRoute", () => {
 describe("getRefreshRoute", () => {
   beforeEach(() => mockRefreshSubscription.mockClear());
 
-  it("returns success when subscription is found", async () => {
+  it("refreshes the caller's own subscription and returns success", async () => {
     const { getRefreshRoute } = await import("./get-refresh");
-    mockRefreshSubscription.mockResolvedValueOnce({ _id: "sub1" });
+    mockRefreshSubscription.mockResolvedValueOnce(true);
     const req = makeReq({ params: { id: "sub1" } });
     const result = await getRefreshRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("success");
+    // Scoped to the session user, as the delete is.
+    expect(mockRefreshSubscription).toHaveBeenCalledWith("sub1", "u1");
   });
 
-  it("returns failed when subscription is not found", async () => {
+  it("returns failed when the caller has no such subscription", async () => {
     const { getRefreshRoute } = await import("./get-refresh");
-    mockRefreshSubscription.mockResolvedValueOnce(null);
+    mockRefreshSubscription.mockResolvedValueOnce(false);
     const req = makeReq({ params: { id: "nonexistent" } });
     const result = await getRefreshRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("failed");
     expect((result as ApiResponse<unknown>).message).toMatch(/No subscription found/i);
+  });
+
+  it("refreshes nothing for a caller without a session", async () => {
+    const { getRefreshRoute } = await import("./get-refresh");
+    const req = makeReq({ params: { id: "sub1" }, session: {} });
+    const result = await getRefreshRoute.callback(req);
+    expect(result).toEqual({ status: "failed", message: "No subscription found" });
+    expect(mockRefreshSubscription).not.toHaveBeenCalled();
+  });
+
+  it("refreshes nothing for a read-only session, whose id is admin's", async () => {
+    const { getRefreshRoute } = await import("./get-refresh");
+    const session = { user: remapReadOnlySession(new SignedUser({ id: "admin-id", username: "admin", email: "a@b.c" }), ADMIN_RO_USERNAME) };
+    const req = makeReq({ params: { id: "sub1" }, session });
+    const result = await getRefreshRoute.callback(req);
+    expect(result).toEqual({ status: "failed", message: "No subscription found" });
+    expect(mockRefreshSubscription).not.toHaveBeenCalled();
   });
 });
 

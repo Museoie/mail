@@ -345,6 +345,31 @@ describe("postLoginRoute", () => {
     recordFailureSpy.mockRestore();
   });
 
+  it("refuses a sign-up that has no password yet as it refuses a wrong password", async () => {
+    // The lookup finds the row without a password; the comparison still runs
+    // (against the stand-in digest), and the failure counts.
+    const { postLoginRoute } = await import("./post-login");
+
+    mockGetUser.mockResolvedValueOnce({
+      id: "u-pending",
+      username: "user_abc12345",
+      email: "pending@elsewhere.example",
+      password: undefined,
+      getSigned: () => undefined,
+    });
+    mockVerifyPassword.mockClear();
+    const recordFailureSpy = spyOn(rateLimit.loginLimiter, "recordFailure");
+
+    const req = makeReq({ body: { username: "user_abc12345", password: "anything" } });
+    const result = await postLoginRoute.callback(req);
+
+    expect(result).toEqual({ status: "failed", message: "Invalid credentials." });
+    expect(mockVerifyPassword).toHaveBeenCalledTimes(1);
+    expect(recordFailureSpy).toHaveBeenCalledWith("127.0.0.1", "user_abc12345");
+    expect((req as unknown as { session: { user: unknown } }).session.user).toBeNull();
+    recordFailureSpy.mockRestore();
+  });
+
   it("returns failed when user doesn't exist (runs dummy hash to prevent timing attacks)", async () => {
     const { postLoginRoute } = await import("./post-login");
 
