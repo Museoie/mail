@@ -14,13 +14,21 @@ import {
   getMailboxAttributes,
   collectAncestors,
 } from "./mailbox-ops";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
 import type { SignedUser } from "common";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 const NAMES = UTILITY_FOLDERS.map((folder) => folder.name);
 
 const makeStore = (): Store =>
-  new Store({ id: "u1", username: "admin" } as SignedUser);
+  newStore({ id: "u1", username: "admin" } as SignedUser);
 
 const run = async (
   op: (write: (data: string) => boolean) => Promise<void>

@@ -3,8 +3,7 @@ import {
   push,
   getMailBody,
   markRead,
-  markSaved,
-  refuseReadOnly
+  markSaved
 } from "server";
 import { Route } from "../route";
 import { logger } from "../../../logger";
@@ -22,9 +21,6 @@ export const postMarkMailRoute = new Route<MarkMailPostResponse>(
   "/mark",
   async (req) => {
     const user = req.session.user!;
-
-    const guard = refuseReadOnly(user, "Marking mail");
-    if (!guard.ok) return { status: "failed", message: guard.message };
 
     const body = req.body;
     if (!body || typeof body !== "object" || Array.isArray(body)) {

@@ -3,7 +3,7 @@
 //! so the parameter numbering can be asserted directly.
 //!
 //! ```ignore
-//! let queries = build_set_mail_flags_queries(user_id, mailbox, sent, start, end, true, "read = TRUE", false);
+//! let queries = build_set_mail_flags_queries(user_id, mailbox, sent, start, end, true, "read = TRUE", false, None);
 //! let mut values = queries.base_values.clone();
 //! values.push(modseq.into());
 //! pool().query(&queries.update_sql, &values).await?;
@@ -45,12 +45,13 @@ pub fn build_set_mail_flags_queries(
     use_uid: bool,
     set_clause: &str,
     conditional: bool,
+    domains: Option<&[String]>,
 ) -> SetMailFlagsQueries {
     // A STORE addresses messages in the selected mailbox, so it has to see
     // the same set the reads do: otherwise `UID STORE 1:* +FLAGS (\Deleted)`
     // on INBOX would flag quarantined spam the client was never shown, and
     // the following EXPUNGE would destroy it.
-    let membership = membership_condition(mailbox, sent, "");
+    let membership = membership_condition(mailbox, sent, "", domains);
 
     let Some(mailbox) = mailbox.filter(|name| !uses_domain_uid_space(Some(name))) else {
         // Domain-scoped: stays on `mails.uid_domain`.
@@ -93,7 +94,7 @@ pub fn build_set_mail_flags_queries(
         (
             format!(
                 "m.user_id = $1 AND m.sent = $2\n        AND x.user_id = m.user_id AND x.mailbox = $3 AND x.mail_id = m.mail_id\n        AND x.uid >= $4 AND x.uid <= $5\n        AND m.expunged = FALSE{}",
-                membership_condition(Some(mailbox), sent, "m.")
+                membership_condition(Some(mailbox), sent, "m.", domains)
             ),
             params![user_id, sent, mailbox, start, end],
         )
@@ -107,7 +108,7 @@ pub fn build_set_mail_flags_queries(
         // them.
         let membership_join = format!(
             "JOIN mails z ON z.user_id = y.user_id AND z.mail_id = y.mail_id\n           AND z.sent = $2 AND z.expunged = FALSE\n           AND {}",
-            membership_expression(Some(mailbox), sent, "z.")
+            membership_expression(Some(mailbox), sent, "z.", domains)
         );
         let target_subquery = format!(
             "(\n        SELECT y.mail_id FROM mail_mailbox_uid y\n        {membership_join}\n        WHERE y.user_id = $1 AND y.mailbox = $3\n        ORDER BY y.uid ASC\n        OFFSET $4 LIMIT $5\n      )"
@@ -141,7 +142,7 @@ mod tests {
     const SET_CLAUSE: &str = "read = TRUE";
 
     fn build(mailbox: Option<&str>, sent: bool, use_uid: bool, conditional: bool) -> SetMailFlagsQueries {
-        build_set_mail_flags_queries(USER, mailbox, sent, START, END, use_uid, SET_CLAUSE, conditional)
+        build_set_mail_flags_queries(USER, mailbox, sent, START, END, use_uid, SET_CLAUSE, conditional, None)
     }
 
     struct Branch {

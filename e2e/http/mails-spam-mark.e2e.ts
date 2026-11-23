@@ -113,11 +113,11 @@ describe("POST /api/mails/spam/mark — the flag", () => {
         Object.entries((await fresh.client.get("/api/mails/accounts")).body.body).map(([list, rows]) => [list, (rows as unknown[]).length])
       ),
     });
-    expect(await views()).toEqual({ inbox: ["Movable"], spam: [], unified: ["Movable"], accounts: { received: 1, sent: 0, spam: 0 } });
+    expect(await views()).toEqual({ inbox: ["Movable"], spam: [], unified: ["Movable"], accounts: { received: 1, sent: 0, spam: 0, shared: 0 } });
     await spamMark({ mail_id: mail.mail_id, is_spam: true }, fresh.client);
-    expect(await views()).toEqual({ inbox: [], spam: ["Movable"], unified: [], accounts: { received: 0, sent: 0, spam: 1 } });
+    expect(await views()).toEqual({ inbox: [], spam: ["Movable"], unified: [], accounts: { received: 0, sent: 0, spam: 1, shared: 0 } });
     await spamMark({ mail_id: mail.mail_id, is_spam: false }, fresh.client);
-    expect(await views()).toEqual({ inbox: ["Movable"], spam: [], unified: ["Movable"], accounts: { received: 1, sent: 0, spam: 0 } });
+    expect(await views()).toEqual({ inbox: ["Movable"], spam: [], unified: ["Movable"], accounts: { received: 1, sent: 0, spam: 0, shared: 0 } });
   });
 
   test("accepts the id in upper case and ignores unknown fields", async () => {

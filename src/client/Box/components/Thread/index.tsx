@@ -253,7 +253,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const {
-    domainName,
+    domains = [],
     theme = "system",
     isWriterOpen,
     isSettingsOpen,
@@ -487,7 +487,7 @@ const Thread = ({ mailId }: { mailId: string }) => {
             );
           }
           const mail = item.mail;
-          const isSent = isSentMail(mail, domainName);
+          const isSent = isSentMail(mail, domains);
           return (
             <ThreadMessage
               key={mail.id}

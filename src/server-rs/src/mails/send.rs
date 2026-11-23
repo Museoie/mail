@@ -8,13 +8,14 @@ use super::threading::{bare_message_id, stored_id_forms};
 use super::util::get_text;
 use super::validation::{validate_mail_data, MailValidationError};
 use crate::alarm::spawn_alarm;
+use crate::domains::{default_domain, is_in_served_zone, owned_domain_names};
 use crate::http::upload::UploadedFile;
 use crate::mime::header::MAX_REFERENCE_IDS;
 use crate::models::SignedUser;
 use crate::postgres::repositories::mails::thread::get_reference_ids_by_message_id;
 use crate::postgres::repositories::mails::{get_account_uid_next, get_domain_uid_next};
 use crate::users::AuthenticationMail;
-use crate::util::get_user_domain;
+use crate::util::get_domain;
 use crate::{js, logger};
 
 /// What the client asked to send. Each field keeps the JSON value it
@@ -24,6 +25,9 @@ use crate::{js, logger};
 pub struct MailDataToSend {
     /// The local part of the From address; `""` when falsy.
     pub sender: Value,
+    /// The domain of that address: one the sender owns. Absent, the sender's
+    /// default domain. `send_mail` settles it to a string.
+    pub sender_domain: Option<Value>,
     /// The From display name; `""` when falsy.
     pub sender_full_name: Value,
     /// `""` when falsy.
@@ -53,6 +57,7 @@ impl MailDataToSend {
     pub fn from_json(fields: &Map<String, Value>) -> MailDataToSend {
         MailDataToSend {
             sender: or_default(fields.get("sender"), ""),
+            sender_domain: fields.get("senderDomain").cloned(),
             sender_full_name: or_default(fields.get("senderFullName"), ""),
             to: or_default(fields.get("to"), ""),
             cc: fields.get("cc").cloned(),
@@ -198,6 +203,42 @@ impl Default for SendMailOptions {
     }
 }
 
+/// Logs and alarms a failed send, and words it for the person who sent it.
+///
+/// Mailgun answers 404 for a sending domain it doesn't have. Any user can
+/// verify a domain outside the served zone and send from it before the
+/// operator has added it to Mailgun, so that refusal is the sender's to act
+/// on: it is logged at warn and never alarms. A 404 for the zone or a name
+/// under it (every account's own domain, and every system mail) means the
+/// operator's own Mailgun setup is broken, so it alarms like any other fault.
+fn sending_failure(error: &anyhow::Error, domain: &str) -> MailSendingError {
+    let status = error.downcast_ref::<MailgunApiError>().map(|api| api.status);
+    if status == Some(404) && !is_in_served_zone(domain) {
+        logger::warn_with("Mailgun has no sending domain for this send", json!({ "domain": domain }), error);
+        return MailSendingError(format!(
+            "This server can't send from {domain} yet. Ask its operator to add the domain to Mailgun."
+        ));
+    }
+    logger::error_with("Email sending request failed", json!({}), error);
+    spawn_alarm("Mail Send Failed", format!("**Error:** {error}"));
+    MailSendingError(sending_message(error))
+}
+
+/// Sends mail from this server itself rather than from a user: the sign-up
+/// and password-reset links. It goes out from `<sender>@<EMAIL_DOMAIN>` and is
+/// stored nowhere, so the link it carries is readable only by its recipient.
+/// Any failure is an error (the route's 500).
+pub async fn send_system_mail(mail: AuthenticationMail) -> anyhow::Result<()> {
+    let mut mail = MailDataToSend::from(mail);
+    validate_mail_data(&mail).map_err(anyhow::Error::new)?;
+    let domain = get_domain();
+    mail.sender_domain = Some(Value::String(domain.clone()));
+    match send_mailgun_mail(&domain, &mail, &[]).await {
+        Ok(_) => Ok(()),
+        Err(error) => Err(anyhow::Error::new(sending_failure(&error, &domain))),
+    }
+}
+
 /// The message the user sees for a failed delivery.
 fn sending_message(error: &anyhow::Error) -> String {
     let generic = "Failed to send email. Please try again.".to_string();
@@ -214,6 +255,17 @@ fn sending_message(error: &anyhow::Error) -> String {
     }
 }
 
+/// The domain a send names: `senderDomain` trimmed and lower-cased, `None`
+/// when it is absent or empty. A value of another type fails as the Bun
+/// server's `.trim()` does.
+fn named_sender_domain(mail: &MailDataToSend) -> Result<Option<String>, SendMailError> {
+    match &mail.sender_domain {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(domain)) => Ok(Some(js::trim(domain).to_lowercase()).filter(|domain| !domain.is_empty())),
+        Some(_) => Err(SendMailError::Internal(anyhow::anyhow!("mailToSend.senderDomain?.trim is not a function"))),
+    }
+}
+
 /// Sends `mail` from `user` through Mailgun and, unless told otherwise,
 /// stores the sender's copy in Sent. A failure to store the copy is logged
 /// and alarmed, never reported: the recipients already have the mail.
@@ -224,6 +276,24 @@ pub async fn send_mail(
     options: SendMailOptions,
 ) -> Result<Option<MailgunResponse>, SendMailError> {
     validate_mail_data(&mail).map_err(SendMailError::Validation)?;
+
+    // A user sends only from a domain they own: a viewer reads a domain and
+    // never sends as it, and nobody sends as a domain they hold no role on.
+    let owned = owned_domain_names(&user.id).await.map_err(|error| SendMailError::Internal(error.into()))?;
+    let domain = match named_sender_domain(&mail)? {
+        Some(domain) => Some(domain),
+        None => default_domain(&owned, &user.username),
+    };
+    let domain = match domain {
+        Some(domain) if owned.contains(&domain) => domain,
+        Some(domain) => {
+            return Err(SendMailError::Validation(MailValidationError(format!("You can't send from {domain}."))))
+        }
+        None => {
+            return Err(SendMailError::Validation(MailValidationError("You have no domain to send from.".into())))
+        }
+    };
+    mail.sender_domain = Some(Value::String(domain.clone()));
 
     if let Some(in_reply_to) = mail.in_reply_to.clone().filter(js::is_truthy) {
         // Mail appended over IMAP stores its Message-ID without brackets, and
@@ -239,13 +309,9 @@ pub async fn send_mail(
         mail.in_reply_to = Some(Value::String(bracketed));
     }
 
-    let response = match send_mailgun_mail(&user.username, &mail, files).await {
+    let response = match send_mailgun_mail(&domain, &mail, files).await {
         Ok(response) => response,
-        Err(error) => {
-            logger::error_with("Email sending request failed", json!({}), &error);
-            spawn_alarm("Mail Send Failed", format!("**Error:** {error}"));
-            return Err(SendMailError::Sending(MailSendingError(sending_message(&error))));
-        }
+        Err(error) => return Err(SendMailError::Sending(sending_failure(&error, &domain))),
     };
     if !options.persist_to_sent_mailbox {
         return Ok(response);
@@ -279,18 +345,6 @@ pub async fn send_mail(
         );
     }
     Ok(response)
-}
-
-/// Sends the sign-up / password-reset mail as `admin`, without a Sent
-/// record: the body carries a live token, and admin's mailbox is what the
-/// read-only role reads. Any failure is an error (the route's 500).
-pub async fn send_authentication_mail(admin: &SignedUser, mail: AuthenticationMail) -> anyhow::Result<()> {
-    let options = SendMailOptions { persist_to_sent_mailbox: false };
-    match send_mail(admin, MailDataToSend::from(mail), &[], options).await {
-        Ok(_) => Ok(()),
-        Err(SendMailError::Internal(error)) => Err(error),
-        Err(error) => Err(anyhow::Error::new(error)),
-    }
 }
 
 /// A comma-separated address list as stored: trimmed, empty items dropped,
@@ -369,7 +423,8 @@ async fn get_sent_mail(
     files: &[UploadedFile],
 ) -> anyhow::Result<Mail> {
     let text = text_of_html(&mail.html)?;
-    let user_domain = get_user_domain(&user.username);
+    // `send_mail` has already settled the domain to one the user owns.
+    let user_domain = mail.sender_domain.as_ref().and_then(Value::as_str).unwrap_or_default().to_string();
     let from_email = format!("{}@{user_domain}", js_string(&mail.sender)).to_lowercase();
     let attachments = attachments_to_save(files).await?;
     let (domain_uid, account_uid) =

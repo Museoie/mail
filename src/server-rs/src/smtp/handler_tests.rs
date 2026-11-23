@@ -9,9 +9,7 @@ use std::time::Duration;
 use anyhow::Result;
 
 use super::data_stream::data_stream;
-use super::handler::{
-    choose_lane, recipient_check, CredentialStamp, DataLane, MailDirectory, MailHandler, RecipientCheck,
-};
+use super::handler::{choose_lane, CredentialStamp, DataLane, DomainScope, MailDirectory, MailHandler};
 use super::types::{
     SmtpAddress, SmtpAuthMethod, SmtpAuthRequest, SmtpAuthResponse, SmtpEnvelope, SmtpHandler, SmtpHookError,
     SmtpSession, SmtpSessionState,
@@ -19,8 +17,9 @@ use super::types::{
 use crate::auth_rate_limit::{
     is_auth_rate_limited, is_recipient_probe_rate_limited, record_auth_failure, record_recipient_probe,
 };
+use crate::domains::{domain_of_address, DeliveryDomain};
 use crate::models::{SignedUser, User};
-use crate::read_only::ADMIN_RO_USERNAME;
+use crate::postgres::repositories::domains::DomainRole;
 use crate::sso::app_password::AppPasswordCheck;
 use crate::sso::{build_sso, ClientOverrides, Sso, SsoEnv};
 use crate::verify_password::hash_password;
@@ -71,6 +70,10 @@ struct Directory {
     app_password: Mutex<Option<Result<AppPasswordCheck, String>>>,
     app_password_calls: Mutex<Vec<(String, String, String)>>,
     email_domain: Option<String>,
+    /// Domain rows: the name and its owner's user id.
+    domains: Mutex<HashMap<String, String>>,
+    /// Roles on domains: (user id, domain, role).
+    roles: Vec<(String, String, DomainRole)>,
 }
 
 impl Directory {
@@ -80,6 +83,17 @@ impl Directory {
 
     fn with_user(self, user: User) -> Directory {
         self.users.lock().unwrap().insert(user.username.clone().unwrap(), Ok(user));
+        self
+    }
+
+    /// A domain row owned by `owner_id`.
+    fn with_domain(self, domain: &str, owner_id: &str) -> Directory {
+        self.domains.lock().unwrap().insert(domain.to_string(), owner_id.to_string());
+        self
+    }
+
+    fn with_role(mut self, user_id: &str, domain: &str, role: DomainRole) -> Directory {
+        self.roles.push((user_id.to_string(), domain.to_string(), role));
         self
     }
 
@@ -147,6 +161,41 @@ impl MailDirectory for Arc<Directory> {
 
     fn email_domain(&self) -> Option<String> {
         self.email_domain.clone()
+    }
+
+    async fn domain_role(&self, user_id: &str, domain: &str) -> Result<Option<(DomainRole, String)>> {
+        Ok(self
+            .roles
+            .iter()
+            .find(|(holder, name, _)| holder == user_id && name == domain)
+            .map(|(_, name, role)| (*role, name.clone())))
+    }
+
+    /// As `resolveDeliveryDomain`: a domain row decides, and an account's own
+    /// name under the served zone is looked up by its label.
+    async fn resolve_delivery(&self, address: &str) -> Result<Option<DeliveryDomain>> {
+        let domain = domain_of_address(address);
+        if let Some(owner_id) = self.domains.lock().unwrap().get(&domain) {
+            return Ok(Some(DeliveryDomain { domain: domain.clone(), owner_id: owner_id.clone() }));
+        }
+        let Some(zone) = &self.email_domain else { return Ok(None) };
+        let Some(label) = domain.strip_suffix(&format!(".{}", zone.to_lowercase())) else { return Ok(None) };
+        Ok(self.get_user(label).await?.and_then(|user| user.id).map(|owner_id| DeliveryDomain { domain, owner_id }))
+    }
+
+    async fn has_domain(&self, domain: &str) -> Result<bool> {
+        Ok(self.domains.lock().unwrap().contains_key(domain))
+    }
+
+    async fn owned_domains(&self, user_id: &str) -> Result<Vec<String>> {
+        Ok(self
+            .domains
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, owner)| owner.as_str() == user_id)
+            .map(|(name, _)| name.clone())
+            .collect())
     }
 }
 
@@ -306,15 +355,30 @@ async fn refuses_an_account_that_has_not_finished_signing_up() {
 }
 
 #[tokio::test]
-async fn authenticates_the_read_only_credential_and_refuses_it_at_mail_from() {
-    let (handler, _) = handler(Directory::serving("test.com").with_user(account(ADMIN_RO_USERNAME, Some(1)).await));
+async fn scopes_a_user_at_domain_login_to_a_domain_the_person_owns() {
+    let directory = Directory::serving("test.com")
+        .with_user(account("alice", Some(1)).await)
+        .with_role("id-alice", "example.org", DomainRole::Owner);
+    let (handler, _) = handler(directory);
     let mut session = session(&fresh_ip());
-    let answer = handler.on_auth(credentials(ADMIN_RO_USERNAME, PASSWORD), &mut session).await;
-    assert_eq!(answer, Ok(SmtpAuthResponse::accept(ADMIN_RO_USERNAME)));
-    session.user = Some(ADMIN_RO_USERNAME.into());
-    for from in ["x@test.com", "", "someone@remote.example"] {
-        let refused = handler.on_mail_from(&address(from), &mut session).await;
-        assert_eq!(refused, Err(SmtpHookError::with_code(550, "READ-ONLY user cannot send")));
+    let answer = handler.on_auth(credentials("alice@Example.org", PASSWORD), &mut session).await;
+    // The session belongs to the person; the scope rides along.
+    assert_eq!(answer, Ok(SmtpAuthResponse::accept("alice")));
+    let scope = session.state.get::<DomainScope>().expect("a scope");
+    assert_eq!(scope.scope_domain.as_deref(), Some("example.org"));
+    assert_eq!(stamp(&session), Some(1));
+}
+
+#[tokio::test(start_paused = true)]
+async fn refuses_a_scope_the_person_only_views_or_holds_no_role_on_like_a_wrong_password() {
+    let directory = Directory::serving("test.com")
+        .with_user(account("alice", Some(1)).await)
+        .with_role("id-alice", "example.org", DomainRole::Viewer);
+    let (handler, _) = handler(directory);
+    for login in ["alice@example.org", "alice@example.net"] {
+        let mut session = session(&fresh_ip());
+        assert_eq!(handler.on_auth(credentials(login, PASSWORD), &mut session).await, Ok(INVALID));
+        assert!(session.state.get::<CredentialStamp>().is_none());
     }
 }
 
@@ -444,20 +508,6 @@ async fn answers_mail_from_transiently_when_the_version_lookup_fails() {
 
 // --- RCPT TO ------------------------------------------------------------------
 
-#[test]
-fn resolves_recipients_inside_the_served_domain_to_usernames() {
-    let check = |address: &str| recipient_check(address, Some("test.com"));
-    assert_eq!(check("someone@remote.example"), RecipientCheck::Pass);
-    assert_eq!(check("x@eviltest.com"), RecipientCheck::Pass);
-    assert_eq!(check("x@test.com.evil"), RecipientCheck::Pass);
-    assert_eq!(check("x@test.com"), RecipientCheck::Lookup("admin".into()));
-    assert_eq!(check("x@TEST.com"), RecipientCheck::Lookup("admin".into()));
-    assert_eq!(check("x@admin.test.com"), RecipientCheck::Lookup("admin".into()));
-    assert_eq!(check("x@Bob.Test.Com"), RecipientCheck::Lookup("bob".into()));
-    assert_eq!(check("x@a.b.test.com"), RecipientCheck::Lookup("a.b".into()));
-    assert_eq!(recipient_check("x@test.com", None), RecipientCheck::Pass);
-}
-
 #[tokio::test]
 async fn passes_a_foreign_or_look_alike_recipient_without_a_lookup() {
     let (handler, directory) = handler(Directory::serving("test.com"));
@@ -468,27 +518,42 @@ async fn passes_a_foreign_or_look_alike_recipient_without_a_lookup() {
 }
 
 #[tokio::test]
-async fn passes_the_apex_as_admin_and_a_subdomain_as_its_account() {
+async fn passes_a_domain_with_an_owner_and_an_accounts_own_name_and_records_them() {
     let directory = Directory::serving("test.com")
-        .with_user(account("admin", Some(1)).await)
+        .with_domain("test.com", "id-owner")
+        .with_domain("example.org", "id-owner")
         .with_user(account("bob", Some(1)).await);
     let (handler, directory) = handler(directory);
     let mut session = session(&fresh_ip());
     assert_eq!(handler.on_rcpt_to(&address("hello@test.com"), &mut session).await, Ok(()));
+    assert_eq!(handler.on_rcpt_to(&address("Hello@Example.org "), &mut session).await, Ok(()));
     assert_eq!(handler.on_rcpt_to(&address("hello@bob.test.com"), &mut session).await, Ok(()));
-    assert_eq!(directory.lookups(), vec!["admin".to_string(), "bob".to_string()]);
+    assert_eq!(directory.lookups(), vec!["bob".to_string()]);
+    let served = &session.state.get::<DomainScope>().expect("a scope").served_recipients;
+    for recipient in ["hello@test.com", "hello@example.org", "hello@bob.test.com"] {
+        assert!(served.contains(recipient), "{recipient}");
+    }
+}
+
+#[tokio::test]
+async fn passes_another_domain_without_a_row_for_the_relay_decision_and_charges_nothing() {
+    let (handler, _) = handler(Directory::serving("test.com"));
+    let ip = fresh_ip();
+    for _ in 0..12 {
+        assert_eq!(handler.on_rcpt_to(&address("x@example.org"), &mut session(&ip)).await, Ok(()));
+    }
+    assert!(!is_recipient_probe_rate_limited(&ip));
 }
 
 #[tokio::test(start_paused = true)]
-async fn refuses_a_label_that_owns_no_account_after_half_a_second_and_charges_the_budget() {
+async fn refuses_a_name_under_the_zone_that_owns_no_mailbox_and_charges_the_budget() {
     let (handler, directory) = handler(Directory::serving("test.com"));
     let ip = fresh_ip();
-    let started = tokio::time::Instant::now();
     let refused = handler.on_rcpt_to(&address("x@ghost.test.com"), &mut session(&ip)).await;
     assert_eq!(refused, Err(SmtpHookError::with_code(550, "5.1.1 Error: no such mailbox here")));
-    assert_eq!(started.elapsed(), Duration::from_millis(500));
-    assert!(handler.on_rcpt_to(&address("x@a.b.test.com"), &mut session(&ip)).await.is_err());
-    assert_eq!(directory.lookups(), vec!["ghost".to_string(), "a.b".to_string()]);
+    // The apex with no owner is refused like any name under the zone.
+    assert!(handler.on_rcpt_to(&address("x@test.com"), &mut session(&ip)).await.is_err());
+    assert_eq!(directory.lookups(), vec!["ghost".to_string()]);
     for _ in 0..8 {
         handler.on_rcpt_to(&address("x@ghost.test.com"), &mut session(&ip)).await.unwrap_err();
     }
@@ -559,7 +624,8 @@ fn envelope(from: &str, to: &[&str]) -> SmtpEnvelope {
 
 #[test]
 fn chooses_the_lane_by_the_local_parties_and_the_sign_in() {
-    let lane = |from: &str, to: &[&str], user: Option<&str>| choose_lane(&envelope(from, to), user, "test.com");
+    let lane =
+        |from: &str, to: &[&str], user: Option<&str>| choose_lane(&envelope(from, to), user, "test.com", None);
     assert_eq!(lane("a@remote.example", &["x@test.com"], None), Some(DataLane::Incoming));
     assert_eq!(lane("a@remote.example", &["x@remote.example", "y@bob.test.com"], None), Some(DataLane::Incoming));
     assert_eq!(lane("a@remote.example", &["x@remote.example"], None), None);
@@ -575,6 +641,20 @@ fn chooses_the_lane_by_the_local_parties_and_the_sign_in() {
     assert_eq!(lane("", &["x@remote.example"], Some("bob")), None);
     // A domain that merely ends in the served one is foreign.
     assert_eq!(lane("a@remote.example", &["x@eviltest.com"], None), None);
+}
+
+#[test]
+fn chooses_the_lane_by_the_domains_rcpt_to_and_mail_from_found_served() {
+    let mut scope = DomainScope::default();
+    scope.served_recipients.insert("x@example.org".into());
+    let lane = |from: &str, to: &[&str], user: Option<&str>, scope: &DomainScope| {
+        choose_lane(&envelope(from, to), user, "test.com", Some(scope))
+    };
+    assert_eq!(lane("a@remote.example", &[" X@Example.org"], None, &scope), Some(DataLane::Incoming));
+    assert_eq!(lane("a@remote.example", &["y@example.org"], None, &scope), None);
+    let sender = DomainScope { mail_from_served: true, ..DomainScope::default() };
+    assert_eq!(lane("a@example.org", &["x@remote.example"], Some("bob"), &sender), Some(DataLane::Outgoing));
+    assert_eq!(lane("a@example.org", &["x@remote.example"], None, &sender), None);
 }
 
 #[tokio::test]

@@ -34,7 +34,7 @@ use mail_server::imap::fetch_format::{convert_sequence_set, get_requested_fields
 use mail_server::imap::parsers::command_parser::parse_command;
 use mail_server::imap::sequence_resolver::{resolve_seq_range_to_uids, resolve_uid_range_sentinel};
 use mail_server::imap::store::{
-    Address, Mail, MailFlagUpdate, MailUid, Store, StoreFetchedMail, StoreOperationType, UpdatedMailFlags,
+    Address, Mail, MailFlagUpdate, MailUid, Store, StoreFetchedMail, StoreOperationType, StoreScope, UpdatedMailFlags,
 };
 use mail_server::imap::types::{ImapRequest, SequenceSet, SequenceSetType};
 use mail_server::imap::util::{
@@ -102,8 +102,11 @@ fn user(args: &Value) -> SignedUser {
     SignedUser::new(Some(id.to_string()), Some(username.to_string()), Some(email))
 }
 
+/// A plain login on the user's own domain, as the session opens one.
 fn store_of(args: &Value) -> Store {
-    Store::new(user(args))
+    let user = user(args);
+    let own_domain = user.email[user.email.find('@').unwrap() + 1..].to_string();
+    Store::new(user, StoreScope::whole_store(&own_domain))
 }
 
 fn user_id(args: &Value) -> String {
@@ -305,11 +308,11 @@ struct DestContext {
     preserves_recipient: bool,
 }
 
-fn resolve_dest_context(username: &str, destination: &str) -> DestContext {
+fn resolve_dest_context(primary_domain: &str, destination: &str) -> DestContext {
     let is_domain_scoped = is_domain_scoped(destination);
     let is_mapped_utility = is_mapped_utility_folder(destination);
     DestContext {
-        account: box_to_account(username, destination),
+        account: box_to_account(primary_domain, destination),
         is_sent: is_sent_box(destination),
         is_domain_scoped,
         is_mapped_utility,
@@ -415,7 +418,7 @@ async fn copy_or_move(args: &Value, is_move: bool) -> Outcome {
     if sources.is_empty() {
         return Ok(json!({ "status": "nothing" }));
     }
-    let context = resolve_dest_context(&store.get_user().username, &destination);
+    let context = resolve_dest_context(store.get_primary_domain(), &destination);
     let source_is_domain_scoped = is_domain_scoped(mailbox);
     let source_uid = |mail: &StoreFetchedMail| {
         let uid = mail.uid.expect("the uid was read");
@@ -815,7 +818,7 @@ impl Harness {
                 mail.deleted = has("\\Deleted");
                 mail.answered = has("\\Answered");
                 let user = store.get_user().clone();
-                let account = box_to_account(&user.username, &target);
+                let account = box_to_account(store.get_primary_domain(), &target);
                 let target_is_sent = is_sent_box(&target);
                 mail.sent = target_is_sent;
                 mail.uid.domain = get_domain_uid_next(&user.id, target_is_sent).await?;

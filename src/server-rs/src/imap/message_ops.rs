@@ -617,11 +617,11 @@ pub struct DestContext {
     pub preserves_recipient: bool,
 }
 
-pub fn resolve_dest_context(username: &str, destination: &str) -> DestContext {
+pub fn resolve_dest_context(primary_domain: &str, destination: &str) -> DestContext {
     let is_domain_scoped = is_domain_scoped(destination);
     let is_mapped_utility = is_mapped_utility_folder(destination);
     DestContext {
-        account: box_to_account(username, destination),
+        account: box_to_account(primary_domain, destination),
         is_sent: is_sent_box(destination),
         is_domain_scoped,
         is_mapped_utility,
@@ -799,7 +799,7 @@ async fn copy_phase(
         return Ok(Copied::Nothing);
     }
 
-    let context = resolve_dest_context(&store.get_user().username, destination);
+    let context = resolve_dest_context(store.get_primary_domain(), destination);
     let source_is_domain_scoped = is_domain_scoped(selected_mailbox);
     let mut keyed: Vec<(i64, StoreFetchedMail)> = Vec::with_capacity(sources.len());
     for source in sources {
@@ -1043,7 +1043,7 @@ async fn append(
     mail.answered = has("\\Answered");
 
     let user = store.get_user();
-    let context = resolve_dest_context(&user.username, &target);
+    let context = resolve_dest_context(store.get_primary_domain(), &target);
     let stored = store_in_destination(store, &mut mail, &target, &context).await?;
     let uid = if context.is_domain_scoped { mail.uid.domain } else { mail.uid.account };
 

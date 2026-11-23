@@ -1,213 +1,214 @@
 import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import { SignedUser } from "common";
+import type { DomainAccess } from "../postgres/repositories/domains";
 
-const mockGetAccountStats = mock(() => Promise.resolve([]));
-const mockSearchAccountStats = mock(() => Promise.resolve([]));
+type Stat = { address: string; count: number; unread: number; saved: number; latest: Date };
+
+const mockGetAccountStats = mock(
+  (..._args: unknown[]): Promise<Stat[]> => Promise.resolve([])
+);
+const mockSearchAccountStats = mock(
+  (..._args: unknown[]): Promise<Stat[]> => Promise.resolve([])
+);
+const mockListDomainAccess = mock(
+  (_userId: string): Promise<DomainAccess[]> => Promise.resolve([])
+);
+const mockListFormerDomains = mock((_userId: string): Promise<string[]> => Promise.resolve([]));
 
 mock.module("../postgres/repositories/mails", () => ({
   getAccountStats: mockGetAccountStats,
   searchAccountStats: mockSearchAccountStats,
 }));
 
-// Mock getUserDomain from "server" — only mock what accounts.ts actually imports
-mock.module("server", () => ({
-  getUserDomain: (username: string) =>
-    username === "admin" ? "example.com" : `${username}.example.com`,
+const realDomainRepository = { ...(await import("../postgres/repositories/domains")) };
+
+mock.module("../postgres/repositories/domains", () => ({
+  ...realDomainRepository,
+  listDomainAccess: mockListDomainAccess,
+  listFormerDomains: mockListFormerDomains,
 }));
 
-// The stub reaches `lib/util.ts` through the barrel — hand the real barrel back
-// so util.test.ts / read-only.test.ts in the same run see the real domain logic.
+// `mock.module` is process-global with no unmock API: hand the real module
+// back so the next file in the same run does not inherit the stub.
 afterAll(() => {
-  const realServer = (globalThis as Record<string, unknown>).__REAL_SERVER;
-  if (realServer) mock.module("server", () => realServer);
+  mock.module("../postgres/repositories/domains", () => realDomainRepository);
 });
 
 import { getAccounts, searchAccounts } from "./accounts";
 
-const mockUser = new SignedUser({
+const user = new SignedUser({
   id: "user-123",
   username: "testuser",
   email: "testuser@testuser.example.com",
 });
 
-const adminUser = new SignedUser({
-  id: "admin-1",
-  username: "admin",
-  email: "admin@example.com",
+const access = (overrides: Partial<DomainAccess>): DomainAccess => ({
+  domainId: "d-1",
+  name: "testuser.example.com",
+  ownerId: "user-123",
+  ownerUsername: "testuser",
+  role: "owner",
+  verifiedAt: null,
+  ...overrides,
+});
+
+const stat = (address: string, overrides: Partial<Stat> = {}): Stat => ({
+  address,
+  count: 3,
+  unread: 1,
+  saved: 0,
+  latest: new Date("2026-01-01T00:00:00.000Z"),
+  ...overrides,
 });
 
 describe("getAccounts", () => {
   beforeEach(() => {
-    mockGetAccountStats.mockClear();
+    mockGetAccountStats.mockReset();
     mockGetAccountStats.mockResolvedValue([]);
+    mockListDomainAccess.mockReset();
+    mockListDomainAccess.mockResolvedValue([
+      access({}),
+      access({ domainId: "d-2", name: "example.org" }),
+    ]);
   });
 
-  it("should call getAccountStats three times (received, sent, spam)", async () => {
-    await getAccounts(mockUser);
+  it("lists the user's own accounts on every domain they own", async () => {
+    await getAccounts(user);
+    const owned = ["testuser.example.com", "example.org"];
     expect(mockGetAccountStats).toHaveBeenCalledTimes(3);
-  });
-
-  it("should call getAccountStats with correct userId, sent, and spam flags", async () => {
-    await getAccounts(mockUser);
-    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, "testuser.example.com");
-    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", true, "testuser.example.com");
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, owned);
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", true, owned);
     // Spam groups by receiving account, so it queries received-style with the
     // spamOnly flag set.
-    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, "testuser.example.com", true);
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, owned, true);
   });
 
-  it("should return empty received, sent, and spam arrays when no stats", async () => {
-    const result = await getAccounts(mockUser);
+  it("maps received, sent and spam stats to Account objects", async () => {
+    mockGetAccountStats.mockImplementation(async (_id, sent, _domains, spamOnly) => {
+      if (spamOnly) return [stat("junk@example.org")];
+      return sent ? [stat("me@example.org", { unread: 0 })] : [stat("hi@example.org")];
+    });
+
+    const result = await getAccounts(user);
+
+    expect(result.received.map((a) => a.key)).toEqual(["hi@example.org"]);
+    expect(result.received[0].unread_doc_count).toBe(1);
+    expect(result.sent.map((a) => a.key)).toEqual(["me@example.org"]);
+    expect(result.spam.map((a) => a.key)).toEqual(["junk@example.org"]);
+    expect(result.shared).toEqual([]);
+  });
+
+  it("keeps listing the addresses of a domain the user no longer owns, whose mail stayed", async () => {
+    mockListFormerDomains.mockResolvedValueOnce(["example.net", "example.org"]);
+
+    await getAccounts(user);
+
+    const listed = ["testuser.example.com", "example.org", "example.net"];
+    expect(mockListFormerDomains).toHaveBeenCalledWith("user-123");
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, listed);
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", true, listed);
+  });
+
+  it("reads each owner's viewed domains in one pair of queries, split per domain", async () => {
+    const viewer = (name: string, ownerId: string): DomainAccess =>
+      access({ domainId: `d-${name}`, name, ownerId, ownerUsername: ownerId, role: "viewer" });
+    mockListDomainAccess.mockResolvedValue([
+      access({}),
+      viewer("example.com", "owner-1"),
+      viewer("example.net", "owner-1"),
+      viewer("example.info", "owner-2"),
+    ]);
+    mockGetAccountStats.mockImplementation(async (id, sent) => {
+      if (id === "owner-1" && !sent) return [stat("a@example.com"), stat("b@Example.NET")];
+      if (id === "owner-2" && !sent) return [stat("c@example.info")];
+      return [];
+    });
+
+    const result = await getAccounts(user);
+
+    const owner1 = mockGetAccountStats.mock.calls.filter((call) => call[0] === "owner-1");
+    expect(owner1).toHaveLength(2);
+    expect(owner1[0].slice(2)).toEqual([
+      ["example.com", "example.net"],
+      false,
+      ["example.com", "example.net"],
+    ]);
+    expect(result.shared.map((d) => [d.domain, d.owner, d.received.map((a) => a.key)])).toEqual([
+      ["example.com", "owner-1", ["a@example.com"]],
+      ["example.info", "owner-2", ["c@example.info"]],
+      ["example.net", "owner-1", ["b@Example.NET"]],
+    ]);
+  });
+
+  it("lists a viewed domain apart, from its owner's mail filtered to that domain", async () => {
+    mockListDomainAccess.mockResolvedValue([
+      access({}),
+      access({
+        domainId: "d-3",
+        name: "example.com",
+        ownerId: "owner-1",
+        ownerUsername: "owner",
+        role: "viewer",
+      }),
+    ]);
+    mockGetAccountStats.mockImplementation(async (id, sent) =>
+      id === "owner-1" && !sent ? [stat("info@example.com")] : []
+    );
+
+    const result = await getAccounts(user);
+
+    // Owned accounts never include the viewed domain.
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, ["testuser.example.com"]);
+    // The owner's rows, both the address filter and the mail filtered to it.
+    expect(mockGetAccountStats).toHaveBeenCalledWith(
+      "owner-1",
+      false,
+      ["example.com"],
+      false,
+      ["example.com"]
+    );
+    expect(mockGetAccountStats).toHaveBeenCalledWith(
+      "owner-1",
+      true,
+      ["example.com"],
+      false,
+      ["example.com"]
+    );
     expect(result.received).toEqual([]);
-    expect(result.sent).toEqual([]);
-    expect(result.spam).toEqual([]);
-  });
-
-  it("should map spam stats to per-account Account objects", async () => {
-    const spamStats = [
-      { address: "inbox@testuser.example.com", count: 6, unread: 4, saved: 0, latest: "2024-01-20" },
-    ];
-    mockGetAccountStats
-      .mockResolvedValueOnce([]) // received
-      .mockResolvedValueOnce([]) // sent
-      .mockResolvedValueOnce(spamStats); // spam
-
-    const result = await getAccounts(mockUser);
-    expect(result.spam).toHaveLength(1);
-    expect(result.spam[0].key).toBe("inbox@testuser.example.com");
-    expect(result.spam[0].doc_count).toBe(6);
-    expect(result.spam[0].unread_doc_count).toBe(4);
-  });
-
-  it("should map received stats to Account objects", async () => {
-    const receivedStats = [
-      { address: "inbox@testuser.example.com", count: 10, unread: 3, saved: 1, latest: "2024-01-15" },
-    ];
-    const sentStats: never[] = [];
-
-    mockGetAccountStats
-      .mockResolvedValueOnce(receivedStats)
-      .mockResolvedValueOnce(sentStats);
-
-    const result = await getAccounts(mockUser);
-    expect(result.received).toHaveLength(1);
-    expect(result.received[0].key).toBe("inbox@testuser.example.com");
-    expect(result.received[0].doc_count).toBe(10);
-    expect(result.received[0].unread_doc_count).toBe(3);
-    expect(result.received[0].saved_doc_count).toBe(1);
-    expect(result.received[0].updated).toBe("2024-01-15");
-  });
-
-  it("should map sent stats to Account objects", async () => {
-    const receivedStats: never[] = [];
-    const sentStats = [
-      { address: "sent@testuser.example.com", count: 5, unread: 0, saved: 2, latest: "2024-01-10" },
-    ];
-
-    mockGetAccountStats
-      .mockResolvedValueOnce(receivedStats)
-      .mockResolvedValueOnce(sentStats);
-
-    const result = await getAccounts(mockUser);
-    expect(result.sent).toHaveLength(1);
-    expect(result.sent[0].key).toBe("sent@testuser.example.com");
-    expect(result.sent[0].doc_count).toBe(5);
-  });
-
-  it("should map multiple accounts", async () => {
-    const receivedStats = [
-      { address: "a@testuser.example.com", count: 5, unread: 1, saved: 0, latest: "2024-01-01" },
-      { address: "b@testuser.example.com", count: 8, unread: 2, saved: 1, latest: "2024-01-02" },
-    ];
-
-    mockGetAccountStats
-      .mockResolvedValueOnce(receivedStats)
-      .mockResolvedValueOnce([]);
-
-    const result = await getAccounts(mockUser);
-    expect(result.received).toHaveLength(2);
-    expect(result.received[0].key).toBe("a@testuser.example.com");
-    expect(result.received[1].key).toBe("b@testuser.example.com");
-  });
-
-  it("should use base domain for admin user", async () => {
-    await getAccounts(adminUser);
-    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", false, "example.com");
-    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", true, "example.com");
-  });
-
-  it("should return received, sent, and spam in the same response", async () => {
-    const receivedStats = [
-      { address: "recv@example.com", count: 3, unread: 1, saved: 0, latest: "2024-01-05" },
-    ];
-    const sentStats = [
-      { address: "sent@example.com", count: 7, unread: 0, saved: 2, latest: "2024-01-06" },
-    ];
-    const spamStats = [
-      { address: "recv@example.com", count: 2, unread: 2, saved: 0, latest: "2024-01-07" },
-    ];
-
-    mockGetAccountStats
-      .mockResolvedValueOnce(receivedStats)
-      .mockResolvedValueOnce(sentStats)
-      .mockResolvedValueOnce(spamStats);
-
-    const result = await getAccounts(mockUser);
-    expect(result.received).toHaveLength(1);
-    expect(result.sent).toHaveLength(1);
-    expect(result.spam).toHaveLength(1);
-    expect(result.received[0].key).toBe("recv@example.com");
-    expect(result.sent[0].key).toBe("sent@example.com");
-    expect(result.spam[0].key).toBe("recv@example.com");
+    expect(result.shared).toHaveLength(1);
+    expect(result.shared[0].domain).toBe("example.com");
+    expect(result.shared[0].owner).toBe("owner");
+    expect(result.shared[0].received.map((a) => a.key)).toEqual(["info@example.com"]);
   });
 });
 
 describe("searchAccounts", () => {
   beforeEach(() => {
-    mockSearchAccountStats.mockClear();
+    mockSearchAccountStats.mockReset();
     mockSearchAccountStats.mockResolvedValue([]);
+    mockListDomainAccess.mockReset();
+    mockListDomainAccess.mockResolvedValue([
+      access({}),
+      access({ name: "example.com", ownerId: "owner-1", role: "viewer" }),
+    ]);
   });
 
-  it("should short-circuit an empty/whitespace term without querying", async () => {
-    expect(await searchAccounts(mockUser, "")).toEqual([]);
-    expect(await searchAccounts(mockUser, "   ")).toEqual([]);
+  it("short-circuits an empty or whitespace term without querying", async () => {
+    expect(await searchAccounts(user, "   ")).toEqual([]);
     expect(mockSearchAccountStats).not.toHaveBeenCalled();
   });
 
-  it("should query with the trimmed term, user id, and user domain", async () => {
-    await searchAccounts(mockUser, "  invoice  ");
-    expect(mockSearchAccountStats).toHaveBeenCalledWith(
-      "user-123",
-      "invoice",
-      "testuser.example.com"
-    );
-  });
-
-  it("should use the base domain for the admin user", async () => {
-    await searchAccounts(adminUser, "invoice");
-    expect(mockSearchAccountStats).toHaveBeenCalledWith(
-      "admin-1",
-      "invoice",
-      "example.com"
-    );
-  });
-
-  it("should map matching stats to Account objects", async () => {
-    mockSearchAccountStats.mockResolvedValueOnce([
-      { address: "shop@testuser.example.com", count: 4, unread: 2, saved: 1, latest: "2024-02-01" },
+  it("searches the user's own mail on the domains they own, with the trimmed term", async () => {
+    await searchAccounts(user, "  invoice ");
+    expect(mockSearchAccountStats).toHaveBeenCalledWith("user-123", "invoice", [
+      "testuser.example.com",
     ]);
-
-    const result = await searchAccounts(mockUser, "invoice");
-    expect(result).toHaveLength(1);
-    expect(result[0].key).toBe("shop@testuser.example.com");
-    expect(result[0].doc_count).toBe(4);
-    expect(result[0].unread_doc_count).toBe(2);
-    expect(result[0].saved_doc_count).toBe(1);
-    expect(result[0].updated).toBe("2024-02-01");
   });
 
-  it("should return an empty array when no account matches", async () => {
-    const result = await searchAccounts(mockUser, "nomatch");
-    expect(result).toEqual([]);
+  it("maps matching stats to Account objects", async () => {
+    mockSearchAccountStats.mockResolvedValue([stat("hi@testuser.example.com", { count: 2 })]);
+    const result = await searchAccounts(user, "invoice");
+    expect(result.map((a) => a.key)).toEqual(["hi@testuser.example.com"]);
+    expect(result[0].doc_count).toBe(2);
   });
 });

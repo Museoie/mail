@@ -7,17 +7,8 @@ import { restoreLeaves } from "test-helpers";
 import * as rateLimit from "../../rate-limit";
 import type { HttpRequest } from "../../request";
 
-// Real read-only helpers — used by post-login/post-set-info/post-token to
-// name the reserved username and to construct the remapped session. Mocking
-// their values would let the routes compare against `undefined` and the
-// guard would be silently inert while tests stayed green.
-import {
-  ADMIN_USERNAME,
-  ADMIN_RO_USERNAME,
-  isReservedUsername,
-  remapReadOnlySession,
-  refuseReadOnly,
-} from "../../../read-only";
+import * as domains from "../../../domains";
+import * as sendModule from "../../../mails/send";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -29,7 +20,6 @@ const mockGetSignedUser = mock((_user: unknown) => null as unknown);
 const mockCreateAuthenticationMail = mock(() => ({ to: "test@example.com", subject: "auth" }));
 const mockSendMail = mock(async () => {});
 const mockStartTimer = mock((_id: string) => {});
-const mockDeliversToAdminMailbox = mock((_email: string) => false);
 const mockLogger = {
   debug: mock(() => {}),
   info: mock(() => {}),
@@ -49,21 +39,16 @@ mock.module("server", () => ({
   startTimer: mockStartTimer,
   logger: mockLogger,
   version: TEST_VERSION,
-  // Read-only helpers reach the routes through the barrel; hand the real
-  // implementations back so the routes compare against the real constant.
-  ADMIN_USERNAME,
-  ADMIN_RO_USERNAME,
-  isReservedUsername,
-  // Stubbed rather than real, unlike its neighbours: the real predicate
-  // reaches `addressToUsername` through `./util`, which any earlier file's
-  // `mock.module("server", ...)` replaces graph-wide — so a real one here
-  // would answer with that file's stub values. What this file tests is the
-  // route's wiring in both directions; the predicate's own truth table is
-  // covered against the real implementation in read-only.test.ts.
-  deliversToAdminMailbox: mockDeliversToAdminMailbox,
-  remapReadOnlySession,
-  refuseReadOnly,
 }));
+
+/**
+ * Whether anyone but an address's own account can read the mail delivered to
+ * it, and the server's own sender, spied (restored in afterAll): what this
+ * file tests is the routes' wiring; the rule itself is tested in
+ * domains.test.ts against the real lookups.
+ */
+const mockOthersCanRead = spyOn(domains, "othersCanReadAddress").mockResolvedValue(false);
+const mockSendSystemMail = spyOn(sendModule, "sendSystemMail").mockResolvedValue(undefined);
 
 mock.module("../../../logger", () => ({
   logger: { debug: mock(() => {}), info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}) },
@@ -81,6 +66,8 @@ const mockVerifyPassword = spyOn(Bun.password, "verify").mockImplementation(asyn
 
 afterAll(() => {
   mockVerifyPassword.mockRestore();
+  mockOthersCanRead.mockRestore();
+  mockSendSystemMail.mockRestore();
   restoreLeaves();
   const realServer = (globalThis as Record<string, unknown>).__REAL_SERVER;
   if (realServer) mock.module("server", () => realServer);
@@ -240,109 +227,6 @@ describe("postLoginRoute", () => {
 
     expect((result as ApiResponse<unknown>).status).toBe("failed");
     expect((result as ApiResponse<unknown>).message).toContain("Invalid credentials");
-  });
-
-  it("remaps admin-ro credentials to admin's identity with isReadOnly attribution", async () => {
-    // Authenticating with the reserved read-only credential must produce a
-    // session whose effective identity is admin (so read paths return
-    // admin's data) while `isReadOnly` is set and `authenticatedAs` names
-    // the original credential — a compromised admin-ro credential must not
-    // read as admin in audit logs.
-    const { postLoginRoute } = await import("./post-login");
-
-    const roUser = {
-      id: "readonly-id",
-      username: ADMIN_RO_USERNAME,
-      password: "$2b$10$hashedreadonly",
-      email: `${ADMIN_RO_USERNAME}@localhost`,
-      getSigned: () => ({
-        id: "readonly-id",
-        username: ADMIN_RO_USERNAME,
-        email: `${ADMIN_RO_USERNAME}@localhost`,
-      }),
-    };
-    const adminUser = {
-      id: "admin-id",
-      username: "admin",
-      password: "$2b$10$hashedadmin",
-      email: "admin@localhost",
-      getSigned: () => ({
-        id: "admin-id",
-        username: "admin",
-        email: "admin@localhost",
-      }),
-    };
-    // First call: authenticate admin-ro credential. Second: look up admin
-    // for the session-scope remap.
-    mockGetUser.mockResolvedValueOnce(roUser);
-    mockGetUser.mockResolvedValueOnce(adminUser);
-    mockVerifyPassword.mockResolvedValueOnce(true);
-
-    const req = makeReq({
-      body: { username: ADMIN_RO_USERNAME, password: "correct" },
-    });
-    const result = await postLoginRoute.callback(req);
-
-    expect((result as ApiResponse<unknown>).status).toBe("success");
-    const body = (result as ApiResponse<Record<string, unknown>>).body!;
-    // Effective identity is admin — read paths key off this id.
-    expect(body.id).toBe("admin-id");
-    expect(body.username).toBe("admin");
-    // Read-only attribution is set on the session; audit lines read the
-    // original credential from `authenticatedAs`.
-    expect(body.isReadOnly).toBe(true);
-    expect(body.authenticatedAs).toBe(ADMIN_RO_USERNAME);
-    const session = (req as unknown as {
-      session: { user: Record<string, unknown> };
-    }).session;
-    expect(session.user.id).toBe("admin-id");
-    expect(session.user.isReadOnly).toBe(true);
-    expect(session.user.authenticatedAs).toBe(ADMIN_RO_USERNAME);
-  });
-
-  it("refuses admin-ro login when the admin row is missing (no unremapped session)", async () => {
-    // If the read-only account exists but admin does not, refusing the
-    // session outright is safer than issuing an unremapped session whose
-    // reads would return admin-ro's own (empty) inbox. Same-shape response
-    // as bad credentials.
-    const { postLoginRoute } = await import("./post-login");
-
-    const roUser = {
-      id: "readonly-id",
-      username: ADMIN_RO_USERNAME,
-      password: "$2b$10$hashedreadonly",
-      email: `${ADMIN_RO_USERNAME}@localhost`,
-      getSigned: () => ({
-        id: "readonly-id",
-        username: ADMIN_RO_USERNAME,
-        email: `${ADMIN_RO_USERNAME}@localhost`,
-      }),
-    };
-    mockGetUser.mockResolvedValueOnce(roUser);
-    mockGetUser.mockResolvedValueOnce(null); // admin lookup misses
-    mockVerifyPassword.mockResolvedValueOnce(true);
-    const recordFailureSpy = spyOn(rateLimit.loginLimiter, "recordFailure");
-
-    const req = makeReq({
-      body: { username: ADMIN_RO_USERNAME, password: "correct" },
-    });
-    const result = await postLoginRoute.callback(req);
-
-    expect((result as ApiResponse<unknown>).status).toBe("failed");
-    expect((result as ApiResponse<unknown>).message).toContain(
-      "Invalid credentials"
-    );
-    // Session must NOT be issued when the effective identity is missing.
-    expect(
-      (req as unknown as {
-        session: { user: unknown };
-      }).session.user
-    ).toBeNull();
-    expect(recordFailureSpy).toHaveBeenCalledWith(
-      "127.0.0.1",
-      ADMIN_RO_USERNAME.toLowerCase()
-    );
-    recordFailureSpy.mockRestore();
   });
 
   it("refuses a sign-up that has no password yet as it refuses a wrong password", async () => {
@@ -584,57 +468,32 @@ describe("postSetInfoRoute", () => {
     expect((req as unknown as { session: { user: unknown; destroy: ReturnType<typeof mock> } }).session.user).toEqual(maskedUser);
   });
 
-  it("refuses the read-only identity BEFORE setUserInfo (no DB mutation)", async () => {
-    // setUserInfo unconditionally re-hashes the password on the existing
-    // row, so a post-call check would leave admin-ro's row already mutated.
-    // The gate is a pre-lookup on email; a match on the reserved username
-    // refuses same-shape as bad credentials.
-    const { postSetInfoRoute } = await import("./post-set-info");
-    mockSetUserInfo.mockClear();
-    mockGetUser.mockResolvedValueOnce({
-      id: "readonly-id",
-      username: ADMIN_RO_USERNAME,
-      email: `${ADMIN_RO_USERNAME}@localhost`,
-    });
-    const req = makeReq({
-      body: {
-        email: `${ADMIN_RO_USERNAME}@localhost`,
-        username: ADMIN_RO_USERNAME,
-        password: "any",
-      },
-    });
-    const result = await postSetInfoRoute.callback(req);
-    expect((result as ApiResponse<unknown>).status).toBe("failed");
-    expect((result as ApiResponse<unknown>).message).toContain(
-      "Invalid credentials"
-    );
-    // Load-bearing: proves the gate fires BEFORE the DB-mutating call.
-    expect(mockSetUserInfo).not.toHaveBeenCalled();
-  });
-
-  it("refuses the admin address BEFORE setUserInfo", async () => {
-    // admin's password is upserted from ADMIN_PASSWORD on every boot, so it
-    // has no use for the email reset flow. Left open, a caller holding a
-    // reset token for admin — mintable from this route's unauthenticated
-    // sibling, and readable by any read-only session — takes over the
-    // account outright.
+  it("refuses an address someone else can read BEFORE setUserInfo (no DB mutation)", async () => {
+    // A reset token mailed there is readable by the owner or a viewer of the
+    // domain it is delivered into, who could set the account's password with
+    // it. setUserInfo unconditionally re-hashes the password on the existing
+    // row, so the gate has to come before it.
     const { postSetInfoRoute } = await import("./post-set-info");
     mockSetUserInfo.mockClear();
     mockGetUser.mockResolvedValueOnce({
       id: "admin-id",
-      username: ADMIN_USERNAME,
-      email: `${ADMIN_USERNAME}@localhost`,
+      username: "admin",
+      email: "admin@example.com",
     });
+    mockOthersCanRead.mockResolvedValueOnce(true);
     const req = makeReq({
       body: {
-        email: `${ADMIN_USERNAME}@localhost`,
-        username: ADMIN_USERNAME,
+        email: "admin@example.com",
+        username: "admin",
         password: "attacker-chosen",
         token: "stolen-token",
       },
     });
     const result = await postSetInfoRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("failed");
+    expect((result as ApiResponse<unknown>).message).toContain("Invalid credentials");
+    expect(mockOthersCanRead).toHaveBeenCalledWith("admin@example.com", "admin-id");
+    // Load-bearing: proves the gate fires BEFORE the DB-mutating call.
     expect(mockSetUserInfo).not.toHaveBeenCalled();
   });
 
@@ -733,9 +592,9 @@ describe("postTokenRoute", () => {
     mockIsValidEmail.mockClear();
     mockCreateToken.mockClear();
     mockGetUser.mockClear();
-    mockSendMail.mockClear();
+    mockSendSystemMail.mockClear();
     mockStartTimer.mockClear();
-    mockDeliversToAdminMailbox.mockClear();
+    mockOthersCanRead.mockClear();
   });
 
   it("returns failed when email is invalid", async () => {
@@ -749,103 +608,65 @@ describe("postTokenRoute", () => {
 
   it("sends auth email and returns success for valid email", async () => {
     const { postTokenRoute } = await import("./post-token");
-    const adminUser = { id: "admin1", username: "admin" };
-    // First getUser call is the read-only pre-gate (no existing row for
-    // a brand-new signup).
+    // A brand-new sign-up: no existing row.
     mockGetUser.mockResolvedValueOnce(null);
-    // Second call is the admin lookup for the outgoing auth mail's `from`.
-    mockGetUser.mockResolvedValueOnce(adminUser);
-    mockGetSignedUser.mockReturnValueOnce({ id: "admin1", username: "admin" });
     const req = makeReq({ body: { email: "user@example.com" } });
     const result = await postTokenRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("success");
-    expect(mockSendMail).toHaveBeenCalledTimes(1);
+    expect(mockSendSystemMail).toHaveBeenCalledTimes(1);
     expect(mockStartTimer).toHaveBeenCalledWith("u1");
   });
 
-  it("refuses the admin-ro address BEFORE createToken (no DB mutation, no timer)", async () => {
-    // /token is unauthenticated. Without the gate, an outside caller with
-    // just admin-ro's email address triggers createToken (mutates
-    // admin-ro's token+expiry) AND startTimer (schedules hard-DELETE).
-    // Same-shape as a normal signup send so no probe signal.
+  it("sends the link from the server itself, from no account and with no Sent copy", async () => {
+    // The body carries a live token. No account sends it, so no mailbox — and
+    // nobody with a role on one — ever holds a copy.
+    const { postTokenRoute } = await import("./post-token");
+    mockGetUser.mockResolvedValueOnce(null);
+    mockSendMail.mockClear();
+    const req = makeReq({ body: { email: "user@example.com" } });
+    await postTokenRoute.callback(req);
+    expect(mockSendSystemMail).toHaveBeenCalledTimes(1);
+    expect(mockSendMail).not.toHaveBeenCalled();
+  });
+
+  it("refuses an address someone other than its account can read BEFORE createToken", async () => {
+    // /token is unauthenticated, and the link it mails comes back into the
+    // domain the address is delivered into, where its owner and viewers read
+    // it. createToken's existing-user branch writes `{token, expiry}` onto
+    // the row, so the gate fires first. Same-shape as a normal send so no
+    // probe signal.
     const { postTokenRoute } = await import("./post-token");
     mockCreateToken.mockClear();
-    mockStartTimer.mockClear();
-    mockSendMail.mockClear();
     mockGetUser.mockResolvedValueOnce({
-      id: "readonly-id",
-      username: ADMIN_RO_USERNAME,
-      email: `${ADMIN_RO_USERNAME}@localhost`,
+      id: "admin-id",
+      username: "admin",
+      email: "admin@example.com",
     });
+    mockOthersCanRead.mockResolvedValueOnce(true);
     const recordFailureSpy = spyOn(rateLimit.tokenLimiter, "recordFailure");
-    const req = makeReq({
-      body: { email: `${ADMIN_RO_USERNAME}@localhost` },
-    });
+    const req = makeReq({ body: { email: "admin@example.com" } });
     const result = await postTokenRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("success");
+    expect(mockOthersCanRead).toHaveBeenCalledWith("admin@example.com", "admin-id");
     // Load-bearing — proves the gate fires before every mutation path.
     expect(mockCreateToken).not.toHaveBeenCalled();
     expect(mockStartTimer).not.toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
+    expect(mockSendSystemMail).not.toHaveBeenCalled();
     expect(recordFailureSpy).toHaveBeenCalledWith("127.0.0.1");
     recordFailureSpy.mockRestore();
   });
 
-  it("refuses an address delivered into admin's mailbox BEFORE createToken", async () => {
-    // Such an address routes to admin on the receive path, so the magic link
-    // would come back stored under admin's user_id — where a read-only session
-    // reads it and can then claim the account the token belongs to.
+  it("asks about a new sign-up's address with no account, so any reader refuses it", async () => {
     const { postTokenRoute } = await import("./post-token");
     mockCreateToken.mockClear();
-    mockStartTimer.mockClear();
-    mockSendMail.mockClear();
-    // No existing row: the address does not have to belong to a user, since
-    // createToken's other branch mints one for any valid address.
     mockGetUser.mockResolvedValueOnce(null);
-    mockDeliversToAdminMailbox.mockReturnValueOnce(true);
+    mockOthersCanRead.mockResolvedValueOnce(true);
     const req = makeReq({ body: { email: "victim@served-domain.test" } });
     const result = await postTokenRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("success");
-    expect(mockDeliversToAdminMailbox).toHaveBeenCalledWith(
-      "victim@served-domain.test"
-    );
+    expect(mockOthersCanRead).toHaveBeenCalledWith("victim@served-domain.test", undefined);
     expect(mockCreateToken).not.toHaveBeenCalled();
-    expect(mockStartTimer).not.toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
-  });
-
-  it("sends the magic link with no Sent record under the sending identity", async () => {
-    // The body carries a live token and the sender is admin, whose mailbox
-    // the read-only role reads — so the Sent copy must never be written.
-    const { postTokenRoute } = await import("./post-token");
-    mockGetUser.mockResolvedValueOnce(null);
-    mockGetUser.mockResolvedValueOnce({ id: "admin1", username: "admin" });
-    mockGetSignedUser.mockReturnValueOnce({ id: "admin1", username: "admin" });
-    const req = makeReq({ body: { email: "user@example.com" } });
-    await postTokenRoute.callback(req);
-    expect(mockSendMail).toHaveBeenCalledTimes(1);
-    expect(mockSendMail.mock.calls[0][3]).toEqual({ persistToSentMailbox: false });
-  });
-
-  it("refuses the admin address BEFORE createToken (no reset token minted)", async () => {
-    // The tokens this route writes are readable by any read-only session,
-    // which reads admin's mail by design — so minting one for admin is a
-    // full write-credential handout to an unauthenticated caller.
-    const { postTokenRoute } = await import("./post-token");
-    mockCreateToken.mockClear();
-    mockStartTimer.mockClear();
-    mockSendMail.mockClear();
-    mockGetUser.mockResolvedValueOnce({
-      id: "admin-id",
-      username: ADMIN_USERNAME,
-      email: `${ADMIN_USERNAME}@localhost`,
-    });
-    const req = makeReq({ body: { email: `${ADMIN_USERNAME}@localhost` } });
-    const result = await postTokenRoute.callback(req);
-    expect((result as ApiResponse<unknown>).status).toBe("success");
-    expect(mockCreateToken).not.toHaveBeenCalled();
-    expect(mockStartTimer).not.toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
+    expect(mockSendSystemMail).not.toHaveBeenCalled();
   });
 });
 
@@ -862,7 +683,7 @@ describe("postTokenRoute body shape", () => {
     );
     mockCreateToken.mockClear();
     mockGetUser.mockClear();
-    mockSendMail.mockClear();
+    mockSendSystemMail.mockClear();
     mockStartTimer.mockClear();
   });
 
@@ -878,7 +699,7 @@ describe("postTokenRoute body shape", () => {
     }
 
     expect(mockCreateToken).not.toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
+    expect(mockSendSystemMail).not.toHaveBeenCalled();
     expect(mockStartTimer).not.toHaveBeenCalled();
   });
 
@@ -894,7 +715,7 @@ describe("postTokenRoute body shape", () => {
     }
 
     expect(mockCreateToken).not.toHaveBeenCalled();
-    expect(mockSendMail).not.toHaveBeenCalled();
+    expect(mockSendSystemMail).not.toHaveBeenCalled();
   });
 
   it("rejects a bodyless request, which parses as {}", async () => {
@@ -903,23 +724,19 @@ describe("postTokenRoute body shape", () => {
     const result = await postTokenRoute.callback(makeReq({ body: {} }));
 
     expect((result as ApiResponse<unknown>).status).toBe("failed");
-    expect(mockSendMail).not.toHaveBeenCalled();
+    expect(mockSendSystemMail).not.toHaveBeenCalled();
   });
 
   it("still sends the magic link for a well-formed email", async () => {
     const { postTokenRoute } = await import("./post-token");
-    // First getUser call is the reserved-account pre-gate — a brand-new
-    // signup has no existing row. Second is the admin lookup for the
-    // outgoing mail's `from`.
+    // A brand-new signup has no existing row.
     mockGetUser.mockResolvedValueOnce(null);
-    mockGetUser.mockResolvedValueOnce({ id: "admin1", username: "admin" });
-    mockGetSignedUser.mockReturnValueOnce({ id: "admin1", username: "admin" });
 
     const req = makeReq({ body: { email: "user@example.com" } });
     const result = await postTokenRoute.callback(req);
 
     expect((result as ApiResponse<unknown>).status).toBe("success");
-    expect(mockSendMail).toHaveBeenCalledTimes(1);
+    expect(mockSendSystemMail).toHaveBeenCalledTimes(1);
   });
 
   // Both rejection branches must consume quota. A bad address already did, and
@@ -1004,7 +821,7 @@ describe("postTokenRoute + tokenLimiter integration (#504)", () => {
     mockIsValidEmail.mockReturnValue(true);
     mockCreateToken.mockClear();
     mockGetUser.mockClear();
-    mockSendMail.mockClear();
+    mockSendSystemMail.mockClear();
     mockStartTimer.mockClear();
   });
 
@@ -1018,16 +835,9 @@ describe("postTokenRoute + tokenLimiter integration (#504)", () => {
       ip: "198.51.100.20"
     });
 
-    // sendMail rejects → callback throws → recordFailure should NOT run.
-    // Answer by lookup key, not call order: the route asks twice per request
-    // (reserved-account pre-gate by email, then admin by username) and this
-    // case drives five requests through.
-    mockGetUser.mockImplementation((async (query: { username?: string }) =>
-      query.username === "admin"
-        ? { id: "admin1", username: "admin" }
-        : null) as never);
-    mockGetSignedUser.mockReturnValue({ id: "admin1", username: "admin" });
-    mockSendMail.mockRejectedValue(new Error("smtp transient"));
+    // sendSystemMail rejects → callback throws → recordFailure should NOT run.
+    mockGetUser.mockImplementation((async () => null) as never);
+    mockSendSystemMail.mockRejectedValue(new Error("smtp transient"));
 
     for (let i = 0; i < 5; i++) {
       await expect(

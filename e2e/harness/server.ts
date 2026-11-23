@@ -20,6 +20,7 @@ import { freePorts, hasIpv6, sleep } from "./net";
 import { createTestDatabase, type TestDatabase } from "./postgres";
 import { startAlarmStub, startMailgunStub, type AlarmStub, type MailgunStub } from "./stubs";
 import { generateCertificate, type TestCertificate } from "./tls";
+import { seedAdmin } from "./fixtures";
 
 export const ADMIN_PASSWORD = "admin-password-e2e";
 export const MAILGUN_KEY = "test_key_not_real_do_not_use";
@@ -37,6 +38,11 @@ export interface ServerOptions {
   production?: boolean;
   /** How long to wait for every listener to come up. */
   startupTimeoutMs?: number;
+  /**
+   * Seed `admin` (password {@link ADMIN_PASSWORD}) owning the served zone once
+   * the server is up, as an operator does after installing. Default true.
+   */
+  seedAdmin?: boolean;
 }
 
 export interface ServerPorts {
@@ -197,6 +203,8 @@ const buildEnv = (
     TZ: "UTC",
     EMAIL_DOMAIN: DOMAIN,
     APP_HOSTNAME: `app.${DOMAIN}`,
+    // Read only by a server that still seeds `admin` itself; the harness
+    // seeds it either way (see `seedAdmin`), with the same password.
     ADMIN_PASSWORD,
     POSTGRES_HOST: POSTGRES.host,
     POSTGRES_PORT: String(POSTGRES.port),
@@ -311,6 +319,13 @@ export const startServer = async (options: ServerOptions = {}): Promise<TestServ
       await cleanup();
     },
   };
+  if (options.seedAdmin !== false) {
+    // A failed seed must not leave the process running past the test file.
+    await seedAdmin(server, ADMIN_PASSWORD).catch(async (error) => {
+      await server.stop();
+      throw error;
+    });
+  }
   return server;
 };
 

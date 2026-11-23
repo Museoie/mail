@@ -33,7 +33,7 @@ const RO_PASSWORD = "read-only-password-e2e";
 
 /** Production posture: every client has its own address, so its own login quota. */
 let server: TestServer;
-/** Development posture: plain cookies, no read-only account. */
+/** Development posture: plain cookies. */
 let dev: TestServer;
 let admin: { id: string; email: string };
 let alice: TestUser;
@@ -73,17 +73,6 @@ describe("GET /api/users/login", () => {
     expect(status).toBe(200);
     expect(text).toBe(
       `{"status":"success","body":{"user":${userText(alice)},"app":{"version":"1"},"sso":{"enabled":false,"localLogin":true}}}`
-    );
-  });
-
-  test("marks a read-only session and names the credential it signed in with", async () => {
-    const client = server.client();
-    await client.login("admin-ro", RO_PASSWORD);
-    const { text } = await client.get("/api/users/login");
-    expect(text).toBe(
-      `{"status":"success","body":{"user":{"id":"${admin.id}","email":"admin@mail.test","username":"admin",` +
-        `"passwordVersion":1,"isReadOnly":true,"authenticatedAs":"admin-ro"},` +
-        `"app":{"version":"1"},"sso":{"enabled":false,"localLogin":true}}}`
     );
   });
 
@@ -660,76 +649,25 @@ describe("POST /api/users/login — the session it issues", () => {
   });
 });
 
-describe("POST /api/users/login — the read-only account", () => {
-  test("signs in as admin's identity, marked read-only", async () => {
+describe("POST /api/users/login — no read-only account", () => {
+  // The production server above runs with ADMIN_RO_PASSWORD set, which
+  // earlier versions read to create `admin-ro`. Reading a domain is a role
+  // its owner grants now.
+  test("ADMIN_RO_PASSWORD creates no account, and nothing signs in with it", async () => {
+    for (const target of [server, dev]) {
+      expect(await target.db.query("SELECT 1 FROM users WHERE username = 'admin-ro'")).toEqual([]);
+      const { body } = await target.client().post("/api/users/login", { username: "admin-ro", password: RO_PASSWORD });
+      expect(body).toEqual(INVALID_CREDENTIALS);
+    }
+    const asAdmin = await server.client().post("/api/users/login", { username: "admin", password: RO_PASSWORD });
+    expect(asAdmin.body).toEqual(INVALID_CREDENTIALS);
+  });
+
+  test("a signed-in session is never marked read-only", async () => {
     const client = server.client();
-    const login = await client.post("/api/users/login", { username: "admin-ro", password: RO_PASSWORD });
-    expect(login.status).toBe(200);
-    expect(login.text).toBe(
-      `{"status":"success","body":{"id":"${admin.id}","email":"admin@mail.test","username":"admin",` +
-        `"passwordVersion":1,"isReadOnly":true,"authenticatedAs":"admin-ro"}}`
-    );
-    const row = (await sessionRow(server, sessionIdOf(client)))!;
-    expect(row).toMatchObject({
-      session_user_id: admin.id,
-      session_username: "admin",
-      session_email: "admin@mail.test",
-      session_is_read_only: true,
-      session_authenticated_as: "admin-ro",
-      session_password_version: 1,
-    });
-  });
-
-  test("signs in by its email address too", async () => {
-    const { body } = await server.client().post("/api/users/login", {
-      email: "admin-ro@mail.test",
-      password: RO_PASSWORD,
-    });
-    expect(body.body).toMatchObject({ username: "admin", isReadOnly: true, authenticatedAs: "admin-ro" });
-  });
-
-  test("does not accept admin's password, nor admin the read-only one", async () => {
-    const one = await server.client().post("/api/users/login", { username: "admin-ro", password: ADMIN_PASSWORD });
-    expect(one.body).toEqual(INVALID_CREDENTIALS);
-    const two = await server.client().post("/api/users/login", { username: "admin", password: RO_PASSWORD });
-    expect(two.body).toEqual(INVALID_CREDENTIALS);
-  });
-
-  test("never hands out admin's pending reset token", async () => {
-    await server.db.query("UPDATE users SET token = 'admin-reset', expiry = NOW() + INTERVAL '1 hour' WHERE username = 'admin'");
-    try {
-      const readOnly = await server.client().post("/api/users/login", { username: "admin-ro", password: RO_PASSWORD });
-      expect(Object.keys(readOnly.body.body)).toEqual([
-        "id",
-        "email",
-        "username",
-        "passwordVersion",
-        "isReadOnly",
-        "authenticatedAs",
-      ]);
-      const asAdmin = await server.client().post("/api/users/login", { username: "admin", password: ADMIN_PASSWORD });
-      expect(asAdmin.body.body.token).toBe("admin-reset");
-    } finally {
-      await server.db.query("UPDATE users SET token = NULL, expiry = NULL WHERE username = 'admin'");
-    }
-  });
-
-  test("carries admin's credential generation, not its own", async () => {
-    await server.db.query("UPDATE users SET password_version = 5 WHERE username = 'admin-ro'");
-    try {
-      const client = server.client();
-      const { body } = await client.login("admin-ro", RO_PASSWORD);
-      expect(body.body.passwordVersion).toBe(1);
-      expect((await client.get("/api/users/login")).body.body.user.authenticatedAs).toBe("admin-ro");
-    } finally {
-      await server.db.query("UPDATE users SET password_version = 1 WHERE username = 'admin-ro'");
-    }
-  });
-
-  test("does not exist on a server started without ADMIN_RO_PASSWORD", async () => {
-    expect(await dev.db.query("SELECT 1 FROM users WHERE username = 'admin-ro'")).toEqual([]);
-    const { body } = await dev.client().post("/api/users/login", { username: "admin-ro", password: RO_PASSWORD });
-    expect(body).toEqual(INVALID_CREDENTIALS);
+    const login = await client.login(alice.username, alice.password);
+    expect(Object.keys(login.body.body)).not.toContain("isReadOnly");
+    expect((await sessionRow(server, sessionIdOf(client)))!.session_is_read_only).toBeNull();
   });
 });
 

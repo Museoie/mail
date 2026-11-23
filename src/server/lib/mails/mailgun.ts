@@ -1,5 +1,6 @@
 import { MailDataToSend } from "common";
-import { getText, getUserDomain } from "server";
+import { getText } from "server";
+import { mailgunDomainFor } from "../domains";
 import { UploadedFileDynamicArray } from "./send";
 import type { UploadedFile } from "../http/upload";
 import { logger } from "../logger";
@@ -229,8 +230,13 @@ const sendBatched = async <T>(
   return results;
 };
 
+/**
+ * Sends `mail` from `<sender>@<domain>` through Mailgun, to its recipients
+ * outside the served zone; the caller has settled `domain` as one the sender
+ * may send from.
+ */
 export const sendMailgunMail = async (
-  username: string,
+  domain: string,
   mail: MailDataToSend,
   files?: UploadedFileDynamicArray
 ) => {
@@ -268,8 +274,10 @@ export const sendMailgunMail = async (
   const externalBcc = addresses(bcc).filter(isExternal);
 
   const text = getText(html);
-  const userDomain = getUserDomain(username);
-  const fromAddress = `${sender}@${userDomain}`;
+  const fromAddress = `${sender}@${domain}`;
+  // Mail from a domain under the served zone goes out through the zone's own
+  // Mailgun domain; any other domain through a Mailgun domain of its own name.
+  const sendingDomain = mailgunDomainFor(domain);
   const from = senderFullName
     ? `${senderFullName} <${fromAddress}>`
     : fromAddress;
@@ -306,7 +314,7 @@ export const sendMailgunMail = async (
   // refused with a 450 and retried for Mailgun's full window.
   if (visibleTo.length) {
     const data = await createMailgunMessage(
-      EMAIL_DOMAIN,
+      sendingDomain,
       message(visibleTo, {
         // A promoted Cc already IS the visible To; repeating it here renders
         // the same address in both the `To:` and `Cc:` header lines.
@@ -319,7 +327,7 @@ export const sendMailgunMail = async (
   }
 
   const results = await sendBatched(externalBcc, (address) =>
-    createMailgunMessage(EMAIL_DOMAIN, message([address]))
+    createMailgunMessage(sendingDomain, message([address]))
   );
   const delivered = results.find((result) => result.status === "fulfilled");
   const failed = externalBcc.filter((_, i) => results[i].status === "rejected");

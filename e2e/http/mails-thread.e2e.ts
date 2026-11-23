@@ -389,7 +389,7 @@ describe("GET /api/mails/thread/:id — threading header-less mail by subject", 
     expect(await thread(viaAdmin)).toEqual(["Minutes", "Re: Minutes"]);
   });
 
-  test("for admin only @mail.test addresses are own; @admin.mail.test and users' addresses are participants", async () => {
+  test("for admin the addresses of both its domains are own; users' addresses are participants", async () => {
     const admin = await adminMailbox(server);
     const pair = async (subject: string, from: string) => {
       const first = await admin.mail({ subject, from: [addr(from)], date: "2026-01-01T00:00:00Z" });
@@ -398,7 +398,7 @@ describe("GET /api/mails/thread/:id — threading header-less mail by subject", 
       return body.body.map((h: { subject: string }) => h.subject);
     };
     expect(await pair("Own domain", "y@mail.test")).toEqual(["Own domain"]);
-    expect(await pair("Admin subdomain", "y@admin.mail.test")).toEqual(["Admin subdomain", "Re: Admin subdomain"]);
+    expect(await pair("Admin subdomain", "y@admin.mail.test")).toEqual(["Admin subdomain"]);
     expect(await pair("User subdomain", "y@someone.mail.test")).toEqual(["User subdomain", "Re: User subdomain"]);
   });
 

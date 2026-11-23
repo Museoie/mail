@@ -132727,10 +132727,10 @@
     "sent": false,
     "domain": "alice.mydomain"
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND address ILIKE '%@' || $2\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111",
-    "alice.mydomain"
+    "{\"alice.mydomain\"}"
    ]
   },
   {
@@ -132738,10 +132738,10 @@
     "sent": false,
     "domain": "mydomain"
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND address ILIKE '%@' || $2\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111",
-    "mydomain"
+    "{\"mydomain\"}"
    ]
   },
   {
@@ -132749,7 +132749,7 @@
     "sent": false,
     "domain": ""
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111"
    ]
@@ -132758,7 +132758,7 @@
    "args": {
     "sent": false
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(\n  COALESCE(to_address, '[]'::jsonb) ||\n  COALESCE(cc_address, '[]'::jsonb) ||\n  COALESCE(bcc_address, '[]'::jsonb) ||\n  COALESCE(envelope_to, '[]'::jsonb)\n)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND (to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111"
    ]
@@ -132768,10 +132768,10 @@
     "sent": true,
     "domain": "alice.mydomain"
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND address ILIKE '%@' || $2\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111",
-    "alice.mydomain"
+    "{\"alice.mydomain\"}"
    ]
   },
   {
@@ -132779,10 +132779,10 @@
     "sent": true,
     "domain": "mydomain"
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND address ILIKE '%@' || $2\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])\n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111",
-    "mydomain"
+    "{\"mydomain\"}"
    ]
   },
   {
@@ -132790,7 +132790,7 @@
     "sent": true,
     "domain": ""
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111"
    ]
@@ -132799,7 +132799,7 @@
    "args": {
     "sent": true
    },
-   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
+   "sql": "\n      WITH expanded_mails AS (\n        SELECT DISTINCT\n          mail_id, read, saved, date,\n          jsonb_array_elements(from_address)->>'address' as address\n        FROM mails\n        WHERE user_id = $1\n          AND expunged = FALSE\n          AND draft = FALSE\n          AND is_spam = FALSE\n          AND from_address IS NOT NULL\n          \n      )\n      SELECT\n        address,\n        COUNT(*) as count,\n        SUM(CASE WHEN read = FALSE THEN 1 ELSE 0 END) as unread,\n        SUM(CASE WHEN saved = TRUE THEN 1 ELSE 0 END) as saved_count,\n        MAX(date) as latest\n      FROM expanded_mails\n      WHERE address IS NOT NULL\n      \n      GROUP BY address\n      ORDER BY latest DESC\n    ",
    "values": [
     "11111111-1111-4111-8111-111111111111"
    ]

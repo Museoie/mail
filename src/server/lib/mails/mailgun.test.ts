@@ -112,13 +112,13 @@ const baseMail = new MailDataToSend({
 describe("sendMailgunMail", () => {
   it("should send when recipients include external addresses", async () => {
     const mail = new MailDataToSend({ ...baseMail, to: "external@outside.test" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(1);
   });
 
   it("should pass the envelope to as one field per trimmed address", async () => {
     const mail = new MailDataToSend({ ...baseMail, to: "a@outside.test, b@elsewhere.test" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(recipientsOf(only())).toEqual(["a@outside.test", "b@elsewhere.test"]);
   });
 
@@ -128,19 +128,19 @@ describe("sendMailgunMail", () => {
   // the envelope-only shape.
   it("should not set the h:To custom header (would duplicate the To: header)", async () => {
     const mail = new MailDataToSend({ ...baseMail, to: "a@outside.test, b@elsewhere.test" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(only().has("h:To")).toBe(false);
   });
 
   it("should format from address with senderFullName when provided", async () => {
     const mail = new MailDataToSend({ ...baseMail, senderFullName: "Admin User" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(only().get("from")).toBe("Admin User <admin@example.com>");
   });
 
   it("should format from address without senderFullName when not provided", async () => {
     const mail = new MailDataToSend({ ...baseMail, senderFullName: "" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(only().get("from")).toBe("admin@example.com");
   });
 
@@ -150,7 +150,7 @@ describe("sendMailgunMail", () => {
       subject: "My Test Subject",
       html: "<p>Hello World</p>",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(form.get("subject")).toBe("My Test Subject");
     expect(form.get("html")).toBe("<p>Hello World</p>");
@@ -163,7 +163,7 @@ describe("sendMailgunMail", () => {
       cc: "cc@external.com, cc2@external.com",
       bcc: "bcc@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(form.getAll("cc")).toEqual(["cc@external.com,cc2@external.com"]);
     expect(form.getAll("bcc")).toEqual(["bcc@external.com"]);
@@ -175,7 +175,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "hidden@external.com, other@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received.map(({ form }) => recipientsOf(form)).sort()).toEqual([
       ["hidden@external.com"],
       ["other@external.com"],
@@ -188,7 +188,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "hidden@external.com, other@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(2);
     for (const { form } of received) {
       expect(recipientsOf(form)).toHaveLength(1);
@@ -203,7 +203,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "inside@example.com, outside@outside.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(form.get("from")).toBe("admin@example.com");
     expect(recipientsOf(form)).toEqual(["outside@outside.test"]);
@@ -216,7 +216,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "outside@outside.test",
     });
-    await sendMailgunMail("bob", mail);
+    await sendMailgunMail("bob.example.com", mail);
     const form = only();
     expect(form.get("from")).toBe("bob@bob.example.com");
     expect(recipientsOf(form)).toEqual(["outside@outside.test"]);
@@ -228,7 +228,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "one@external.com, two@external.com, three@external.com",
     });
-    await sendMailgunMail("admin", mail, upload("test.pdf", "application/pdf", "file-content"));
+    await sendMailgunMail("example.com", mail, upload("test.pdf", "application/pdf", "file-content"));
     expect(received).toHaveLength(3);
     for (const { form } of received) {
       const file = form.get("attachment") as File;
@@ -243,7 +243,7 @@ describe("sendMailgunMail", () => {
       cc: "colleague@example.com",
       bcc: "another@example.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(0);
   });
 
@@ -253,7 +253,7 @@ describe("sendMailgunMail", () => {
       to: "inside@example.com",
       bcc: "outside@outside.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(recipientsOf(only())).toEqual(["outside@outside.test"]);
   });
 
@@ -266,7 +266,7 @@ describe("sendMailgunMail", () => {
       to: "inside@example.com",
       cc: "outside@outside.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(recipientsOf(only())).toEqual(["outside@outside.test"]);
   });
 
@@ -281,7 +281,7 @@ describe("sendMailgunMail", () => {
       cc: "outside@outside.test, second@elsewhere.test",
       bcc: "hidden@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(recipientsOf(form)).toEqual(["outside@outside.test", "second@elsewhere.test"]);
     expect(form.has("cc")).toBe(false);
@@ -294,7 +294,7 @@ describe("sendMailgunMail", () => {
       to: "addressee@outside.test",
       cc: "outside@elsewhere.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(recipientsOf(only())).toEqual(["addressee@outside.test"]);
   });
 
@@ -303,13 +303,13 @@ describe("sendMailgunMail", () => {
       ...baseMail,
       to: "inside@example.com, outside@outside.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(recipientsOf(only())).toEqual(["outside@outside.test"]);
   });
 
   it("should include inReplyTo header when provided", async () => {
     const mail = new MailDataToSend({ ...baseMail, inReplyTo: "<original-msg@example.com>" });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(only().get("h:In-Reply-To")).toBe("<original-msg@example.com>");
   });
 
@@ -319,24 +319,24 @@ describe("sendMailgunMail", () => {
       inReplyTo: "<b@example.com>",
       references: ["<a@example.com>", "<b@example.com>"],
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(only().get("h:References")).toBe("<a@example.com> <b@example.com>");
   });
 
   it("sends no References header without references", async () => {
-    await sendMailgunMail("admin", baseMail);
+    await sendMailgunMail("example.com", baseMail);
     expect(only().get("h:References")).toBeNull();
   });
 
   it("should return Mailgun's response with its HTTP status on success", async () => {
     respond = () => accepted("msg-id-999");
-    const result = await sendMailgunMail("admin", baseMail);
+    const result = await sendMailgunMail("example.com", baseMail);
     expect(result).toEqual({ status: 200, id: "msg-id-999", message: "Queued. Thank you." });
   });
 
   it("should attach an uploaded file with its name and content type", async () => {
     const file = upload("test.pdf", "application/pdf", "pdf-bytes");
-    await sendMailgunMail("admin", baseMail, file);
+    await sendMailgunMail("example.com", baseMail, file);
     const attachments = only().getAll("attachment") as File[];
     expect(attachments.map(({ name, type }) => ({ name, type }))).toEqual([
       { name: "test.pdf", type: "application/pdf" },
@@ -349,7 +349,7 @@ describe("sendMailgunMail", () => {
       upload("a.pdf", "application/pdf", "first"),
       upload("b.png", "image/png", "second"),
     ];
-    await sendMailgunMail("admin", baseMail, files);
+    await sendMailgunMail("example.com", baseMail, files);
     const attachments = only().getAll("attachment") as File[];
     expect(attachments.map(({ name, type }) => ({ name, type }))).toEqual([
       { name: "a.pdf", type: "application/pdf" },
@@ -360,7 +360,7 @@ describe("sendMailgunMail", () => {
 
   it("should propagate an error response as its status, status text and message", async () => {
     respond = () => Response.json({ message: "'to' parameter is missing" }, { status: 400 });
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 400,
       message: "Bad Request",
       details: "'to' parameter is missing",
@@ -376,7 +376,7 @@ describe("sendMailgunMail", () => {
       cc: "inside@example.com, seen@outside.test",
       bcc: "admin@example.com, hidden@outside.test",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(form.getAll("cc")).toEqual(["seen@outside.test"]);
     expect(form.getAll("bcc")).toEqual(["hidden@outside.test"]);
@@ -389,7 +389,7 @@ describe("sendMailgunMail", () => {
       cc: "inside@example.com",
       bcc: "admin@example.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     const form = only();
     expect(form.has("cc")).toBe(false);
     expect(form.has("bcc")).toBe(false);
@@ -409,7 +409,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "one@external.com, two@external.com, three@external.com",
     });
-    const result = await sendMailgunMail("admin", mail);
+    const result = await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(3);
     expect(result).toEqual({
       status: 200,
@@ -430,7 +430,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "inside@example.com, one@external.com, two@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(2);
     expect(loggerError).toHaveBeenCalledWith("Some Bcc recipients were not delivered", {
       failed: ["two@external.com"],
@@ -443,7 +443,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "one@external.com, two@external.com",
     });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(2);
     expect(loggerError).not.toHaveBeenCalled();
   });
@@ -455,7 +455,7 @@ describe("sendMailgunMail", () => {
       to: "",
       bcc: "one@external.com, two@external.com",
     });
-    await expect(sendMailgunMail("admin", mail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", mail)).rejects.toMatchObject({
       status: 429,
       details: "Too many requests",
     });
@@ -473,7 +473,7 @@ describe("sendMailgunMail", () => {
     };
     const bcc = Array.from({ length: 12 }, (_, i) => `b${i}@external.com`).join(",");
     const mail = new MailDataToSend({ ...baseMail, to: "", bcc });
-    await sendMailgunMail("admin", mail);
+    await sendMailgunMail("example.com", mail);
     expect(received).toHaveLength(12);
     expect(peak).toBeLessThanOrEqual(5);
   });
@@ -482,7 +482,7 @@ describe("sendMailgunMail", () => {
 describe("Mailgun request", () => {
   it("should post to the messages endpoint under MAILGUN_URL with basic auth", async () => {
     process.env.MAILGUN_URL = `${stubUrl}/region/`;
-    await sendMailgunMail("admin", baseMail);
+    await sendMailgunMail("example.com", baseMail);
     expect(received).toHaveLength(1);
     const [{ method, path: requestPath, headers, raw }] = received as [Received];
     expect(method).toBe("POST");
@@ -501,7 +501,7 @@ describe("Mailgun request", () => {
     };
     const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(fakeFetch as typeof fetch);
     try {
-      await sendMailgunMail("admin", baseMail);
+      await sendMailgunMail("example.com", baseMail);
     } finally {
       fetchSpy.mockRestore();
     }
@@ -522,7 +522,7 @@ describe("Mailgun request", () => {
       return accepted("msg-id-123");
     };
     try {
-      await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+      await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
         status: 400,
         message: "ECONNABORTED",
         details: "timeout of 30000ms exceeded",
@@ -536,7 +536,7 @@ describe("Mailgun request", () => {
   it("should prefer an error body's error field over the status text", async () => {
     const body = { error: "domain not found", message: "check the domain" };
     respond = () => Response.json(body, { status: 404 });
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 404,
       message: "domain not found",
       details: "check the domain",
@@ -545,7 +545,7 @@ describe("Mailgun request", () => {
 
   it("should send a Mailgun banner answer as a failure, not a queued message", async () => {
     respond = () => new Response("Mailgun Magnificent API");
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 400,
       message: "Incorrect url",
     });
@@ -553,7 +553,7 @@ describe("Mailgun request", () => {
 
   it("should carry a plain-text error body as the error's details", async () => {
     respond = () => new Response("Forbidden", { status: 401 });
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 401,
       message: "Unauthorized",
       details: "Forbidden",
@@ -562,7 +562,7 @@ describe("Mailgun request", () => {
 
   it("should describe an empty error body by its status code", async () => {
     respond = () => new Response("", { status: 500 });
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 500,
       message: "Internal Server Error",
       details: "Request failed with status code 500",
@@ -574,7 +574,7 @@ describe("Mailgun request", () => {
     const closedUrl = `http://127.0.0.1:${closed.port}`;
     closed.stop(true);
     process.env.MAILGUN_URL = closedUrl;
-    await expect(sendMailgunMail("admin", baseMail)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail)).rejects.toMatchObject({
       status: 400,
       message: "ECONNREFUSED",
     });
@@ -589,7 +589,7 @@ describe("Mailgun request", () => {
       size: 0,
       tempFilePath: filePath,
     };
-    await expect(sendMailgunMail("admin", baseMail, file)).rejects.toMatchObject({
+    await expect(sendMailgunMail("example.com", baseMail, file)).rejects.toMatchObject({
       status: 400,
       message: "ERR_FR_MAX_BODY_LENGTH_EXCEEDED",
     });

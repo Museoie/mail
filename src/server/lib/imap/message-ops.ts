@@ -619,10 +619,10 @@ export type DestContext = {
 };
 
 export const resolveDestContext = (
-  username: string,
+  primaryDomain: string,
   destMailbox: string
 ): DestContext => {
-  const destAccount = boxToAccount(username, destMailbox);
+  const destAccount = boxToAccount(primaryDomain, destMailbox);
   const destIsDomainScoped = isDomainScoped(destMailbox);
   const destIsMappedUtility = isMappedUtilityFolder(destMailbox);
   const destPreservesRecipient = destIsDomainScoped || destIsMappedUtility;
@@ -864,7 +864,7 @@ export async function copyMessageTyped(
 
     const user = store.getUser();
     // Destination facts shared with the MOVE path — see `resolveDestContext`.
-    const dest = resolveDestContext(user.username, destMailbox);
+    const dest = resolveDestContext(store.getPrimaryDomain(), destMailbox);
 
     // Source-side UID extraction for the COPYUID response — domain-scoped for
     // INBOX and the unified Sent folder (both keyed on uid.domain).
@@ -1070,7 +1070,7 @@ export async function moveMessageTyped(
     const user = store.getUser();
     // Destination facts shared with COPY — see `resolveDestContext`. MOVE =
     // COPY + expunge so the copy phase is byte-for-byte the COPY path.
-    const dest = resolveDestContext(user.username, destMailbox);
+    const dest = resolveDestContext(store.getPrimaryDomain(), destMailbox);
     const sourceIsDomainScoped = isDomainScoped(selectedMailbox);
     const srcUidOf = (mail: Partial<MailType>): number =>
       sourceIsDomainScoped ? mail.uid!.domain : mail.uid!.account;
@@ -1232,7 +1232,7 @@ export async function appendMessage(
     mail.answered = appendRequest.flags?.includes("\\Answered") || false;
 
     const user = store.getUser();
-    const account = boxToAccount(user.username, targetMailbox);
+    const account = boxToAccount(store.getPrimaryDomain(), targetMailbox);
     // `sent` is what separates the two domain-scoped views — INBOX and the
     // unified Sent folder share `uid_domain` and are told apart by this
     // column alone — so it has to reach both the stored row and the UID

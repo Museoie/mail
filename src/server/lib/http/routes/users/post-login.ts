@@ -1,10 +1,5 @@
 import { MaskedUser } from "common";
-import {
-  getUser,
-  logger,
-  ADMIN_RO_USERNAME,
-  resolveSessionUser,
-} from "server";
+import { getUser } from "server";
 import { Route } from "../route";
 import { getClientIp, loginLimiter, loginIdentityOf } from "../../rate-limit";
 import { issueAuthenticatedSession } from "../../issue-session";
@@ -52,26 +47,7 @@ export const postLoginRoute = new Route<LoginPostResponse>(
       return { status: "failed", message: "Invalid credentials." };
     }
 
-    // Session-scoped read-only remap, shared with IMAP in read-only.ts. If the
-    // effective user is missing (the read-only account was seeded before
-    // admin's row exists), fall back to bad-credentials rather than issuing
-    // an unremapped session.
-    const resolved = await resolveSessionUser(signedUser);
-    if (!resolved) {
-      loginLimiter.recordFailure(ip, account);
-      return { status: "failed", message: "Invalid credentials." };
-    }
-    const { user: sessionUser, isReadOnly } = resolved;
-    if (isReadOnly) {
-      logger.info("HTTP LOGIN success (read-only)", {
-        component: "http",
-        authenticatedAs: ADMIN_RO_USERNAME,
-        effectiveUserId: sessionUser.id,
-        ip,
-      });
-    }
-
-    await issueAuthenticatedSession(req, sessionUser);
+    await issueAuthenticatedSession(req, signedUser);
 
     // The store write is what makes the issued cookie mean anything, so it has
     // to land before the response claims the login succeeded. The save made as
@@ -83,6 +59,6 @@ export const postLoginRoute = new Route<LoginPostResponse>(
     // per-IP aggregate keeps its count, so a success here cannot wipe another
     // account's failures from the same IP.
     loginLimiter.reset(ip, account);
-    return { status: "success", body: sessionUser };
+    return { status: "success", body: signedUser };
   }
 );

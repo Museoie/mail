@@ -22,7 +22,7 @@ let proxied: TestServer;
 
 beforeAll(async () => {
   [server, proxied] = (await bootAll(
-    { tls: true, env: { ADMIN_RO_PASSWORD: "read-only-password-e2e" } },
+    { tls: true },
     { env: { PROXY_PROTOCOL: "true" } }
   )) as [TestServer, TestServer];
   await createUser(server, "alice");
@@ -328,16 +328,19 @@ describe("local recipients", () => {
     }
   });
 
-  test("mail for the read-only account's own subdomain is accepted and stored under it", async () => {
-    // NOTE: `admin-ro` signs in as a read-only view of admin's mail, so nothing
-    // ever shows what is stored under its own user id; the message is accepted
-    // with 250 and is then unreachable.
-    const id = messageId("ro");
+  test("mail for an account that has no domain row yet is accepted, and gives it its own name", async () => {
+    // An account the previous version created mid-rollout: its row has no
+    // domain until the next boot, or until its first mail, as here.
+    const [late] = await server.db.query<{ user_id: string }>(
+      "INSERT INTO users (username, password, email) VALUES ('late', 'x', 'late@elsewhere.example') RETURNING user_id"
+    );
+    const id = messageId("late");
     const smtp = await session(server);
-    const result = await smtp.transaction({ from: "bounce@remote.example", to: ["x@admin-ro.mail.test"], data: plain({ messageId: id }) });
+    const result = await smtp.transaction({ from: "bounce@remote.example", to: ["x@late.mail.test"], data: plain({ messageId: id }) });
     expect(raws(result.replies)).toEqual([ACCEPTED, ACCEPTED, "250 OK: message queued"]);
     const rows = await mailsByMessageId(server, id);
-    expect(rows.map((row) => row.username)).toEqual(["admin-ro"]);
+    expect(rows.map((row) => row.username)).toEqual(["late"]);
+    expect(await server.db.query("SELECT user_id FROM domains WHERE name = 'late.mail.test'")).toEqual([{ user_id: late!.user_id }]);
   });
 
   test("the same recipient twice is accepted twice and delivered once", async () => {

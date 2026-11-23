@@ -1,14 +1,15 @@
 import { MailHeaderData } from "common";
 import { Category } from "client";
+import { isOnDomains } from "./domains";
 
+/** Whether `mail` was sent from one of the user's own domains. */
 export const isSentMail = (
   mail: Pick<MailHeaderData, "from">,
-  userDomain: string
+  domains: string[]
 ): boolean => {
-  if (!userDomain) return false;
   const fromAddress = mail.from?.value?.[0]?.address;
   if (!fromAddress) return false;
-  return fromAddress.toLowerCase().endsWith(`@${userDomain.toLowerCase()}`);
+  return isOnDomains(fromAddress, domains);
 };
 
 /**

@@ -13,7 +13,7 @@
 //! chunk readers report theirs.
 //!
 //! ```ignore
-//! let mails = get_mails_by_range(user_id, None, false, 1.0, 50.0, true, &["mail_id", "read"], None).await;
+//! let mails = get_mails_by_range(user_id, None, false, 1.0, 50.0, true, &["mail_id", "read"], None, None).await;
 //! let mut chunks = std::pin::pin!(pg_text_chunks(mail_id, user_id, TextColumn::Text, PG_TEXT_CHUNK_CHARS));
 //! while let Some(chunk) = chunks.try_next().await? { /* … */ }
 //! ```
@@ -30,7 +30,8 @@ use super::counters::get_next_modseq;
 use super::imap_query::{
     build_all_uids_query, build_count_messages_query, build_expunge_deleted_filters,
     build_expunge_deleted_inbox_query, build_expunge_deleted_select_query, build_expunge_uids_filters,
-    build_expunge_uids_select_query,
+    build_expunge_uids_select_query, build_scoped_expunge_deleted_select_query,
+    build_scoped_expunge_uids_select_query,
     build_first_unseen_uid_query, build_mail_flag_updates_query, build_mails_by_range_query,
     build_search_mails_by_uid_query, SimplifiedCriterion,
 };
@@ -266,8 +267,8 @@ pub struct MessageCounts {
 
 /// Counts the messages of a mailbox. A database fault reads as an empty
 /// mailbox.
-pub async fn count_messages(user_id: &str, mailbox: Option<&str>, sent: bool) -> MessageCounts {
-    match run_query(&build_count_messages_query(user_id, mailbox, sent)).await {
+pub async fn count_messages(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> MessageCounts {
+    match run_query(&build_count_messages_query(user_id, mailbox, sent, domains)).await {
         Ok(result) => {
             let row = result.rows.first();
             MessageCounts { total: count(row, "total"), unread: count(row, "unread") }
@@ -299,18 +300,23 @@ fn inflight_key(
     use_uid: bool,
     fields: &[String],
     changed_since: Option<f64>,
+    domains: Option<&[String]>,
 ) -> String {
     let mut sorted: Vec<&String> = fields.iter().collect();
     // JavaScript orders strings by UTF-16 code unit.
     sorted.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
     format!(
-        "[{},{},{sent},{},{},{use_uid},[{}],{}]",
+        "[{},{},{sent},{},{},{use_uid},[{}],{},{}]",
         json_string(user_id),
         mailbox.map_or_else(|| "null".to_string(), json_string),
         json_number(start),
         json_number(end),
         sorted.iter().map(|field| json_string(field)).collect::<Vec<_>>().join(","),
         changed_since.map_or_else(|| "null".to_string(), json_number),
+        domains.map_or_else(
+            || "null".to_string(),
+            |domains| format!("[{}]", domains.iter().map(|domain| json_string(domain)).collect::<Vec<_>>().join(","))
+        ),
     )
 }
 
@@ -336,10 +342,12 @@ pub fn get_mails_by_range<S: AsRef<str>>(
     use_uid: bool,
     fields: &[S],
     changed_since: Option<f64>,
+    domains: Option<&[String]>,
 ) -> BoxFuture<'static, MailsByRange> {
     let fields: Vec<String> = fields.iter().map(|field| field.as_ref().to_string()).collect();
-    let key = inflight_key(user_id, mailbox, sent, start, end, use_uid, &fields, changed_since);
+    let key = inflight_key(user_id, mailbox, sent, start, end, use_uid, &fields, changed_since, domains);
     let (user_id, mailbox) = (user_id.to_string(), mailbox.map(str::to_string));
+    let domains: Option<Vec<String>> = domains.map(<[String]>::to_vec);
     let work = move || async move {
         Arc::new(
             get_mails_by_range_uncoalesced(
@@ -351,6 +359,7 @@ pub fn get_mails_by_range<S: AsRef<str>>(
                 use_uid,
                 &fields,
                 changed_since,
+                domains.as_deref(),
             )
             .await,
         )
@@ -372,9 +381,11 @@ async fn get_mails_by_range_uncoalesced(
     use_uid: bool,
     fields: &[String],
     changed_since: Option<f64>,
+    domains: Option<&[String]>,
 ) -> Vec<(String, PartialMailModel)> {
     let read = async {
-        let query = build_mails_by_range_query(user_id, mailbox, sent, start, end, use_uid, fields, changed_since);
+        let query =
+            build_mails_by_range_query(user_id, mailbox, sent, start, end, use_uid, fields, changed_since, domains);
         let result = run(&query.sql, &query.values).await?;
         let mut mails: Vec<(String, PartialMailModel)> = Vec::with_capacity(result.rows.len());
         // A repeated id keeps its first place and takes the later row.
@@ -554,6 +565,7 @@ pub fn set_mail_flags<S: AsRef<str>>(
     use_uid: bool,
     operation: StoreOperationType,
     unchanged_since: Option<f64>,
+    domains: Option<&[String]>,
 ) -> BoxFuture<'static, SetMailFlagsResult> {
     let set_clause = build_flag_set_clause(operation, flags);
     let conditional = unchanged_since.is_some();
@@ -566,6 +578,7 @@ pub fn set_mail_flags<S: AsRef<str>>(
         use_uid,
         &set_clause,
         conditional,
+        domains,
     );
     // The range is always the last two values the builder binds.
     let [range_start, range_end] = store_range_params(start, end, use_uid);
@@ -637,9 +650,10 @@ pub async fn search_mails_by_uid(
     mailbox: Option<&str>,
     sent: bool,
     criteria: &[SimplifiedCriterion],
+    domains: Option<&[String]>,
 ) -> Vec<i64> {
     let search = async {
-        let query = build_search_mails_by_uid_query(user_id, mailbox, sent, criteria)?;
+        let query = build_search_mails_by_uid_query(user_id, mailbox, sent, criteria, domains)?;
         let result = run_query(&query).await?;
         anyhow::Ok(result.rows.iter().filter_map(|row| integer(row, "uid")).filter(|uid| *uid > 0).collect())
     };
@@ -651,8 +665,8 @@ pub async fn search_mails_by_uid(
 
 /// Every UID the mailbox shows, ascending: the sequence-number map of an
 /// IMAP session. A database fault reads as an empty mailbox.
-pub async fn get_all_uids(user_id: &str, mailbox: Option<&str>, sent: bool) -> Vec<i64> {
-    match run_query(&build_all_uids_query(user_id, mailbox, sent)).await {
+pub async fn get_all_uids(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> Vec<i64> {
+    match run_query(&build_all_uids_query(user_id, mailbox, sent, domains)).await {
         Ok(result) => result.rows.iter().map(|row| integer(row, "uid").unwrap_or(0)).collect(),
         Err(error) => {
             logger::error_with("Failed to get all UIDs", json!({}), &error);
@@ -681,11 +695,12 @@ pub async fn get_mail_flag_updates<S: AsRef<str>>(
     mailbox: Option<&str>,
     sent: bool,
     mail_ids: &[S],
+    domains: Option<&[String]>,
 ) -> Vec<MailFlagUpdate> {
     if mail_ids.is_empty() {
         return Vec::new();
     }
-    let query = build_mail_flag_updates_query(user_id, mailbox, sent, mail_ids);
+    let query = build_mail_flag_updates_query(user_id, mailbox, sent, mail_ids, domains);
     match run_query(&query).await {
         Ok(result) => result
             .rows
@@ -711,8 +726,8 @@ pub async fn get_mail_flag_updates<S: AsRef<str>>(
 /// message is read. The SELECT response code `[UNSEEN <seq>]` carries that
 /// message's sequence number, never the unread count. A database fault reads
 /// as `None`.
-pub async fn get_first_unseen_uid(user_id: &str, mailbox: Option<&str>, sent: bool) -> Option<i64> {
-    match run_query(&build_first_unseen_uid_query(user_id, mailbox, sent)).await {
+pub async fn get_first_unseen_uid(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> Option<i64> {
+    match run_query(&build_first_unseen_uid_query(user_id, mailbox, sent, domains)).await {
         Ok(result) => result.rows.first().and_then(|row| integer(row, "uid")),
         Err(error) => {
             logger::error_with("Failed to get first unseen UID", json!({}), &error);
@@ -743,6 +758,9 @@ enum ExpungeGuard {
     Found,
     /// Those still `\Deleted` and not yet expunged when the UPDATE runs.
     StillDeleted,
+    /// Those not yet expunged: a scoped domain-view expunge, whose lookup
+    /// already applied the `\Deleted` test (`expungeSelected`).
+    NotExpunged,
 }
 
 /// Marks the mails `lookup` finds expunged, and returns the UID each held in
@@ -768,6 +786,11 @@ async fn expunge_mapped(
             (DELETED, Filter::from(true)),
             (EXPUNGED, Filter::from(false)),
         ],
+        ExpungeGuard::NotExpunged => vec![
+            (USER_ID, Filter::from(user_id)),
+            (MAIL_ID, Filter::any_of(&mail_ids)),
+            (EXPUNGED, Filter::from(false)),
+        ],
     };
     let rows = mails_table().update_where(&filters, &expunged_data(user_id).await?, &[MAIL_ID]).await?;
     // The UPDATE returns ids; the UIDs the client knows them by come from
@@ -791,15 +814,30 @@ async fn expunge_domain(user_id: &str, filters: &[(&str, Filter)]) -> DbResult<V
 /// views first look up their `\Deleted` mails less those filed somewhere
 /// else, which they list but must not destroy
 /// (`build_expunge_deleted_inbox_query`); a mapped box joins its own rows.
-pub async fn expunge_deleted_mails(user_id: &str, mailbox: Option<&str>, sent: bool) -> Vec<i64> {
+///
+/// A login scoped to some `domains` expunges only their mail; on the unified
+/// Sent view the filter bag cannot carry that predicate, so the rows are
+/// selected and expunged by id.
+pub async fn expunge_deleted_mails(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> Vec<i64> {
     let expunged = if !uses_domain_uid_space(mailbox) {
-        expunge_mapped(user_id, &build_expunge_deleted_select_query(user_id, mailbox, sent), ExpungeGuard::StillDeleted)
-            .await
+        expunge_mapped(
+            user_id,
+            &build_expunge_deleted_select_query(user_id, mailbox, sent, domains),
+            ExpungeGuard::StillDeleted,
+        )
+        .await
+    } else if let (true, Some(domains)) = (sent, domains) {
+        let scoped = build_scoped_expunge_deleted_select_query(user_id, mailbox, sent, domains);
+        expunge_mapped(user_id, &scoped, ExpungeGuard::NotExpunged).await
     } else if sent {
         expunge_domain(user_id, &build_expunge_deleted_filters(user_id, mailbox, sent)).await
     } else {
-        expunge_mapped(user_id, &build_expunge_deleted_inbox_query(user_id, mailbox, sent), ExpungeGuard::StillDeleted)
-            .await
+        expunge_mapped(
+            user_id,
+            &build_expunge_deleted_inbox_query(user_id, mailbox, sent, domains),
+            ExpungeGuard::StillDeleted,
+        )
+        .await
     };
     expunged.unwrap_or_else(|error| {
         logger::error_with("Failed to expunge deleted mails", json!({}), &error);
@@ -819,14 +857,23 @@ pub async fn expunge_mails_by_uid(
     mailbox: Option<&str>,
     sent: bool,
     uids: &[i64],
+    domains: Option<&[String]>,
 ) -> DbResult<Vec<i64>> {
     if uids.is_empty() {
         return Ok(Vec::new());
     }
-    let expunged = if uses_domain_uid_space(mailbox) {
-        expunge_domain(user_id, &build_expunge_uids_filters(user_id, mailbox, sent, uids)).await
-    } else {
-        expunge_mapped(user_id, &build_expunge_uids_select_query(user_id, mailbox, sent, uids), ExpungeGuard::Found).await
+    let expunged = match domains {
+        Some(domains) if uses_domain_uid_space(mailbox) => {
+            let scoped = build_scoped_expunge_uids_select_query(user_id, mailbox, sent, uids, domains);
+            expunge_mapped(user_id, &scoped, ExpungeGuard::NotExpunged).await
+        }
+        _ if uses_domain_uid_space(mailbox) => {
+            expunge_domain(user_id, &build_expunge_uids_filters(user_id, mailbox, sent, uids)).await
+        }
+        _ => {
+            let lookup = build_expunge_uids_select_query(user_id, mailbox, sent, uids, domains);
+            expunge_mapped(user_id, &lookup, ExpungeGuard::Found).await
+        }
     };
     if let Err(error) = &expunged {
         logger::error_with("Failed to expunge mails by UID", json!({ "uids": uids }), error);
@@ -1047,7 +1094,7 @@ mod tests {
     async fn a_no_op_store_runs_the_select_and_never_the_update() {
         let (result, trace) = with_script(
             vec![rows(json!([flag_row(4, 7)]))],
-            set_mail_flags::<&str>(USER, None, false, 1.0, 9.0, &["Foo"], true, StoreOperationType::Add, None),
+            set_mail_flags::<&str>(USER, None, false, 1.0, 9.0, &["Foo"], true, StoreOperationType::Add, None, None),
         )
         .await;
         assert_eq!(trace.len(), 1);
@@ -1075,7 +1122,7 @@ mod tests {
     async fn a_conditional_no_op_still_names_the_rows_that_moved_on() {
         let (result, trace) = with_script(
             vec![rows(json!([flag_row(4, 7), flag_row(5, 8), flag_row(6, 9)]))],
-            set_mail_flags::<&str>(USER, Some("Archive"), false, 1.0, 9.0, &[], true, StoreOperationType::Remove, Some(8.0)),
+            set_mail_flags::<&str>(USER, Some("Archive"), false, 1.0, 9.0, &[], true, StoreOperationType::Remove, Some(8.0), None),
         )
         .await;
         assert_eq!(trace.len(), 1);
@@ -1087,7 +1134,7 @@ mod tests {
     async fn an_unconditional_store_reserves_one_mod_sequence_and_updates_once() {
         let (result, trace) = with_script(
             vec![rows(json!([{ "next_uid": 12 }])), rows(json!([flag_row(4, 12), flag_row(5, 12)]))],
-            set_mail_flags(USER, None, false, 3.0, 9.0, &["\\Seen"], true, StoreOperationType::Add, None),
+            set_mail_flags(USER, None, false, 3.0, 9.0, &["\\Seen"], true, StoreOperationType::Add, None, None),
         )
         .await;
         assert_eq!(trace.len(), 2);
@@ -1116,6 +1163,7 @@ mod tests {
                 true,
                 StoreOperationType::Add,
                 Some(15.0),
+                None,
             ),
         )
         .await;
@@ -1132,7 +1180,7 @@ mod tests {
     async fn a_sequence_store_binds_an_offset_and_a_count() {
         let (_, trace) = with_script(
             vec![rows(json!([]))],
-            set_mail_flags::<&str>(USER, None, true, 3.0, 9.0, &[], false, StoreOperationType::Add, None),
+            set_mail_flags::<&str>(USER, None, true, 3.0, 9.0, &[], false, StoreOperationType::Add, None, None),
         )
         .await;
         assert_eq!(trace[0].values, params![USER, true, 2, 7]);
@@ -1142,7 +1190,7 @@ mod tests {
     async fn a_store_binds_a_number_postgres_cannot_read_as_javascript_prints_it() {
         let (result, trace) = with_script(
             vec![rows(json!([{ "next_uid": 3 }])), fault("22P02")],
-            set_mail_flags(USER, None, false, 1e21, f64::INFINITY, &["\\Seen"], true, StoreOperationType::Add, None),
+            set_mail_flags(USER, None, false, 1e21, f64::INFINITY, &["\\Seen"], true, StoreOperationType::Add, None, None),
         )
         .await;
         // The mod-sequence is reserved before the UPDATE fails.
@@ -1155,7 +1203,7 @@ mod tests {
     async fn a_failed_store_reads_as_one_that_addressed_nothing() {
         let (result, _) = with_script(
             vec![fault("57014")],
-            set_mail_flags(USER, None, false, 1.0, 2.0, &["\\Seen"], true, StoreOperationType::Flags, None),
+            set_mail_flags(USER, None, false, 1.0, 2.0, &["\\Seen"], true, StoreOperationType::Flags, None, None),
         )
         .await;
         assert_eq!(result, SetMailFlagsResult::default());
@@ -1359,15 +1407,15 @@ mod tests {
     #[tokio::test]
     async fn counts_read_numbers_and_absorb_a_fault() {
         let (counts, trace) =
-            with_script(vec![rows(json!([{ "total": 7, "unread": 2 }]))], count_messages(USER, None, false)).await;
+            with_script(vec![rows(json!([{ "total": 7, "unread": 2 }]))], count_messages(USER, None, false, None)).await;
         assert_eq!(counts, MessageCounts { total: 7, unread: 2 });
-        assert_eq!(trace[0], build_count_messages_query(USER, None, false));
+        assert_eq!(trace[0], build_count_messages_query(USER, None, false, None));
 
-        let (counts, _) = with_script(vec![rows(json!([{ "total": "12", "unread": null }]))], count_messages(USER, None, false)).await;
+        let (counts, _) = with_script(vec![rows(json!([{ "total": "12", "unread": null }]))], count_messages(USER, None, false, None)).await;
         assert_eq!(counts, MessageCounts { total: 12, unread: 0 });
-        let (counts, _) = with_script(vec![rows(json!([]))], count_messages(USER, Some("Archive"), true)).await;
+        let (counts, _) = with_script(vec![rows(json!([]))], count_messages(USER, Some("Archive"), true, None)).await;
         assert_eq!(counts, MessageCounts::default());
-        let (counts, _) = with_script(vec![fault("08006")], count_messages(USER, None, false)).await;
+        let (counts, _) = with_script(vec![fault("08006")], count_messages(USER, None, false, None)).await;
         assert_eq!(counts, MessageCounts::default());
     }
 
@@ -1375,35 +1423,35 @@ mod tests {
     async fn the_uid_list_absorbs_a_fault_as_an_empty_mailbox() {
         let (uids, trace) = with_script(
             vec![rows(json!([{ "uid": 4 }, { "uid": 8 }, { "uid": 15 }]))],
-            get_all_uids(USER, Some("Archive"), false),
+            get_all_uids(USER, Some("Archive"), false, None),
         )
         .await;
         assert_eq!(uids, vec![4, 8, 15]);
-        assert_eq!(trace[0], build_all_uids_query(USER, Some("Archive"), false));
-        let (uids, _) = with_script(vec![fault("08006")], get_all_uids(USER, None, false)).await;
+        assert_eq!(trace[0], build_all_uids_query(USER, Some("Archive"), false, None));
+        let (uids, _) = with_script(vec![fault("08006")], get_all_uids(USER, None, false, None)).await;
         assert!(uids.is_empty());
     }
 
     #[tokio::test]
     async fn the_first_unseen_uid_is_none_when_all_are_read_or_the_read_fails() {
-        let (uid, trace) = with_script(vec![rows(json!([{ "uid": 42 }]))], get_first_unseen_uid(USER, None, false)).await;
+        let (uid, trace) = with_script(vec![rows(json!([{ "uid": 42 }]))], get_first_unseen_uid(USER, None, false, None)).await;
         assert_eq!(uid, Some(42));
-        assert_eq!(trace[0], build_first_unseen_uid_query(USER, None, false));
-        let (uid, _) = with_script(vec![rows(json!([]))], get_first_unseen_uid(USER, None, false)).await;
+        assert_eq!(trace[0], build_first_unseen_uid_query(USER, None, false, None));
+        let (uid, _) = with_script(vec![rows(json!([]))], get_first_unseen_uid(USER, None, false, None)).await;
         assert_eq!(uid, None);
-        let (uid, _) = with_script(vec![fault("08006")], get_first_unseen_uid(USER, None, false)).await;
+        let (uid, _) = with_script(vec![fault("08006")], get_first_unseen_uid(USER, None, false, None)).await;
         assert_eq!(uid, None);
     }
 
     #[tokio::test]
     async fn flag_updates_issue_no_statement_for_no_mails() {
-        let (updates, trace) = with_script(vec![], get_mail_flag_updates::<&str>(USER, None, false, &[])).await;
+        let (updates, trace) = with_script(vec![], get_mail_flag_updates::<&str>(USER, None, false, &[], None)).await;
         assert!(updates.is_empty());
         assert!(trace.is_empty());
 
         let (updates, trace) = with_script(
             vec![rows(json!([{ "mail_id": MAIL, "uid": 9, "read": true, "saved": false, "deleted": null, "draft": false, "answered": true }]))],
-            get_mail_flag_updates(USER, Some("Archive"), false, &[MAIL, OTHER_MAIL]),
+            get_mail_flag_updates(USER, Some("Archive"), false, &[MAIL, OTHER_MAIL], None),
         )
         .await;
         assert_eq!(
@@ -1418,8 +1466,8 @@ mod tests {
                 answered: true,
             }]
         );
-        assert_eq!(trace[0], build_mail_flag_updates_query(USER, Some("Archive"), false, &[MAIL, OTHER_MAIL]));
-        let (updates, _) = with_script(vec![fault("08006")], get_mail_flag_updates(USER, None, false, &[MAIL])).await;
+        assert_eq!(trace[0], build_mail_flag_updates_query(USER, Some("Archive"), false, &[MAIL, OTHER_MAIL], None));
+        let (updates, _) = with_script(vec![fault("08006")], get_mail_flag_updates(USER, None, false, &[MAIL], None)).await;
         assert!(updates.is_empty());
     }
 
@@ -1430,19 +1478,19 @@ mod tests {
         let criteria = [SimplifiedCriterion::text(TextKey::Subject, "x")];
         let (uids, trace) = with_script(
             vec![rows(json!([{ "uid": 0 }, { "uid": 3 }, { "uid": 5 }]))],
-            search_mails_by_uid(USER, None, false, &criteria),
+            search_mails_by_uid(USER, None, false, &criteria, None),
         )
         .await;
         assert_eq!(uids, vec![3, 5]);
-        assert_eq!(trace[0], build_search_mails_by_uid_query(USER, None, false, &criteria).unwrap());
-        let (uids, _) = with_script(vec![fault("08006")], search_mails_by_uid(USER, None, false, &criteria)).await;
+        assert_eq!(trace[0], build_search_mails_by_uid_query(USER, None, false, &criteria, None).unwrap());
+        let (uids, _) = with_script(vec![fault("08006")], search_mails_by_uid(USER, None, false, &criteria, None)).await;
         assert!(uids.is_empty());
     }
 
     #[tokio::test]
     async fn a_search_on_an_invalid_date_matches_nothing_and_asks_nothing() {
         let criteria = [SimplifiedCriterion::Date { key: DateKey::Since, value: JsDate::invalid() }];
-        let (uids, trace) = with_script(vec![], search_mails_by_uid(USER, None, false, &criteria)).await;
+        let (uids, trace) = with_script(vec![], search_mails_by_uid(USER, None, false, &criteria, None)).await;
         assert!(uids.is_empty());
         assert!(trace.is_empty());
     }
@@ -1451,7 +1499,7 @@ mod tests {
     async fn a_search_binds_its_uid_set_after_the_mailbox() {
         let criteria = [SimplifiedCriterion::UidSet(vec![SequenceRange::range(2.0, 4.0), SequenceRange::single(9.0)])];
         let (_, trace) =
-            with_script(vec![rows(json!([]))], search_mails_by_uid(USER, Some("Archive"), false, &criteria)).await;
+            with_script(vec![rows(json!([]))], search_mails_by_uid(USER, Some("Archive"), false, &criteria, None)).await;
         assert!(trace[0].sql.contains("((x.uid >= $4 AND x.uid <= $5) OR x.uid = $6)"));
         assert_eq!(trace[0].values, params![USER, false, "Archive", 2, 4, 9]);
     }
@@ -1467,14 +1515,14 @@ mod tests {
                 { "mail_id": OTHER_MAIL, "read": true, "uid_domain": 3 },
                 { "mail_id": MAIL, "read": false, "uid_domain": 5 },
             ]))],
-            async { get_mails_by_range(USER, None, false, 1.0, 9.0, true, &["read", "uid_domain"], None).await },
+            async { get_mails_by_range(USER, None, false, 1.0, 9.0, true, &["read", "uid_domain"], None, None).await },
         ))
         .await;
         assert_eq!(mails.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(), vec![OTHER_MAIL, MAIL]);
         assert_eq!(mails[0].1.read(), Some(true));
         assert_eq!(mails[1].1.uid_domain(), Some(5));
         assert_eq!(mails[1].1.subject(), None);
-        let expected = build_mails_by_range_query(USER, None, false, 1.0, 9.0, true, &["read", "uid_domain"], None);
+        let expected = build_mails_by_range_query(USER, None, false, 1.0, 9.0, true, &["read", "uid_domain"], None, None);
         assert_eq!((trace[0].sql.as_str(), &trace[0].values), (expected.sql.as_str(), &expected.values));
     }
 
@@ -1482,13 +1530,13 @@ mod tests {
     async fn a_range_read_with_a_bad_row_or_a_fault_reads_as_no_messages() {
         let (mails, _) = with_inline_reads(with_script(
             vec![rows(json!([{ "mail_id": MAIL, "read": "yes" }]))],
-            async { get_mails_by_range(USER, None, false, 1.0, 9.0, true, &["read"], None).await },
+            async { get_mails_by_range(USER, None, false, 1.0, 9.0, true, &["read"], None, None).await },
         ))
         .await;
         assert!(mails.is_empty());
         let (mails, _) = with_inline_reads(with_script(
             vec![fault("08006")],
-            async { get_mails_by_range(USER, Some("Archive"), true, 1.0, 9.0, false, &["*"], Some(4.0)).await },
+            async { get_mails_by_range(USER, Some("Archive"), true, 1.0, 9.0, false, &["*"], Some(4.0), None).await },
         ))
         .await;
         assert!(mails.is_empty());
@@ -1498,18 +1546,21 @@ mod tests {
     fn identical_range_reads_share_a_key_whatever_order_their_fields_come_in() {
         let key = |fields: &[&str], changed_since| {
             let fields: Vec<String> = fields.iter().map(|field| field.to_string()).collect();
-            inflight_key("u\"1", Some("Archive"), false, 1.0, 9_007_199_254_740_991.0, true, &fields, changed_since)
+            inflight_key("u\"1", Some("Archive"), false, 1.0, 9_007_199_254_740_991.0, true, &fields, changed_since, None)
         };
         assert_eq!(
             key(&["uid_domain", "read", "Z"], None),
-            r#"["u\"1","Archive",false,1,9007199254740991,true,["Z","read","uid_domain"],null]"#
+            r#"["u\"1","Archive",false,1,9007199254740991,true,["Z","read","uid_domain"],null,null]"#
         );
+        // A scoped read is a different read from the whole store's.
+        let scoped = inflight_key("u", None, false, 1.0, 2.0, true, &[], None, Some(&["a.test".to_string()]));
+        assert_eq!(scoped, r#"["u",null,false,1,2,true,[],null,["a.test"]]"#);
         assert_eq!(key(&["read", "uid_domain"], Some(7.0)), key(&["uid_domain", "read"], Some(7.0)));
         assert_ne!(key(&["read"], None), key(&["read", "uid_domain"], None));
         assert_ne!(key(&["read"], None), key(&["read"], Some(0.0)));
         assert_eq!(
-            inflight_key("u", None, true, f64::NAN, f64::INFINITY, false, &[], Some(-0.0)),
-            r#"["u",null,true,null,null,false,[],0]"#
+            inflight_key("u", None, true, f64::NAN, f64::INFINITY, false, &[], Some(-0.0), None),
+            r#"["u",null,true,null,null,false,[],0,null]"#
         );
     }
 
@@ -1517,8 +1568,8 @@ mod tests {
     async fn concurrent_identical_range_reads_share_their_rows() {
         // No pool is configured for unit tests, so the read fails and is
         // absorbed; what matters is that both callers hold the same result.
-        let first = get_mails_by_range(USER, Some("coalesced"), false, 1.0, 2.0, true, &["read"], None);
-        let second = get_mails_by_range(USER, Some("coalesced"), false, 1.0, 2.0, true, &["read"], None);
+        let first = get_mails_by_range(USER, Some("coalesced"), false, 1.0, 2.0, true, &["read"], None, None);
+        let second = get_mails_by_range(USER, Some("coalesced"), false, 1.0, 2.0, true, &["read"], None, None);
         let (first, second) = tokio::join!(first, second);
         assert!(Arc::ptr_eq(&first, &second));
     }
@@ -1529,7 +1580,7 @@ mod tests {
     async fn a_unified_sent_expunge_reserves_a_mod_sequence_then_marks_the_deleted_rows() {
         let (uids, trace) = with_script(
             vec![rows(json!([{ "next_uid": 31 }])), rows(json!([{ "uid": 2 }, { "uid": 7 }]))],
-            expunge_deleted_mails(USER, None, true),
+            expunge_deleted_mails(USER, None, true, None),
         )
         .await;
         assert_eq!(uids, vec![2, 7]);
@@ -1552,21 +1603,21 @@ mod tests {
                     rows(json!([{ "next_uid": 31 }])),
                     rows(json!([{ "mail_id": MAIL }])),
                 ],
-                expunge_deleted_mails(USER, mailbox, false),
+                expunge_deleted_mails(USER, mailbox, false, None),
             )
             .await;
             assert_eq!(uids, vec![2]);
-            assert_eq!(trace[0], build_expunge_deleted_inbox_query(USER, mailbox, false));
+            assert_eq!(trace[0], build_expunge_deleted_inbox_query(USER, mailbox, false, None));
             assert_eq!(trace[2].values, params![true, 31, USER, MAIL, true, false]);
         }
     }
 
     #[tokio::test]
     async fn a_mapped_expunge_with_nothing_deleted_reserves_and_writes_nothing() {
-        let (uids, trace) = with_script(vec![rows(json!([]))], expunge_deleted_mails(USER, Some("Archive"), false)).await;
+        let (uids, trace) = with_script(vec![rows(json!([]))], expunge_deleted_mails(USER, Some("Archive"), false, None)).await;
         assert!(uids.is_empty());
         assert_eq!(trace.len(), 1);
-        assert_eq!(trace[0], build_expunge_deleted_select_query(USER, Some("Archive"), false));
+        assert_eq!(trace[0], build_expunge_deleted_select_query(USER, Some("Archive"), false, None));
     }
 
     // Another client can clear \Deleted between the lookup and the UPDATE, so
@@ -1579,7 +1630,7 @@ mod tests {
                 rows(json!([{ "next_uid": 31 }])),
                 rows(json!([{ "mail_id": OTHER_MAIL }])),
             ],
-            expunge_deleted_mails(USER, Some("Archive"), false),
+            expunge_deleted_mails(USER, Some("Archive"), false, None),
         )
         .await;
         assert_eq!(uids, vec![9]);
@@ -1594,7 +1645,7 @@ mod tests {
     async fn a_move_removes_its_source_rows_whatever_their_flags() {
         let (uids, trace) = with_script(
             vec![rows(json!([{ "mail_id": MAIL, "uid": 4 }])), rows(json!([{ "next_uid": 31 }])), rows(json!([{ "mail_id": MAIL }]))],
-            expunge_mails_by_uid(USER, Some("Archive"), false, &[4]),
+            expunge_mails_by_uid(USER, Some("Archive"), false, &[4], None),
         )
         .await;
         assert_eq!(uids.unwrap(), vec![4]);
@@ -1606,11 +1657,11 @@ mod tests {
 
     #[tokio::test]
     async fn a_failed_expunge_reads_as_nothing_expunged() {
-        let (uids, _) = with_script(vec![fault("08006")], expunge_deleted_mails(USER, None, false)).await;
+        let (uids, _) = with_script(vec![fault("08006")], expunge_deleted_mails(USER, None, false, None)).await;
         assert!(uids.is_empty());
         let (uids, _) = with_script(
             vec![rows(json!([{ "mail_id": MAIL, "uid": 4 }])), fault("08006")],
-            expunge_deleted_mails(USER, Some("Archive"), false),
+            expunge_deleted_mails(USER, Some("Archive"), false, None),
         )
         .await;
         assert!(uids.is_empty());
@@ -1618,13 +1669,13 @@ mod tests {
 
     #[tokio::test]
     async fn expunging_named_uids_asks_nothing_for_none_and_reports_a_fault() {
-        let (uids, trace) = with_script(vec![], expunge_mails_by_uid(USER, None, false, &[])).await;
+        let (uids, trace) = with_script(vec![], expunge_mails_by_uid(USER, None, false, &[], None)).await;
         assert!(uids.unwrap().is_empty());
         assert!(trace.is_empty());
 
         let (uids, trace) = with_script(
             vec![rows(json!([{ "next_uid": 40 }])), rows(json!([{ "uid": 4 }]))],
-            expunge_mails_by_uid(USER, None, true, &[4, 9]),
+            expunge_mails_by_uid(USER, None, true, &[4, 9], None),
         )
         .await;
         assert_eq!(uids.unwrap(), vec![4]);
@@ -1640,16 +1691,16 @@ mod tests {
                 rows(json!([{ "next_uid": 41 }])),
                 rows(json!([{ "mail_id": MAIL }, { "mail_id": OTHER_MAIL }])),
             ],
-            expunge_mails_by_uid(USER, Some("Archive"), false, &[4, 9]),
+            expunge_mails_by_uid(USER, Some("Archive"), false, &[4, 9], None),
         )
         .await;
         assert_eq!(uids.unwrap(), vec![4, 9]);
-        assert_eq!(trace[0], build_expunge_uids_select_query(USER, Some("Archive"), false, &[4, 9]));
+        assert_eq!(trace[0], build_expunge_uids_select_query(USER, Some("Archive"), false, &[4, 9], None));
 
-        let (uids, _) = with_script(vec![fault("08006")], expunge_mails_by_uid(USER, None, false, &[4])).await;
+        let (uids, _) = with_script(vec![fault("08006")], expunge_mails_by_uid(USER, None, false, &[4], None)).await;
         assert_eq!(uids.unwrap_err().code.as_deref(), Some("08006"));
         let (uids, trace) =
-            with_script(vec![rows(json!([]))], expunge_mails_by_uid(USER, Some("Archive"), false, &[4])).await;
+            with_script(vec![rows(json!([]))], expunge_mails_by_uid(USER, Some("Archive"), false, &[4], None)).await;
         assert!(uids.unwrap().is_empty());
         assert_eq!(trace.len(), 1);
     }
@@ -1660,13 +1711,13 @@ mod tests {
         let criteria: Vec<SimplifiedCriterion> = Vec::new();
         let ids: Vec<String> = Vec::new();
         // `get_mails_by_range` and `set_mail_flags` declare theirs.
-        sendable(count_messages(USER, None, false));
-        sendable(search_mails_by_uid(USER, None, false, &criteria));
-        sendable(get_all_uids(USER, None, false));
-        sendable(get_mail_flag_updates(USER, None, false, &ids));
-        sendable(get_first_unseen_uid(USER, None, false));
-        sendable(expunge_deleted_mails(USER, None, false));
-        sendable(expunge_mails_by_uid(USER, None, false, &[]));
+        sendable(count_messages(USER, None, false, None));
+        sendable(search_mails_by_uid(USER, None, false, &criteria, None));
+        sendable(get_all_uids(USER, None, false, None));
+        sendable(get_mail_flag_updates(USER, None, false, &ids, None));
+        sendable(get_first_unseen_uid(USER, None, false, None));
+        sendable(expunge_deleted_mails(USER, None, false, None));
+        sendable(expunge_mails_by_uid(USER, None, false, &[], None));
         sendable(pg_text_chunks(MAIL, USER, TextColumn::Text, PG_TEXT_CHUNK_CHARS));
         sendable(pg_byte_chunks(MAIL, USER, TextColumn::Text, 1, PG_TEXT_CHUNK_BYTES));
     }

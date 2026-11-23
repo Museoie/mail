@@ -224,7 +224,7 @@ describe("GET /api/mails/headers/:account?limit= — views", () => {
 
   test("the account check applies to a paged request", async () => {
     const box = await newMailbox(server);
-    const { body } = await box.client.get("/api/mails/headers/hello@mail.test?limit=5");
+    const { body } = await box.client.get("/api/mails/headers/hello?limit=5");
     expect(body).toEqual(failed("Invalid request. You may not look at other users' emails."));
   });
 });

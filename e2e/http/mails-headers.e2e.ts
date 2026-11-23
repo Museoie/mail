@@ -527,8 +527,6 @@ describe("GET /api/mails/headers/:account — whose account", () => {
       box.address(),
       box.address("anything"),
       `@${d}`,
-      d,
-      box.username,
       `X@${d.toUpperCase()}`,
       `a@b@${d}`,
       `Name <${box.address()}>`,
@@ -539,27 +537,33 @@ describe("GET /api/mails/headers/:account — whose account", () => {
     }
   });
 
-  test("a user is refused any other account", async () => {
+  // Any address reads the user's own rows for it: a domain they used to own
+  // keeps its mail with them. Another user's mail is never among them.
+  test("another account's address reads only the user's own rows, which hold none of its mail", async () => {
     const other = await newMailbox(server);
+    await other.mail({ subject: "theirs" });
     for (const account of [
       other.address(),
       "hello@mail.test",
       "x@admin.mail.test",
-      "admin",
-      "mail.test",
       "sender@remote.example",
       `x@sub.${box.domain}`,
       `x@${box.username}mail.test`,
-      " ",
-      "@",
     ]) {
+      const { status, body } = await box.client.get(`/api/mails/headers/${encodeURIComponent(account)}`);
+      expect({ account, status, body }).toEqual({ account, status: 200, body: { status: "success", body: [] } });
+    }
+  });
+
+  test("an account with no domain is refused", async () => {
+    for (const account of [box.domain, box.username, "admin", "mail.test", " ", "@"]) {
       const { status, body } = await box.client.get(`/api/mails/headers/${encodeURIComponent(account)}`);
       expect({ account, status, body }).toEqual({ account, status: 200, body: NOT_YOURS });
     }
   });
 
   test("the refusal is exact and comes before any query parameter is read", async () => {
-    const { status, text } = await box.client.get("/api/mails/headers/hello@mail.test?since=garbage&limit=0&cursor=x");
+    const { status, text } = await box.client.get("/api/mails/headers/hello?since=garbage&limit=0&cursor=x");
     expect(status).toBe(200);
     expect(text).toBe('{"status":"failed","message":"Invalid request. You may not look at other users\' emails."}');
   });
@@ -575,10 +579,10 @@ describe("GET /api/mails/headers/:account — whose account", () => {
     }
   });
 
-  test("admin may name any account but only ever sees admin's own rows", async () => {
+  test("admin, like any user, names any address but only ever sees its own rows", async () => {
     const admin = await adminMailbox(server);
     const adminCopy = await admin.mail({ subject: "admin's copy", to: [addr(box.address())] });
-    for (const account of [box.address(), "sender@remote.example", "x@nouser.mail.test", "admin", box.username, "x"]) {
+    for (const account of [box.address(), "sender@remote.example", "x@nouser.mail.test"]) {
       const { status, body } = await admin.client.get(`/api/mails/headers/${encodeURIComponent(account)}`);
       expect({ account, status, outcome: body.status }).toEqual({ account, status: 200, outcome: "success" });
     }

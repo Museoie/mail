@@ -318,16 +318,10 @@ fn run_util(name: &str, args: &Value) -> Value {
 
 #[test]
 fn util_functions() {
-    // The fixtures were recorded with the default mail domain.
-    let domain = mail_server::util::get_domain();
     let mut report = Report::default();
     for case in fixture("util.json").as_array().unwrap() {
         let name = case["fn"].as_str().unwrap();
-        let mut expected = case["expected"].clone();
-        if name == "boxToAccount" {
-            let recorded = expected.as_str().unwrap();
-            expected = json!(format!("{}{domain}", recorded.strip_suffix("mydomain").unwrap()));
-        }
+        let expected = case["expected"].clone();
         report.check(|| format!("{name}({})", case["args"]), &expected, &run_util(name, &case["args"]));
     }
     report.finish("util.json", 1200);

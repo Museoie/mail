@@ -106,7 +106,7 @@ const {
 const { resetPool } = await import("../postgres/client");
 // Dynamic, like the imports above: a hoisted `import … from "server"` would
 // pull the barrel (and postgres/client) before the driver double is registered.
-const { getUserDomain, getAttachmentFilePath, INCOMING_ATTACHMENT_FOLDER } = await import("server");
+const { getAttachmentFilePath, INCOMING_ATTACHMENT_FOLDER } = await import("server");
 
 beforeAll(() => {
   mock.module("server/lib/postgres/pool", pgMock);
@@ -136,6 +136,7 @@ type AppendedMail = { sent: boolean };
 
 type FakeStore = {
   getUser: () => { id: string; username: string };
+  getPrimaryDomain: () => string;
   mailboxExists: (box: string) => Promise<boolean>;
   storeMail: (mail: AppendedMail, mailbox?: string) => Promise<unknown>;
   /** Every (mail, mailbox) pair storeMail received, in call order. */
@@ -157,6 +158,7 @@ const makeAppendStore = (
   const appended: FakeStore["appended"] = [];
   return {
     getUser: () => ({ id: "user-123", username: "admin" }),
+    getPrimaryDomain: () => "example.com",
     mailboxExists: async (box: string) => mailboxes.includes(box),
     storeMail: async (mail: AppendedMail, mailbox?: string) => {
       appended.push({ mail, mailbox });
@@ -287,7 +289,7 @@ describe("appendMessage — target mailbox (#695)", () => {
     // address, which `getUserDomain` derives from the username.
     expect(uidReservations.map((r) => r.kind)).toEqual(["domain", "account"]);
     expect(uidReservations.map((r) => r.sent)).toEqual([true, true]);
-    expect(uidReservations[1].scope).toBe(`admin@${getUserDomain("admin")}`);
+    expect(uidReservations[1].scope).toBe("admin@example.com");
   });
 
   it("files an APPEND to a per-account received box as received mail scoped to that box", async () => {
@@ -301,7 +303,7 @@ describe("appendMessage — target mailbox (#695)", () => {
     expect(store.appended[0].mailbox).toBe("INBOX/accounts/admin");
     expect(uidReservations.map((r) => r.kind)).toEqual(["domain", "account"]);
     expect(uidReservations.map((r) => r.sent)).toEqual([false, false]);
-    expect(uidReservations[1].scope).toBe(`admin@${getUserDomain("admin")}`);
+    expect(uidReservations[1].scope).toBe("admin@example.com");
   });
 
   it("files an APPEND to a user-created box as received mail scoped to that box", async () => {
@@ -315,7 +317,7 @@ describe("appendMessage — target mailbox (#695)", () => {
     expect(store.appended[0].mail.sent).toBe(false);
     expect(store.appended[0].mailbox).toBe("Archive");
     expect(uidReservations.map((r) => r.sent)).toEqual([false, false]);
-    expect(uidReservations[1].scope).toBe(`Archive@${getUserDomain("admin")}`);
+    expect(uidReservations[1].scope).toBe("Archive@example.com");
   });
 
   it("answers NO [TRYCREATE] for a mailbox that does not exist and stores nothing", async () => {
@@ -357,6 +359,7 @@ const makeFlagStore = (
     store: {
       setFlags,
       getUser: () => ({ id: "user-123", username: "admin" }),
+      getPrimaryDomain: () => "example.com",
     } as unknown as Store,
     setFlags,
   };
@@ -586,6 +589,7 @@ async function appendAndCapture(flags?: string[]): Promise<MailType> {
   let captured: MailType | undefined;
   const store = {
     getUser: () => ({ id: 1, username: "admin" }),
+    getPrimaryDomain: () => "example.com",
     mailboxExists: async () => true,
     storeMail: async (mail: MailType) => {
       captured = mail;
@@ -689,6 +693,7 @@ describe("appendMessage — MIME parse", () => {
     let captured: MailType | undefined;
     const store = {
       getUser: () => ({ id: "user-123", username: "admin" }),
+      getPrimaryDomain: () => "example.com",
       mailboxExists: async () => mailboxExists,
       storeMail: async (mail: MailType) => {
         captured = mail;
@@ -1140,7 +1145,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
     expect(account.startsWith(`${prefix}@`)).toBe(true);
 
   it("INBOX → domain-scoped, preserves recipient, not sent, not mapped-utility", () => {
-    const d = resolveDestContext("admin", "INBOX");
+    const d = resolveDestContext("example.com", "INBOX");
     expect(d.destIsDomainScoped).toBe(true);
     expect(d.destPreservesRecipient).toBe(true);
     expect(d.destIsSent).toBe(false);
@@ -1148,7 +1153,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
   });
 
   it("unified Sent Messages → domain-scoped, preserves recipient, IS sent", () => {
-    const d = resolveDestContext("admin", "Sent Messages");
+    const d = resolveDestContext("example.com", "Sent Messages");
     expect(d.destIsDomainScoped).toBe(true);
     expect(d.destPreservesRecipient).toBe(true);
     expect(d.destIsSent).toBe(true);
@@ -1157,7 +1162,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
 
   it("Drafts / Junk (domain-scoped utility) preserve recipient, not sent, not mapped-utility", () => {
     for (const box of ["Drafts", "Junk"]) {
-      const d = resolveDestContext("admin", box);
+      const d = resolveDestContext("example.com", box);
       expect(d.destIsDomainScoped).toBe(true);
       expect(d.destPreservesRecipient).toBe(true);
       expect(d.destIsSent).toBe(false);
@@ -1167,7 +1172,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
 
   it("Starred / Trash (mapped-utility) preserve recipient, NOT domain-scoped, IS mapped-utility, not sent", () => {
     for (const box of ["Starred", "Trash"]) {
-      const d = resolveDestContext("admin", box);
+      const d = resolveDestContext("example.com", box);
       expect(d.destIsDomainScoped).toBe(false);
       expect(d.destIsMappedUtility).toBe(true);
       expect(d.destPreservesRecipient).toBe(true);
@@ -1176,7 +1181,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
   });
 
   it("user-created box (Archive) is mapped, address-routed, not sent, not mapped-utility", () => {
-    const d = resolveDestContext("admin", "Archive");
+    const d = resolveDestContext("example.com", "Archive");
     expect(d.destIsDomainScoped).toBe(false);
     expect(d.destIsMappedUtility).toBe(false);
     expect(d.destPreservesRecipient).toBe(false);
@@ -1185,7 +1190,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
   });
 
   it("per-account received (INBOX/accounts/alice) is mapped, address-routed, not sent", () => {
-    const d = resolveDestContext("admin", "INBOX/accounts/alice");
+    const d = resolveDestContext("example.com", "INBOX/accounts/alice");
     expect(d.destIsDomainScoped).toBe(false);
     expect(d.destIsMappedUtility).toBe(false);
     expect(d.destPreservesRecipient).toBe(false);
@@ -1194,7 +1199,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
   });
 
   it("per-account sent (Sent Messages/accounts/alice) is mapped, address-routed, IS sent", () => {
-    const d = resolveDestContext("admin", "Sent Messages/accounts/alice");
+    const d = resolveDestContext("example.com", "Sent Messages/accounts/alice");
     expect(d.destIsDomainScoped).toBe(false);
     expect(d.destIsMappedUtility).toBe(false);
     expect(d.destPreservesRecipient).toBe(false);
@@ -1214,7 +1219,7 @@ describe("resolveDestContext — the 5-axis destination fact resolver (#830)", (
       "INBOX/accounts/alice",
       "Sent Messages/accounts/alice",
     ]) {
-      const d = resolveDestContext("admin", box);
+      const d = resolveDestContext("example.com", box);
       expect(d.destPreservesRecipient).toBe(
         d.destIsDomainScoped || d.destIsMappedUtility
       );
@@ -1240,6 +1245,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
     let lastDest: string | undefined;
     return {
       getUser: () => ({ id: "user-123", username: "admin" }),
+      getPrimaryDomain: () => "example.com",
       storeMail: async (mail, destination) => {
         lastMail = mail;
         lastDest = destination;
@@ -1272,7 +1278,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
 
   it("returns null when storeMail fails (COPY / MOVE caller writes tagged NO)", async () => {
     const store = makeCaptureStore(false);
-    const ctx = resolveDestContext("admin", "INBOX");
+    const ctx = resolveDestContext("example.com", "INBOX");
     const result = await cloneMailToDestination(
       store as never,
       sourceMail() as never,
@@ -1285,7 +1291,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
 
   it("preserves the source flags on the new mail (RFC 3501 §6.4.7)", async () => {
     const store = makeCaptureStore();
-    const ctx = resolveDestContext("admin", "INBOX");
+    const ctx = resolveDestContext("example.com", "INBOX");
     await cloneMailToDestination(
       store as never,
       sourceMail({ read: true, saved: true, deleted: false, draft: true, answered: false }) as never,
@@ -1304,7 +1310,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
 
   it("preserves recipient on a mapped-utility destination (Starred) — no `Starred@<domain>` rewrite", async () => {
     const store = makeCaptureStore();
-    const ctx = resolveDestContext("admin", "Starred");
+    const ctx = resolveDestContext("example.com", "Starred");
     await cloneMailToDestination(
       store as never,
       sourceMail() as never,
@@ -1321,7 +1327,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
 
   it("re-anchors recipient on a per-account destination — copy addressed to the account, cc/bcc routing JSONB cleared", async () => {
     const store = makeCaptureStore();
-    const ctx = resolveDestContext("admin", "Archive");
+    const ctx = resolveDestContext("example.com", "Archive");
     await cloneMailToDestination(
       store as never,
       sourceMail({
@@ -1352,7 +1358,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
     // pass through pool.query, mockQuery captures the SQL text.
     mockQuery.mockClear();
     const store = makeCaptureStore();
-    const ctx = resolveDestContext("admin", "Starred");
+    const ctx = resolveDestContext("example.com", "Starred");
     await cloneMailToDestination(
       store as never,
       sourceMail() as never,
@@ -1377,7 +1383,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
   it("reserves via getAccountUidNext for a per-account destination — passes the destAccount as uid_scope", async () => {
     mockQuery.mockClear();
     const store = makeCaptureStore();
-    const ctx = resolveDestContext("admin", "Archive");
+    const ctx = resolveDestContext("example.com", "Archive");
     await cloneMailToDestination(
       store as never,
       sourceMail() as never,
@@ -1399,7 +1405,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
 
     // Domain-scoped INBOX → destUid is uid.domain (mocked to 100 via
     // mockQuery's `next_uid` branch).
-    const dInbox = resolveDestContext("admin", "INBOX");
+    const dInbox = resolveDestContext("example.com", "INBOX");
     const rInbox = await cloneMailToDestination(
       store as never,
       sourceMail() as never,
@@ -1411,7 +1417,7 @@ describe("cloneMailToDestination — the shared COPY/MOVE per-mail body (#830)",
     expect(rInbox?.srcUid).toBe(42);
 
     // Mapped-utility Starred → destUid is uid.account (also mocked to 100).
-    const dStarred = resolveDestContext("admin", "Starred");
+    const dStarred = resolveDestContext("example.com", "Starred");
     const rStarred = await cloneMailToDestination(
       store as never,
       sourceMail() as never,

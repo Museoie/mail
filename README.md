@@ -5,7 +5,8 @@ Mail is an email client. With Mail, you can have `infinite` number of email acco
 Here's how Mail works, assuming domain name is `domain.com`.
 
 * Users will receive emails through `*@username.domain.com`
-* Exceptionally, `admin` user will receive emails through `*@domain.com`
+* Users can add domains of their own, proved by a DNS record, and receive and send mail for them
+* An owner can share a domain read-only with other users
 * All users can send emails using Mailgun (requires `MAILGUN_KEY` env var).
 
 Following is an example of running Mail as a web service.

@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod client_error;
+pub mod domains;
 pub mod health;
 pub mod mailgun_events;
 pub mod mails;
@@ -81,6 +82,11 @@ async fn route(req: &mut HttpRequest, path: &str) -> anyhow::Result<Response> {
     }
     if let Some(rest) = mounted_path(path, "/auth") {
         if let Some(response) = auth::handle_auth(req, rest).await? {
+            return Ok(response);
+        }
+    }
+    if let Some(rest) = mounted_path(path, "/domains") {
+        if let Some(response) = domains::handle_domains(req, rest).await? {
             return Ok(response);
         }
     }

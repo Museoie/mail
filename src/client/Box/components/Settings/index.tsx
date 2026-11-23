@@ -11,7 +11,7 @@ import {
   useFeedback
 } from "client";
 import { accountsQueryUrl, fetchAccounts } from "../Accounts";
-import { Allowlist } from "./components";
+import { Allowlist, Domains } from "./components";
 import { fromOptions } from "./fromOptions";
 import "./index.scss";
 
@@ -30,7 +30,7 @@ const Settings = () => {
   const {
     density,
     setDensity,
-    domainName,
+    domains = [],
     signature,
     setSignature,
     includeOriginal,
@@ -46,10 +46,6 @@ const Settings = () => {
 
   const { showToast } = useFeedback();
   const [isSendingReset, setIsSendingReset] = useState(false);
-  // The boot-seeded accounts take their password from the server's
-  // configuration; the reset mail is refused for them by design.
-  const isSeededAccount =
-    userInfo?.username === "admin" || userInfo?.username === "admin-ro";
   const hasPasswordSignIn = getSignInMode().localLogin;
 
   const onClickResetPassword = async () => {
@@ -113,7 +109,7 @@ const Settings = () => {
     fetchAccounts,
     { enabled: false }
   );
-  const addresses = fromOptions(accountsQuery.data, domainName, defaultFrom);
+  const addresses = fromOptions(accountsQuery.data, domains, defaultFrom);
 
   return (
     <section className="settings" aria-label="Settings">
@@ -134,12 +130,10 @@ const Settings = () => {
               <div className="settings-description">
                 {!hasPasswordSignIn
                   ? "You sign in with single sign-on. Mail apps use an app password you create in your single sign-on account."
-                  : isSeededAccount
-                    ? "This account's password is set by the server's ADMIN_PASSWORD setting."
-                    : `We'll email a link to set a new password to ${userInfo.email}.`}
+                  : `We'll email a link to set a new password to ${userInfo.email}.`}
               </div>
             </div>
-            {isSeededAccount || !hasPasswordSignIn ? null : (
+            {!hasPasswordSignIn ? null : (
               <button
                 type="button"
                 className="text-button"
@@ -271,6 +265,11 @@ const Settings = () => {
             onChange={(e) => onChangeNotifications(e.target.checked)}
           />
         </div>
+      </div>
+
+      <div className="settings-group">
+        <h3>Domains</h3>
+        <Domains />
       </div>
 
       <div className="settings-group">

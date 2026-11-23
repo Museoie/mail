@@ -1192,7 +1192,7 @@ mod tests {
         sendable(get_mailbox_uid_next(USER, "Starred"));
         sendable(get_uid_next(USER, &UidScope::Domain { sent: false }));
         sendable(get_next_modseq(USER));
-        sendable(get_highest_modseq(USER, None, false));
+        sendable(get_highest_modseq(USER, None, false, None));
         sendable(sync_mailbox_pivot(USER, "Starred", MAIL, true));
         sendable(write_mailbox_uid(USER, "Starred", MAIL, 1));
         sendable(delete_mailbox_uid(USER, "Starred", MAIL));

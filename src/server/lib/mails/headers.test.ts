@@ -34,6 +34,10 @@ import {
   toMailHeaderData,
 } from "./headers";
 import { getDomain } from "../util";
+import { addressOnDomains } from "../domains";
+
+/** The addresses on the account's own domain, `<username>.<EMAIL_DOMAIN>`. */
+const ownAddresses = (username?: string) => addressOnDomains([`${username}.${getDomain()}`]);
 
 const setListRows = (rows: unknown[]) => {
   listRows = rows;
@@ -72,7 +76,7 @@ describe("getMailHeaders", () => {
 
   it("should return empty array when user has no id", async () => {
     const user = { username: "noId" };
-    const result = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const result = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(result).toEqual([]);
     expect(mockGetMailHeaderIds).not.toHaveBeenCalled();
   });
@@ -152,7 +156,7 @@ describe("getMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, "recv@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, "recv@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(results).toHaveLength(1);
     expect(results[0].id).toBe("mail-abc");
     expect(results[0].subject).toBe("Test Email");
@@ -180,7 +184,7 @@ describe("getMailHeaders", () => {
       },
     ] as never);
     const [reply, original] = (await collect(getMailHeaders(makeUser(), "me@x.com", defaultOptions))).map((row) =>
-      toMailHeaderData(row, "testuser")
+      toMailHeaderData(row, ownAddresses("testuser"))
     );
     expect(reply.messageId).toBe("<b@x>");
     expect(reply.inReplyTo).toBe("<a@x>");
@@ -211,7 +215,7 @@ describe("getMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(results[0].from).toBeUndefined();
     expect(results[0].to).toBeUndefined();
     expect(results[0].cc).toBeUndefined();
@@ -239,7 +243,7 @@ describe("getMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(results[0].cc).toBeDefined();
     expect(results[0].bcc).toBeDefined();
   });
@@ -269,7 +273,7 @@ describe("getMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, own, defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, own, defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(results[0].envelopeTo).toBeDefined();
     expect(results[0].envelopeTo?.value).toEqual([{ address: own }]);
   });
@@ -297,7 +301,7 @@ describe("getMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect("envelopeTo" in results[0]).toBe(false);
   });
 
@@ -329,7 +333,7 @@ describe("getMailHeaders", () => {
     setListRows(models);
 
     const user = makeUser();
-    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, user.username));
+    const results = (await collect(getMailHeaders(user, "inbox@example.com", defaultOptions))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(results).toHaveLength(2);
     expect(results[0].id).toBe("m1");
     expect(results[1].id).toBe("m2");
@@ -350,7 +354,7 @@ describe("getMailHeadersDelta", () => {
 
   it("returns an empty delta that echoes `since` when user has no id", async () => {
     const user = { username: "noId" };
-    const result = await getMailHeadersDelta(user, "inbox@example.com", defaultOptions, since);
+    const result = await getMailHeadersDelta(user, "inbox@example.com", defaultOptions, since, ownAddresses(user.username));
     // as_of must NOT advance past `since`, or the client would skip unseen rows.
     expect(result).toEqual({ as_of: since, headers: [], expunged_ids: [] });
     expect(mockGetMailHeadersDelta).not.toHaveBeenCalled();
@@ -362,7 +366,8 @@ describe("getMailHeadersDelta", () => {
       user,
       "inbox@example.com",
       { ...defaultOptions, sent: true },
-      since
+      since,
+      ownAddresses(user.username)
     );
     const callArgs = mockGetMailHeadersDelta.mock.calls[0];
     expect(callArgs[0]).toBe("user-123");
@@ -400,7 +405,7 @@ describe("getMailHeadersDelta", () => {
     });
 
     const user = makeUser();
-    const result = await getMailHeadersDelta(user, "inbox@example.com", defaultOptions, since);
+    const result = await getMailHeadersDelta(user, "inbox@example.com", defaultOptions, since, ownAddresses(user.username));
     expect(result.as_of).toBe("2024-01-03T12:00:00.000Z");
     expect(result.expunged_ids).toEqual(["gone-1", "gone-2"]);
     expect(result.headers).toHaveLength(1);
@@ -421,7 +426,7 @@ describe("getUnifiedMailHeaders", () => {
 
   it("should return empty array when user has no id", async () => {
     const user = { username: "noId" };
-    const result = (await collect(getUnifiedMailHeaders(user, ADDRESSES, {}))).map((row) => toMailHeaderData(row, user.username));
+    const result = (await collect(getUnifiedMailHeaders(user, ADDRESSES, {}))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(result).toEqual([]);
     expect(mockGetUnifiedMailHeaderIds).not.toHaveBeenCalled();
   });
@@ -473,7 +478,7 @@ describe("getUnifiedMailHeaders", () => {
     setListRows([mailModel]);
 
     const user = makeUser();
-    const result = (await collect(getUnifiedMailHeaders(user, ADDRESSES, {}))).map((row) => toMailHeaderData(row, user.username));
+    const result = (await collect(getUnifiedMailHeaders(user, ADDRESSES, {}))).map((row) => toMailHeaderData(row, ownAddresses(user.username)));
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("mail-unified");
     expect(result[0].subject).toBe("Unified");
@@ -496,14 +501,14 @@ describe("getUnifiedMailHeadersDelta", () => {
 
   it("returns an empty delta that echoes `since` when user has no id", async () => {
     const user = { username: "noId" };
-    const result = await getUnifiedMailHeadersDelta(user, ADDRESSES, since);
+    const result = await getUnifiedMailHeadersDelta(user, ADDRESSES, since, ownAddresses(user.username));
     expect(result).toEqual({ as_of: since, headers: [], expunged_ids: [] });
     expect(mockGetUnifiedMailHeadersDelta).not.toHaveBeenCalled();
   });
 
   it("passes the address set and since to the repository", async () => {
     const user = makeUser();
-    await getUnifiedMailHeadersDelta(user, ADDRESSES, since);
+    await getUnifiedMailHeadersDelta(user, ADDRESSES, since, ownAddresses(user.username));
     expect(mockGetUnifiedMailHeadersDelta).toHaveBeenCalledWith(
       "user-123",
       ADDRESSES,
@@ -520,50 +525,53 @@ describe("envelopeToOf", () => {
   const at = (local: string, label?: string) => ({
     address: label === undefined ? `${local}@${domain}` : `${local}@${label}.${domain}`,
   });
+  // The domains each user owns: their own name, and for admin the bare zone too.
+  const own = (username: string) =>
+    addressOnDomains(username === "admin" ? [domain, `admin.${domain}`] : [`${username}.${domain}`]);
 
-  it("keeps only the addresses delivery files under the owner", () => {
+  it("keeps only the addresses on the reader's domains", () => {
     const envelope = [at("one", "alice"), at("hidden", "bob"), { address: "x@remote.example" }, at("two", "alice")];
-    expect(envelopeToOf({ envelope_to: envelope, sent: false }, "alice")).toEqual({
+    expect(envelopeToOf({ envelope_to: envelope, sent: false }, own("alice"))).toEqual({
       value: [at("one", "alice"), at("two", "alice")],
       text: "",
     });
-    expect(envelopeToOf({ envelope_to: envelope, sent: false }, "bob")).toEqual({
+    expect(envelopeToOf({ envelope_to: envelope, sent: false }, own("bob"))).toEqual({
       value: [at("hidden", "bob")],
       text: "",
     });
   });
 
-  it("gives admin both the bare domain and admin's own label", () => {
+  it("covers every domain the reader owns", () => {
     const envelope = [at("hello"), at("x", "admin"), at("y", "alice")];
-    expect(envelopeToOf({ envelope_to: envelope, sent: false }, "admin")!.value).toEqual([at("hello"), at("x", "admin")]);
+    expect(envelopeToOf({ envelope_to: envelope, sent: false }, own("admin"))!.value).toEqual([at("hello"), at("x", "admin")]);
   });
 
   it("matches whatever case the address was stored in", () => {
     const upper = { address: `Box@ALICE.${domain.toUpperCase()}` };
-    expect(envelopeToOf({ envelope_to: [upper], sent: false }, "alice")!.value).toEqual([upper]);
+    expect(envelopeToOf({ envelope_to: [upper], sent: false }, own("alice"))!.value).toEqual([upper]);
   });
 
   it("keeps an emptied envelope as an empty list, and leaves a missing one out", () => {
-    expect(envelopeToOf({ envelope_to: [at("x", "bob")], sent: false }, "alice")).toEqual({ value: [], text: "" });
-    expect(envelopeToOf({ envelope_to: [], sent: false }, "alice")).toEqual({ value: [], text: "" });
-    expect(envelopeToOf({ envelope_to: null, sent: false }, "alice")).toBeUndefined();
+    expect(envelopeToOf({ envelope_to: [at("x", "bob")], sent: false }, own("alice"))).toEqual({ value: [], text: "" });
+    expect(envelopeToOf({ envelope_to: [], sent: false }, own("alice"))).toEqual({ value: [], text: "" });
+    expect(envelopeToOf({ envelope_to: null, sent: false }, own("alice"))).toBeUndefined();
   });
 
   it("drops entries that are not address objects and reads a bare object as one entry", () => {
     expect(
-      envelopeToOf({ envelope_to: ["a", 1, null, { address: 5 }, at("me", "alice")], sent: false }, "alice")!.value
+      envelopeToOf({ envelope_to: ["a", 1, null, { address: 5 }, at("me", "alice")], sent: false }, own("alice"))!.value
     ).toEqual([at("me", "alice")]);
-    expect(envelopeToOf({ envelope_to: at("me", "alice"), sent: false }, "alice")!.value).toEqual([at("me", "alice")]);
-    expect(envelopeToOf({ envelope_to: at("me", "bob"), sent: false }, "alice")!.value).toEqual([]);
+    expect(envelopeToOf({ envelope_to: at("me", "alice"), sent: false }, own("alice"))!.value).toEqual([at("me", "alice")]);
+    expect(envelopeToOf({ envelope_to: at("me", "bob"), sent: false }, own("alice"))!.value).toEqual([]);
   });
 
   it("leaves a sent row's envelope whole: they are the recipients its owner addressed", () => {
     const envelope = [{ address: "friend@remote.example" }, at("hidden", "bob")];
-    expect(envelopeToOf({ envelope_to: envelope, sent: true }, "alice")).toEqual({ value: envelope, text: "" });
+    expect(envelopeToOf({ envelope_to: envelope, sent: true }, own("alice"))).toEqual({ value: envelope, text: "" });
   });
 
   it("is what a list row carries", () => {
     const row = { mail_id: "m", envelope_to: [at("me", "alice"), at("hidden", "bob")], sent: false } as never;
-    expect(toMailHeaderData(row, "alice").envelopeTo).toEqual({ value: [at("me", "alice")], text: "" });
+    expect(toMailHeaderData(row, own("alice")).envelopeTo).toEqual({ value: [at("me", "alice")], text: "" });
   });
 });

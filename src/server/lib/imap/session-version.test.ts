@@ -8,9 +8,9 @@
  * `readonly-user.test.ts` pattern of priming private fields directly rather
  * than driving bcrypt/LOGIN end-to-end.
  */
-import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, mock, spyOn, beforeEach, afterAll } from "bun:test";
 import { restoreLeaves } from "test-helpers";
-import { ImapSession } from "./session";
+import * as domainRepo from "../postgres/repositories/domains";
 
 const realServer = (globalThis as Record<string, unknown>)
   .__REAL_SERVER as Record<string, unknown>;
@@ -36,7 +36,14 @@ mock.module("server", () => ({
   logger: mockLogger,
 }));
 
+// Spied after the barrel mock, and the session loaded after both, so the
+// session reads the spied export rather than one the mock re-evaluated.
+const mockGetDomainAccess = spyOn(domainRepo, "getDomainAccess").mockResolvedValue(null);
+const { ImapSession } = await import("./session");
+type ImapSession = InstanceType<typeof ImapSession>;
+
 afterAll(() => {
+  mockGetDomainAccess.mockRestore();
   mock.module("server", () => realServer);
   restoreLeaves();
 });
@@ -147,18 +154,76 @@ describe("ImapSession.verifyCredentialVersion", () => {
     expect(writes).toEqual([]);
   });
 
-  it("keys the comparison on the credential presented, not a remapped user", async () => {
-    // A read-only session authenticates as its own credential row; the
-    // comparison must follow `authenticatedAs`, matching the eviction
-    // registry's keying.
+  it("keys the comparison on the person who signed in, not the store they read", async () => {
+    // A viewer's session reads the owner's store but authenticated as its
+    // own credential row; the comparison follows `authenticatedAs`, matching
+    // the eviction registry's keying.
     mockGetUser.mockImplementation((input: unknown) => {
       const { username } = input as { username: string };
-      expect(username).toBe("admin-ro");
+      expect(username).toBe("auditor");
       return Promise.resolve({ passwordVersion: 2 });
     });
-    const { session } = primeAuthenticated(1, "admin-ro");
+    const { session } = primeAuthenticated(1, "auditor");
 
     expect(await session.verifyCredentialVersion("A5")).toBe(false);
     expect(session.isAuthenticated()).toBe(false);
+  });
+});
+
+describe("ImapSession — the role a scoped login rests on", () => {
+  const SCOPE = { userId: "u-auditor", domain: "example.com", role: "viewer", ownerId: "u-owner" };
+  const access = (overrides: Partial<domainRepo.DomainAccess> = {}): domainRepo.DomainAccess => ({
+    domainId: "d-1",
+    name: "example.com",
+    ownerId: "u-owner",
+    ownerUsername: "owner",
+    role: "viewer",
+    verifiedAt: null,
+    ...overrides,
+  });
+
+  const primeScoped = () => {
+    mockGetUser.mockImplementation(() => Promise.resolve({ passwordVersion: 1 }));
+    const primed = primeAuthenticated(1, "auditor");
+    (primed.session as unknown as { scope: unknown }).scope = SCOPE;
+    return primed;
+  };
+
+  beforeEach(() => mockGetDomainAccess.mockReset());
+
+  it("lets the command through while the role stands", async () => {
+    mockGetDomainAccess.mockResolvedValue(access());
+    const { session, writes } = primeScoped();
+
+    expect(await session.verifyCredentialVersion("B1")).toBe(true);
+    expect(mockGetDomainAccess).toHaveBeenCalledWith("u-auditor", "example.com");
+    expect(writes).toEqual([]);
+  });
+
+  it("ends the session at its next command once the role is revoked", async () => {
+    mockGetDomainAccess.mockResolvedValue(null);
+    const { session, writes } = primeScoped();
+
+    expect(await session.verifyCredentialVersion("B2")).toBe(false);
+    expect(writes).toEqual([
+      "B2 NO [AUTHENTICATIONFAILED] Your role on example.com changed, please re-authenticate\r\n",
+    ]);
+    expect(session.isAuthenticated()).toBe(false);
+  });
+
+  it("ends it when the domain moved to another owner, or the role changed", async () => {
+    for (const changed of [access({ ownerId: "u-new-owner" }), access({ role: "owner", ownerId: "u-auditor" })]) {
+      mockGetDomainAccess.mockResolvedValue(changed);
+      const { session } = primeScoped();
+      expect(await session.verifyCredentialVersion("B3")).toBe(false);
+    }
+  });
+
+  it("reads no role for a plain login", async () => {
+    mockGetUser.mockImplementation(() => Promise.resolve({ passwordVersion: 1 }));
+    const { session } = primeAuthenticated(1, "alice");
+
+    expect(await session.verifyCredentialVersion("B4")).toBe(true);
+    expect(mockGetDomainAccess).not.toHaveBeenCalled();
   });
 });

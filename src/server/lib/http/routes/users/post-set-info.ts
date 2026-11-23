@@ -1,5 +1,6 @@
 import { MaskedUser } from "common";
-import { getUser, setUserInfo, isReservedUsername } from "server";
+import { getUser, setUserInfo } from "server";
+import { othersCanReadAddress } from "../../../domains";
 import { Route } from "../route";
 import { issueAuthenticatedSession } from "../../issue-session";
 
@@ -30,13 +31,15 @@ export const postSetInfoRoute = new Route<SetInfoPostResponse>(
       return { status: "failed", message: "token must be a string." };
     }
 
-    // Refuse the boot-seeded accounts BEFORE calling setUserInfo. setUserInfo
+    // Refuse an address someone other than its account can read BEFORE
+    // calling setUserInfo: the token may have reached them through that
+    // domain (it became readable after the token was sent). setUserInfo
     // unconditionally runs `usersTable.update(id, {password, ...})` for
     // pre-existing users, so a post-call check would leave the row already
     // mutated (bcrypt hash of an attacker-chosen password) even when session
     // issuance gets refused.
     const existing = await getUser({ email });
-    if (isReservedUsername(existing?.username)) {
+    if (await othersCanReadAddress(email, existing?.id)) {
       return { status: "failed", message: "Invalid credentials." };
     }
 

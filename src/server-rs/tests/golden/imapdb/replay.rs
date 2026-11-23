@@ -28,7 +28,7 @@ use crate::postgres::repositories::mails::imap_query::{self as query, DateKey, S
 use crate::postgres::repositories::mails::table::script::with_script;
 use crate::postgres::repositories::mails::table::{Filter, PreparedQuery, Record, Rows};
 use crate::postgres::{DbError, DbResult, Param};
-use crate::util::{get_domain, get_user_domain};
+use crate::util::get_domain;
 
 const BUILDERS: &str = include_str!("builders.json");
 const TRACES: &str = include_str!("traces.json");
@@ -145,7 +145,7 @@ fn normalize(value: Value) -> Value {
 fn localize(value: &Value) -> Value {
     match value.as_str() {
         Some("mydomain") => json!(get_domain()),
-        Some("alice.mydomain") => json!(get_user_domain("alice")),
+        Some("alice.mydomain") => json!(format!("alice.{}", get_domain())),
         _ => value.clone(),
     }
 }
@@ -338,7 +338,7 @@ fn search_criteria(line: &str) -> Vec<SearchCriterion> {
 fn the_count_and_uid_list_builders_emit_the_same_sql_and_values() {
     let fixture = fixture(BUILDERS);
     for (group, build) in [
-        ("countMessages", query::build_count_messages_query as fn(&str, Option<&str>, bool) -> PreparedQuery),
+        ("countMessages", query::build_count_messages_query as fn(&str, Option<&str>, bool, Option<&[String]>) -> PreparedQuery),
         ("allUids", query::build_all_uids_query),
         ("firstUnseenUid", query::build_first_unseen_uid_query),
         ("expungeDeletedSelect", query::build_expunge_deleted_select_query),
@@ -348,7 +348,7 @@ fn the_count_and_uid_list_builders_emit_the_same_sql_and_values() {
         assert_eq!(cases.len(), 20, "{group}");
         for case in cases {
             let args = &case["args"];
-            assert_query(&format!("{group} {args}"), &build(USER, mailbox_arg(args), flag(args, "sent")), case);
+            assert_query(&format!("{group} {args}"), &build(USER, mailbox_arg(args), flag(args, "sent"), None), case);
         }
     }
 }
@@ -399,6 +399,7 @@ fn the_expunge_builders_emit_the_same_filters_and_statements() {
             mailbox_arg(args),
             flag(args, "sent"),
             &integers(&args["uids"]),
+            None,
         );
         assert_query(&format!("expungeUidsSelect {args}"), &built, case);
     }
@@ -416,6 +417,7 @@ fn the_flag_push_builder_emits_the_same_sql_and_values() {
             mailbox_arg(args),
             flag(args, "sent"),
             &strings(&args["mail_ids"]),
+            None,
         );
         assert_query(&format!("mailFlagUpdates {args}"), &built, case);
     }
@@ -437,6 +439,7 @@ fn the_range_builder_emits_the_same_sql_projection_and_values() {
             flag(args, "useUid"),
             &strings(&args["fields"]),
             opt_number(args, "changedSince"),
+            None,
         );
         let label = format!("mailsByRange {args}");
         assert_eq!(built.sql, text(case, "sql"), "{label}: sql");
@@ -482,7 +485,7 @@ fn search_statements_match_for_every_mailbox_and_criteria_list() {
     for case in cases {
         let args = &case["args"];
         let criteria: Vec<SimplifiedCriterion> = list(args, "criteria").iter().map(criterion_of).collect();
-        let built = query::build_search_mails_by_uid_query(USER, mailbox_arg(args), flag(args, "sent"), &criteria);
+        let built = query::build_search_mails_by_uid_query(USER, mailbox_arg(args), flag(args, "sent"), &criteria, None);
         let label = format!("searchMailsByUid {args}");
         if case.get("threw").is_some() {
             assert_eq!(built, Err(query::InvalidDateParam), "{label}");
@@ -524,7 +527,17 @@ fn the_account_list_statement_matches_the_http_repositorys() {
     assert_eq!(cases.len(), 8);
     for case in cases {
         let args = &case["args"];
-        let built = build_account_stats_query(USER, flag(args, "sent"), opt_text(args, "domain"));
+        // `domain ? [domain] : undefined`
+        let domains: Vec<String> =
+            opt_text(args, "domain").filter(|domain| !domain.is_empty()).map(str::to_string).into_iter().collect();
+        let filter = (!domains.is_empty()).then_some(domains.as_slice());
+        let built = crate::postgres::repositories::mails::http_query::build_account_stats_query(
+            USER,
+            flag(args, "sent"),
+            filter,
+            false,
+            None,
+        );
         assert_query(&format!("accountStats {args}"), &built, case);
     }
 }
@@ -587,11 +600,11 @@ async fn run_repository(name: &str, args: &Value) -> Value {
     let mailbox = mailbox_arg(args);
     let sent = || flag(args, "sent");
     match name {
-        "countMessages" => returned(counts(&repository::count_messages(USER, mailbox, sent()).await)),
-        "getAllUids" => returned(json!(repository::get_all_uids(USER, mailbox, sent()).await)),
-        "getFirstUnseenUid" => returned(json!(repository::get_first_unseen_uid(USER, mailbox, sent()).await)),
+        "countMessages" => returned(counts(&repository::count_messages(USER, mailbox, sent(), None).await)),
+        "getAllUids" => returned(json!(repository::get_all_uids(USER, mailbox, sent(), None).await)),
+        "getFirstUnseenUid" => returned(json!(repository::get_first_unseen_uid(USER, mailbox, sent(), None).await)),
         "getMailFlagUpdates" => returned(flag_updates(
-            &repository::get_mail_flag_updates(USER, mailbox, sent(), &strings(&args["mail_ids"])).await,
+            &repository::get_mail_flag_updates(USER, mailbox, sent(), &strings(&args["mail_ids"]), None).await,
         )),
         "getMailsByRange" => {
             let mails = repository::get_mails_by_range(
@@ -603,6 +616,7 @@ async fn run_repository(name: &str, args: &Value) -> Value {
                 flag(args, "useUid"),
                 &strings(&args["fields"]),
                 opt_number(args, "changedSince"),
+                None,
             )
             .await;
             returned(Value::Array(
@@ -633,17 +647,18 @@ async fn run_repository(name: &str, args: &Value) -> Value {
                 args["useUid"].as_bool().unwrap_or(false),
                 operation,
                 opt_number(args, "unchangedSince"),
+                None,
             )
             .await;
             returned(json!({ "updated": flag_rows(&result.updated), "failed": result.failed }))
         }
         "searchMailsByUid" => {
             let criteria: Vec<SimplifiedCriterion> = list(args, "criteria").iter().map(criterion_of).collect();
-            returned(json!(repository::search_mails_by_uid(USER, mailbox, sent(), &criteria).await))
+            returned(json!(repository::search_mails_by_uid(USER, mailbox, sent(), &criteria, None).await))
         }
-        "expungeDeletedMails" => returned(json!(repository::expunge_deleted_mails(USER, mailbox, sent()).await)),
+        "expungeDeletedMails" => returned(json!(repository::expunge_deleted_mails(USER, mailbox, sent(), None).await)),
         "expungeMailsByUid" => {
-            match repository::expunge_mails_by_uid(USER, mailbox, sent(), &integers(&args["uids"])).await {
+            match repository::expunge_mails_by_uid(USER, mailbox, sent(), &integers(&args["uids"]), None).await {
                 Ok(uids) => returned(json!(uids)),
                 Err(error) => threw(&error),
             }
@@ -702,7 +717,12 @@ fn store_for(args: &Value) -> Store {
         "admin" => ("admin", "admin@mydomain"),
         other => panic!("no user {other}"),
     };
-    Store::new(SignedUser::new(Some(USER.to_string()), Some(username.to_string()), Some(email.to_string())))
+    // A plain login on the user's own domain, as the session opens one.
+    let own_domain = &email[email.find('@').unwrap() + 1..];
+    Store::new(
+        SignedUser::new(Some(USER.to_string()), Some(username.to_string()), Some(email.to_string())),
+        StoreScope::whole_store(own_domain),
+    )
 }
 
 /// The mail `new Mail(init)` builds, with the model's defaults for what the

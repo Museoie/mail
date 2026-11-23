@@ -10,17 +10,6 @@ pub fn get_domain() -> String {
     env::non_empty("EMAIL_DOMAIN").unwrap_or_else(|| "mydomain".to_string())
 }
 
-/// The domain a user's addresses live under: the served domain for `admin`,
-/// `<username>.<domain>` for everyone else.
-pub fn get_user_domain(username: &str) -> String {
-    let domain = get_domain();
-    if username == "admin" {
-        domain
-    } else {
-        format!("{username}.{domain}")
-    }
-}
-
 fn domain_of(address: &str) -> String {
     address.rsplit('@').next().unwrap_or("").to_lowercase()
 }
@@ -31,35 +20,6 @@ pub fn is_local_address(address: &str, domain: &str) -> bool {
     let domain_in_address = domain_of(address);
     let target = domain.to_lowercase();
     domain_in_address == target || domain_in_address.ends_with(&format!(".{target}"))
-}
-
-/// The username whose mailbox receives mail for `address`. `x@<domain>` and
-/// `x@admin.<domain>` are admin's, `x@bob.<domain>` is bob's. For an address
-/// outside the served domain this is the address's own domain, which matches
-/// no username.
-pub fn address_to_username(address: &str) -> String {
-    let domain = get_domain().to_lowercase();
-    let domain_in_address = domain_of(address);
-    // `"a.b".split(".b")[0]`: everything before the first occurrence.
-    let needle = format!(".{domain}");
-    let sub_domain = match domain_in_address.find(&needle) {
-        Some(at) => domain_in_address[..at].to_string(),
-        None => domain_in_address,
-    };
-    if sub_domain == domain {
-        "admin".to_string()
-    } else {
-        sub_domain
-    }
-}
-
-/// The username an envelope recipient is delivered to, `None` for an address
-/// outside `domain`: [`is_local_address`], then [`address_to_username`].
-/// Delivery files a message under each recipient's user by this, and the mail
-/// lists show a received row's envelope only as far as it names the row's own
-/// user by the same rule.
-pub fn recipient_username(address: &str, domain: &str) -> Option<String> {
-    is_local_address(address, domain).then(|| address_to_username(address))
 }
 
 /// Whether `username` can name a mailbox: a lower-case DNS label.
@@ -129,16 +89,5 @@ mod tests {
         assert!(is_local_address("a@mail.test", "mail.test"));
         assert!(is_local_address("a@BOB.mail.test", "Mail.Test"));
         assert!(!is_local_address("a@notmail.test", "mail.test"));
-    }
-
-    #[test]
-    fn recipient_usernames() {
-        let domain = get_domain();
-        assert_eq!(recipient_username(&format!("x@bob.{domain}"), &domain).as_deref(), Some("bob"));
-        assert_eq!(recipient_username(&format!("X@BOB.{}", domain.to_uppercase()), &domain).as_deref(), Some("bob"));
-        assert_eq!(recipient_username(&format!("hi@{domain}"), &domain).as_deref(), Some("admin"));
-        assert_eq!(recipient_username(&format!("hi@admin.{domain}"), &domain).as_deref(), Some("admin"));
-        assert_eq!(recipient_username("x@remote.example", &domain), None);
-        assert_eq!(recipient_username(&format!("x@bob.{domain}.evil"), &domain), None);
     }
 }

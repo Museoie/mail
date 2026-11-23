@@ -29,7 +29,6 @@ import {
   rawRequest,
 } from "./core-helpers";
 
-const RO_PASSWORD = "read-only-password-e2e";
 const NO_SUBSCRIPTION = { status: "failed", message: "No subscription found" };
 const SUCCESS = { status: "success" };
 
@@ -41,18 +40,26 @@ let alice: TestUser;
 let bob: TestUser;
 let aliceClient: ApiClient;
 let bobClient: ApiClient;
-let readOnly: ApiClient;
+/** Holds the viewer role on mail.test, which admin owns. */
+let viewer: TestUser;
+let viewerClient: ApiClient;
 
 beforeAll(async () => {
-  server = await startServer({ env: { ADMIN_RO_PASSWORD: RO_PASSWORD } });
+  server = await startServer();
   alice = await createUser(server, "alice");
   bob = await createUser(server, "bob");
+  viewer = await createUser(server, "vera");
+  await server.db.query(
+    `INSERT INTO domain_roles (domain_id, user_id, role)
+     SELECT domain_id, $1, 'viewer' FROM domains WHERE name = 'mail.test'`,
+    [viewer.id]
+  );
   aliceClient = server.client();
   bobClient = server.client();
-  readOnly = server.client();
+  viewerClient = server.client();
   await aliceClient.login(alice.username, alice.password);
   await bobClient.login(bob.username, bob.password);
-  await readOnly.login("admin-ro", RO_PASSWORD);
+  await viewerClient.login(viewer.username, viewer.password);
 }, 90_000);
 
 afterAll(async () => {
@@ -132,8 +139,8 @@ describe("GET /api/push/public-key", () => {
     expect(head.headers.get("content-length")).toBe("20");
   });
 
-  test("answers a signed-in and a read-only caller the same", async () => {
-    for (const client of [aliceClient, readOnly]) {
+  test("answers an owner and a viewer the same", async () => {
+    for (const client of [aliceClient, viewerClient]) {
       expect((await client.get("/api/push/public-key")).body).toEqual(SUCCESS);
     }
   });
@@ -230,14 +237,14 @@ describe("GET /api/push/refresh/:id", () => {
     expect(await rowOf(id)).toEqual(before);
   });
 
-  test("a read-only session owns no subscription, not even admin's", async () => {
+  test("a viewer owns no subscription of the domain's owner", async () => {
     const admin = await adminUser(server);
     const adminClient = server.client();
     await adminClient.login("admin", ADMIN_PASSWORD);
     const { id, before } = await agedSubscription(adminClient, "refresh-admins");
     expect(before.user_id).toBe(admin.id);
 
-    expect((await readOnly.get(`/api/push/refresh/${id}`)).body).toEqual(NO_SUBSCRIPTION);
+    expect((await viewerClient.get(`/api/push/refresh/${id}`)).body).toEqual(NO_SUBSCRIPTION);
     expect(await rowOf(id)).toEqual(before);
     expect((await adminClient.get(`/api/push/refresh/${id}`)).body).toEqual(SUCCESS);
   });
@@ -651,17 +658,10 @@ describe("POST /api/push/subscribe", () => {
     );
   });
 
-  test("refuses a read-only session before it looks at the body", async () => {
-    const before = await rowCount();
-    for (const body of [{ subscription: subscription("ro") }, [], {}]) {
-      const result = await post(body, readOnly);
-      expect(result.status).toBe(200);
-      expect(result.body).toEqual({
-        status: "failed",
-        message: "Subscribing to push not permitted for read-only user (admin-ro).",
-      });
-    }
-    expect(await rowCount()).toBe(before);
+  test("subscribes a viewer for itself, never for the domain's owner", async () => {
+    const id = await subscribe(viewerClient, "viewer");
+    expect((await rowOf(id))!.user_id).toBe(viewer.id);
+    expect((await viewerClient.delete(`/api/push/subscribe/${id}`)).body).toEqual(SUCCESS);
   });
 
   test("answers with a trailing slash and in any letter case", async () => {
@@ -729,19 +729,16 @@ describe("DELETE /api/push/subscribe/:id", () => {
     expect((await server.client().delete("/api/push/subscribe/%ZZ")).status).toBe(401);
   });
 
-  test("refuses a read-only session, even for admin's own subscription", async () => {
+  test("a viewer cannot remove the domain owner's subscription", async () => {
     const admin = await adminUser(server);
     const adminClient = server.client();
     await adminClient.login("admin", ADMIN_PASSWORD);
     const id = await subscribe(adminClient, "admins");
     expect((await rowOf(id))!.user_id).toBe(admin.id);
 
-    const { status, body } = await readOnly.delete(`/api/push/subscribe/${id}`);
+    const { status, body } = await viewerClient.delete(`/api/push/subscribe/${id}`);
     expect(status).toBe(200);
-    expect(body).toEqual({
-      status: "failed",
-      message: "Unsubscribing from push not permitted for read-only user (admin-ro).",
-    });
+    expect(body).toEqual(NO_SUBSCRIPTION);
     expect(await rowOf(id)).toBeDefined();
     expect((await adminClient.delete(`/api/push/subscribe/${id}`)).body).toEqual(SUCCESS);
   });

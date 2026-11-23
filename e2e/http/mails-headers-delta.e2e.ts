@@ -354,7 +354,7 @@ describe("GET /api/mails/headers/:account?since= — validation", () => {
   });
 
   test("the account check comes before since is read", async () => {
-    const { body } = await box.client.get("/api/mails/headers/hello@mail.test?since=abc");
+    const { body } = await box.client.get("/api/mails/headers/hello?since=abc");
     expect(body).toEqual(failed("Invalid request. You may not look at other users' emails."));
   });
 

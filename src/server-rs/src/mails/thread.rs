@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use serde_json::{Map, Value};
 
 use super::headers::to_mail_header_data;
+use crate::domains::AddressOnDomains;
 use super::threading::{collect_thread, has_thread_headers, linked_ids, normalize_subject, stored_id_forms, ThreadCandidate};
 use crate::js;
 use crate::models::SignedUser;
@@ -12,16 +13,14 @@ use crate::postgres::repositories::mails::thread::{
     get_thread_candidates, get_thread_seed, get_thread_subject_candidates, ThreadRow,
 };
 use crate::postgres::DbResult;
-use crate::util::get_user_domain;
 
 /// Rounds of widening the id set; each round follows one more link.
 const MAX_ROUNDS: usize = 4;
 
-/// Whether an address is the user's own: on the domain their mail arrives at
-/// (`*@user.domain`, or `*@domain` for admin).
-pub fn own_addresses_of(username: &str) -> impl Fn(&str) -> bool {
-    let domain = get_user_domain(username).to_lowercase();
-    move |address: &str| address.to_lowercase().rsplit('@').next() == Some(domain.as_str())
+/// The user's own addresses: those on the domains they own (and used to).
+/// Another user's address on this server is a correspondent like any other.
+pub fn own_addresses_of<S: AsRef<str>>(domains: &[S]) -> AddressOnDomains {
+    AddressOnDomains::new(domains)
 }
 
 /// The candidate rows by id, in the order each id was first seen; a later
@@ -56,12 +55,16 @@ fn collected_ids(seed: &ThreadRow, candidates: &Candidates, is_own: &impl Fn(&st
 ///
 /// Header links are followed round by round. The subject lookup runs once,
 /// and only when the conversation found so far holds header-less mail.
-pub async fn get_thread(user: &SignedUser, mail_id: &str) -> DbResult<Vec<Map<String, Value>>> {
+pub async fn get_thread(
+    user: &SignedUser,
+    mail_id: &str,
+    own: &AddressOnDomains,
+) -> DbResult<Vec<Map<String, Value>>> {
     let user_id = user.id.as_str();
     let Some(seed) = get_thread_seed(user_id, mail_id).await? else {
         return Ok(Vec::new());
     };
-    let is_own = own_addresses_of(&user.username);
+    let is_own = |address: &str| own.matches(address);
     let include_spam = seed.is_spam();
     let subject = normalize_subject(seed.subject());
     let mut candidates = Candidates::default();
@@ -97,7 +100,7 @@ pub async fn get_thread(user: &SignedUser, mail_id: &str) -> DbResult<Vec<Map<St
     Ok(rows
         .into_iter()
         .map(|row| {
-            let mut header = to_mail_header_data(&row.record, &user.username);
+            let mut header = to_mail_header_data(&row.record, own);
             if row.is_spam() {
                 header.insert("spam".into(), Value::Bool(true));
             }
@@ -117,14 +120,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn own_addresses_are_those_on_the_user_domain() {
+    fn own_addresses_are_those_on_the_users_domains() {
         let domain = crate::util::get_domain();
-        let is_own = own_addresses_of("bob");
-        assert!(is_own(&format!("Me@BOB.{}", domain.to_uppercase())));
-        assert!(!is_own(&format!("me@{domain}")));
-        assert!(!is_own(&format!("me@alice.{domain}")));
-        let admin = own_addresses_of("admin");
-        assert!(admin(&format!("x@{domain}")));
+        let is_own = own_addresses_of(&[format!("bob.{domain}"), "example.org".to_string()]);
+        assert!(is_own.matches(&format!("Me@BOB.{}", domain.to_uppercase())));
+        assert!(is_own.matches("info@example.org"));
+        assert!(!is_own.matches(&format!("me@{domain}")));
+        assert!(!is_own.matches(&format!("me@alice.{domain}")));
     }
 
     #[test]

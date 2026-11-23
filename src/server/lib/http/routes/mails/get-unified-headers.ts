@@ -7,6 +7,7 @@ import {
 } from "server";
 import { jsonList } from "../../respond";
 import { Route } from "../route";
+import { addressOnDomains, ownAddressDomains } from "../../../domains";
 import type {
   HeadersDeltaGetResponse,
   HeadersGetResponse,
@@ -30,8 +31,12 @@ export const getUnifiedHeadersRoute = new Route<
   async (req) => {
     const user = req.session.user!;
 
-    const { received } = await getAccounts(user);
+    const [{ received }, ownDomains] = await Promise.all([
+      getAccounts(user),
+      ownAddressDomains(user.id),
+    ]);
     const addresses = received.map((a) => a.key);
+    const isOwn = addressOnDomains(ownDomains);
 
     const { since } = req.query;
     if (since !== undefined) {
@@ -44,7 +49,7 @@ export const getUnifiedHeadersRoute = new Route<
           message: "Invalid `since` parameter: expected an ISO timestamp."
         };
       }
-      const delta = await getUnifiedMailHeadersDelta(user, addresses, since);
+      const delta = await getUnifiedMailHeadersDelta(user, addresses, since, isOwn);
       return { status: "success", body: delta };
     }
 
@@ -57,14 +62,14 @@ export const getUnifiedHeadersRoute = new Route<
         pageParams.limit,
         pageParams.after
       );
-      return jsonList(batches, (row) => toMailHeaderData(row, user.username), {
+      return jsonList(batches, (row) => toMailHeaderData(row, isOwn), {
         listKey: "headers",
         fields: { next_cursor: encodeListCursor(next) }
       });
     }
 
     return jsonList(await getUnifiedMailHeaders(user, addresses, {}), (row) =>
-      toMailHeaderData(row, user.username)
+      toMailHeaderData(row, isOwn)
     );
   }
 );

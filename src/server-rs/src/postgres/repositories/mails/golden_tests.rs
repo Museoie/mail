@@ -188,6 +188,7 @@ fn set_flags_queries_match_for_every_branch() {
             flag(args, "useUid"),
             text(args, "setClause"),
             flag(args, "conditional"),
+            None,
         );
         assert_eq!(queries.select_sql, case["selectSql"].as_str().unwrap(), "selectSql {args}");
         assert_eq!(queries.matched_uid_sql, case["matchedUidSql"].as_str().unwrap(), "matchedUidSql {args}");
@@ -211,8 +212,8 @@ fn view_rules_match_for_every_mailbox_name() {
         let filter: Vec<Value> =
             membership_filter(mailbox, sent).into_iter().map(|(column, value)| json!([column, value])).collect();
         assert_eq!(Value::Array(filter), case["filter"], "membershipFilter {case}");
-        assert_eq!(membership_expression(mailbox, sent, prefix), text(case, "expression"), "expression {case}");
-        assert_eq!(membership_condition(mailbox, sent, prefix), text(case, "condition"), "condition {case}");
+        assert_eq!(membership_expression(mailbox, sent, prefix, None), text(case, "expression"), "expression {case}");
+        assert_eq!(membership_condition(mailbox, sent, prefix, None), text(case, "condition"), "condition {case}");
     }
     for case in list(&fixture, "destinations") {
         assert_eq!(
@@ -716,7 +717,7 @@ async fn call(name: &str, args: &Value) -> Outcome {
             json!(write_mailbox_uid(user_id(), text(args, "mailbox"), mail_id(), integer(args, "uid")).await?)
         }
         "getNextModseq" => json!(get_next_modseq(user_id()).await?),
-        "getHighestModseq" => json!(get_highest_modseq(user_id(), opt_text(args, "mailbox"), flag(args, "sent")).await),
+        "getHighestModseq" => json!(get_highest_modseq(user_id(), opt_text(args, "mailbox"), flag(args, "sent"), None).await),
 
         "syncMappedPivotsForRow" => {
             sync_mapped_pivots_for_row(

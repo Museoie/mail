@@ -3,6 +3,7 @@
 mod headers;
 pub mod list_page;
 mod read;
+pub mod reader;
 mod spam;
 mod write;
 

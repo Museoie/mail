@@ -4,3 +4,4 @@ export * from "./http";
 export * from "./imap";
 export * from "./views";
 export * from "./thread";
+export * from "./domain-scope";

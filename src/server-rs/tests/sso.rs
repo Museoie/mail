@@ -614,9 +614,14 @@ impl AccountDirectory for FakeDirectory {
         Ok(self.by_username.clone())
     }
 
-    async fn find_unlinked_by_email(&self, _email: &str, _excluded: &[String]) -> Result<Vec<LocalAccount>> {
+    async fn find_unlinked_by_email(&self, _email: &str) -> Result<Vec<LocalAccount>> {
         self.check()?;
         Ok(Vec::new())
+    }
+
+    async fn others_can_read(&self, _email: &str, _user_id: &str) -> Result<bool> {
+        self.check()?;
+        Ok(false)
     }
 
     async fn link(&self, _user_id: &str, _sub: &str) -> Result<Option<LocalAccount>> {

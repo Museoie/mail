@@ -1,9 +1,17 @@
 
 import { describe, it, expect } from "bun:test";
 import { selectMailbox, statusMailbox } from "./mailbox-ops";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
 import type { SignedUser } from "common";
 import type { SequenceState } from "./sequence-resolver";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 const REAL_MAILBOXES = ["INBOX", "Sent Messages", "Archive"];
 
@@ -161,7 +169,7 @@ describe("mailbox-existence validation (#595)", () => {
 
 describe("Store.mailboxExists (#595)", () => {
   const makeStore = (boxes: string[]): Store => {
-    const store = new Store({ id: "u1", username: "admin" } as SignedUser);
+    const store = newStore({ id: "u1", username: "admin" } as SignedUser);
     store.listMailboxes = async () => boxes;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (store as any).listMailboxesOrThrow = async () => boxes;
@@ -169,7 +177,7 @@ describe("Store.mailboxExists (#595)", () => {
   };
 
   it("returns true for INBOX without consulting the list", async () => {
-    const store = new Store({ id: "u1", username: "admin" } as SignedUser);
+    const store = newStore({ id: "u1", username: "admin" } as SignedUser);
     const guard = async () => {
       throw new Error("list path should not be called for INBOX");
     };

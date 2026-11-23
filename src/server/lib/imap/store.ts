@@ -48,7 +48,7 @@ import {
   SearchCriterion,
   UidCriterion,
 } from "./types";
-import { logger, getUserDomain } from "server";
+import { logger } from "server";
 
 type SimplifiedCriterion = { type: string; value?: unknown };
 
@@ -170,15 +170,57 @@ export const simplifyCriterion = (
   }
 };
 
+/**
+ * Which of a store's mail an IMAP session sees.
+ *
+ * - `domains` undefined: the whole store, every domain its user owns (a plain
+ *   `user` login).
+ * - `domains` set: only the mail of those domains, in every box (a
+ *   `user@domain` login, whose store is the domain owner's).
+ */
+export interface StoreScope {
+  domains?: string[];
+  /**
+   * The domains whose addresses LIST shows as account folders: the scope's
+   * domains, or every domain the user owns, read at login.
+   */
+  accountDomains: string[];
+  /** The domain account folders (named by local part) are read under. */
+  primaryDomain: string;
+}
+
 // class that creates "store" object
 export class Store {
-  constructor(private user: SignedUser) {}
+  private domains: string[] | undefined;
+  private accountDomains: string[];
+  private primaryDomain: string;
+
+  /** `user` is the account whose rows the session reads: the owner of its mail. */
+  constructor(private user: SignedUser, scope: StoreScope) {
+    this.domains = scope.domains;
+    this.accountDomains = scope.accountDomains;
+    this.primaryDomain = scope.primaryDomain;
+  }
 
   /**
    * Get the user for this store
    */
   getUser(): SignedUser {
     return this.user;
+  }
+
+  /** The domains the session is scoped to, or undefined for the whole store. */
+  getDomains(): string[] | undefined {
+    return this.domains;
+  }
+
+  /** Whether the session sees only some domains of the store. */
+  isDomainScoped(): boolean {
+    return this.domains !== undefined;
+  }
+
+  getPrimaryDomain(): string {
+    return this.primaryDomain;
   }
 
   /**
@@ -195,7 +237,7 @@ export class Store {
     if (utility?.uidSpace === "mapped") return { kind: "mailbox", mailbox: utility.name };
     return {
       kind: "account",
-      account: boxToAccount(this.user.username, box),
+      account: boxToAccount(this.primaryDomain, box),
       sent: isSentBox(box),
     };
   }
@@ -207,14 +249,15 @@ export class Store {
   }
 
   private listMailboxEntriesOrThrow = async (): Promise<MailboxEntry[]> => {
-    // Match HTTP /api/mails/accounts: filter by user's domain so we only
-    // expose addresses that belong to this server, not every external
-    // CC/BCC/recipient address found on stored mails.
-    const userDomain = getUserDomain(this.user.username);
+    // Match HTTP /api/mails/accounts: list only addresses on the session's
+    // domains, not every external CC/BCC/recipient address found on stored
+    // mails. A scoped session also counts only its domains' mail, and has no
+    // user-created mailboxes: those hold the whole store's mail.
+    const domains = this.accountDomains;
     const [receivedStats, sentStats, userMailboxes] = await Promise.all([
-      getAccountStats(this.user.id, false, userDomain),
-      getAccountStats(this.user.id, true, userDomain),
-      getMailboxesByUser(this.user.id),
+      getAccountStats(this.user.id, false, domains, false, this.domains),
+      getAccountStats(this.user.id, true, domains, false, this.domains),
+      this.domains ? Promise.resolve([]) : getMailboxesByUser(this.user.id),
     ]);
 
     const seen = new Set<string>();
@@ -322,7 +365,7 @@ export class Store {
   ): Promise<{ total: number; unread: number } | null> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await countMessages(this.user.id, mailboxArg, isSent);
+      return await countMessages(this.user.id, mailboxArg, isSent, this.domains);
     } catch (error) {
       logger.error("Error counting messages", { component: "imap.store", box }, error);
       return null;
@@ -349,7 +392,7 @@ export class Store {
   getAllUids = async (box: string): Promise<number[] | null> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await pgGetAllUids(this.user.id, mailboxArg, isSent);
+      return await pgGetAllUids(this.user.id, mailboxArg, isSent, this.domains);
     } catch (error) {
       logger.error("Error getting all UIDs", { component: "imap.store", box }, error);
       return null;
@@ -367,7 +410,7 @@ export class Store {
   ): Promise<MailFlagUpdate[] | null> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await pgGetMailFlagUpdates(this.user.id, mailboxArg, isSent, mailIds);
+      return await pgGetMailFlagUpdates(this.user.id, mailboxArg, isSent, mailIds, this.domains);
     } catch (error) {
       logger.error("Error getting mail flag updates", { component: "imap.store", box }, error);
       return null;
@@ -381,7 +424,7 @@ export class Store {
   getFirstUnseenUid = async (box: string): Promise<number | null> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await pgGetFirstUnseenUid(this.user.id, mailboxArg, isSent);
+      return await pgGetFirstUnseenUid(this.user.id, mailboxArg, isSent, this.domains);
     } catch (error) {
       logger.error("Error getting first unseen UID", { component: "imap.store", box }, error);
       return null;
@@ -398,7 +441,7 @@ export class Store {
   getHighestModseq = async (box: string): Promise<number> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await pgGetHighestModseq(this.user.id, mailboxArg, isSent);
+      return await pgGetHighestModseq(this.user.id, mailboxArg, isSent, this.domains);
     } catch (error) {
       logger.error("Error getting highest modseq", { component: "imap.store", box }, error);
       return 1;
@@ -423,7 +466,8 @@ export class Store {
         end,
         useUid,
         fields.flatMap((f) => this.mapFieldName(f)),
-        changedSince
+        changedSince,
+        this.domains
       );
 
       const mails = new Map<string, StoreFetchedMail>();
@@ -563,7 +607,8 @@ export class Store {
         flags,
         useUid,
         operation,
-        unchangedSince
+        unchangedSince,
+        this.domains
       );
     } catch (error) {
       logger.error("Error setting flags", { component: "imap.store", box, flags }, error);
@@ -578,7 +623,7 @@ export class Store {
   expunge = async (box: string): Promise<number[]> => {
     try {
       const { mailboxArg, isSent } = this.resolveMappedBox(box);
-      return await expungeDeletedMails(this.user.id, mailboxArg, isSent);
+      return await expungeDeletedMails(this.user.id, mailboxArg, isSent, this.domains);
     } catch (error) {
       logger.error("Error expunging messages", { component: "imap.store", box }, error);
       throw error;
@@ -596,7 +641,7 @@ export class Store {
   expungeUids = async (box: string, uids: number[]): Promise<number[]> => {
     if (uids.length === 0) return [];
     const { mailboxArg, isSent } = this.resolveMappedBox(box);
-    return await expungeMailsByUid(this.user.id, mailboxArg, isSent, uids);
+    return await expungeMailsByUid(this.user.id, mailboxArg, isSent, uids, this.domains);
   };
 
   search = async (
@@ -620,7 +665,8 @@ export class Store {
         this.user.id,
         mailboxArg,
         isSent,
-        simplifiedCriteria
+        simplifiedCriteria,
+        this.domains
       );
     } catch (error) {
       logger.error("Error searching messages", { component: "imap.store", box }, error);

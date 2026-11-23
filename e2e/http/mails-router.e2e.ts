@@ -573,7 +573,7 @@ describe("a production server", () => {
     expect(login.setCookies.join(";")).toContain("Secure");
     expect((await first.get("/api/mails/accounts")).body).toEqual({
       status: "success",
-      body: { received: [], sent: [], spam: [] },
+      body: { received: [], sent: [], spam: [], shared: [] },
     });
     const refused = await second.get("/api/mails/accounts");
     expect(refused.status).toBe(401);

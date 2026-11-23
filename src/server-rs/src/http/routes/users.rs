@@ -12,14 +12,11 @@ use crate::http::request::HttpRequest;
 use crate::http::respond::{json, Response};
 use crate::http::sso_hooks::{is_local_login_allowed, sign_out_of_provider, sso_mode};
 use crate::postgres::initialize::VERSION;
-use crate::read_only::{
-    delivers_to_admin_mailbox, is_reserved_username, resolve_session_user, ADMIN_RO_USERNAME,
-};
+use crate::domains::others_can_read_address;
 use crate::users::{
     create_authentication_mail, create_token, get_user, is_valid_email, set_user_info, start_timer, UserQuery,
 };
 use crate::verify_password::verify_password;
-use crate::logger;
 
 pub const LOCAL_SIGN_IN_OFF_MESSAGE: &str =
     "Password sign-in is turned off on this server. Sign in with SSO instead.";
@@ -73,27 +70,10 @@ async fn post_login(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     // this account's own bucket, never the address's aggregate.
     let account = login_identity_of(&req.body);
 
-    if !pw_matches || signed_user.is_none() {
-        login_limiter().record_failure(&ip, account.as_deref());
-        return Ok(ApiResponse::failed(INVALID_CREDENTIALS).into());
-    }
-
-    // The read-only credential signs in as admin's identity, marked read-only.
-    let Some((session_user, is_read_only)) = resolve_session_user(signed_user).await? else {
+    let Some(session_user) = signed_user.filter(|_| pw_matches) else {
         login_limiter().record_failure(&ip, account.as_deref());
         return Ok(ApiResponse::failed(INVALID_CREDENTIALS).into());
     };
-    if is_read_only {
-        logger::info(
-            "HTTP LOGIN success (read-only)",
-            json!({
-                "component": "http",
-                "authenticatedAs": ADMIN_RO_USERNAME,
-                "effectiveUserId": session_user.id,
-                "ip": ip,
-            }),
-        );
-    }
 
     issue_authenticated_session(req, session_user.clone()).await?;
     // The store write is what makes the issued cookie mean anything, so it
@@ -128,31 +108,24 @@ async fn post_token(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     };
     let email = email.to_string();
 
-    // The boot-seeded accounts take no part in this flow: without the gate an
-    // outside caller mints a live reset token for admin from the address
-    // alone. Same-shape success as a normal send, so no probe signal.
+    // Refuse an address someone other than its account can read, before
+    // create_token runs: the link comes back into a domain whose owner or
+    // viewers read it, so it would hand them the account (or, for a sign-up,
+    // an account under an address they don't control). create_token's
+    // existing-user branch writes the token onto the matched row, so the gate
+    // comes first. Same-shape success as a normal send, so no probe signal.
     let existing = get_user(&UserQuery::email(&email)).await?;
-    if is_reserved_username(existing.as_ref().and_then(|user| user.username.as_deref())) {
-        token_limiter().record_failure(&ip, None);
-        return Ok(ApiResponse::success().into());
-    }
-    // Same for an address delivered into admin's own mailbox.
-    if delivers_to_admin_mailbox(&email) {
+    let account_id = existing.as_ref().and_then(|user| user.id.clone());
+    if others_can_read_address(&email, account_id.as_deref()).await? {
         token_limiter().record_failure(&ip, None);
         return Ok(ApiResponse::success().into());
     }
 
-    let admin_query = UserQuery::username("admin");
-    let (admin, created) = tokio::join!(get_user(&admin_query), create_token(&email));
-    let (admin, created) = (admin?, created?);
-    let signed_admin = admin
-        .and_then(|admin| admin.get_signed())
-        .ok_or_else(|| anyhow::anyhow!("Admin user does not exist."))?;
-
+    let created = create_token(&email).await?;
     let mail = create_authentication_mail(&email, &created.token, created.username.as_deref());
-    // No Sent record: the body carries a live token, and the sending identity
-    // is admin, whose mailbox the read-only role reads by design.
-    crate::mails::send::send_authentication_mail(&signed_admin, mail).await?;
+    // Sent from the server itself and stored nowhere: the body carries a live
+    // sign-up token.
+    crate::mails::send::send_system_mail(mail).await?;
 
     start_timer(&created.id);
 
@@ -180,10 +153,12 @@ async fn post_set_info(req: &mut HttpRequest) -> anyhow::Result<Reply> {
         return Ok(ApiResponse::failed("token must be a string.").into());
     };
 
-    // Refused before the write: set_user_info updates the row of an existing
-    // user unconditionally.
+    // Refuse an address someone other than its account can read before
+    // set_user_info, which updates the row of an existing user
+    // unconditionally: the token may have reached them through that domain.
     let existing = get_user(&UserQuery::email(&email)).await?;
-    if is_reserved_username(existing.as_ref().and_then(|user| user.username.as_deref())) {
+    let account_id = existing.as_ref().and_then(|user| user.id.clone());
+    if others_can_read_address(&email, account_id.as_deref()).await? {
         return Ok(ApiResponse::failed(INVALID_CREDENTIALS).into());
     }
 

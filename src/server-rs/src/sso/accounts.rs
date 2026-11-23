@@ -12,9 +12,10 @@ use crate::postgres::repositories::users::{
     find_unlinked_users_by_email, find_user_by_auth_sub, find_user_by_username, insert_sso_user, link_user_auth_sub,
     update_user_email, UserModel,
 };
-use crate::read_only::{is_reserved_username, ADMIN_RO_USERNAME, ADMIN_USERNAME};
+use crate::domains::{account_domain, others_can_read_address};
+use crate::postgres::repositories::domains::assign_domain;
 use crate::users::is_valid_email;
-use crate::util::{get_user_domain, is_routable_username};
+use crate::util::is_routable_username;
 
 /// A local account as the sign-in callback sees it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,13 +53,10 @@ pub trait AccountDirectory: Sync {
     fn find_by_sub(&self, sub: &str) -> impl Future<Output = Result<Option<LocalAccount>>> + Send;
     /// Any account with this username, linked or not.
     fn find_by_username(&self, username: &str) -> impl Future<Output = Result<Option<LocalAccount>>> + Send;
-    /// Signed-up accounts with this address ignoring case, not linked or
-    /// deleted, minus `excluded_usernames`.
-    fn find_unlinked_by_email(
-        &self,
-        email: &str,
-        excluded_usernames: &[String],
-    ) -> impl Future<Output = Result<Vec<LocalAccount>>> + Send;
+    /// Signed-up accounts with this address ignoring case, not linked or deleted.
+    fn find_unlinked_by_email(&self, email: &str) -> impl Future<Output = Result<Vec<LocalAccount>>> + Send;
+    /// Whether anyone but `user_id` can read mail delivered to `email`.
+    fn others_can_read(&self, email: &str, user_id: &str) -> impl Future<Output = Result<bool>> + Send;
     /// `None` when the account or the subject was linked by another sign-in first.
     fn link(&self, user_id: &str, sub: &str) -> impl Future<Output = Result<Option<LocalAccount>>> + Send;
     /// `None` when the username or the subject is taken.
@@ -156,9 +154,10 @@ fn email_of(identity: &SsoIdentity) -> Result<Option<&str>> {
 ///    it (one it has not verified was entered by its administrator, on account
 ///    creation or import), so the match is as trustworthy as `link_users`. A
 ///    provider that lets people claim addresses they have not confirmed must
-///    not be used this way. The reserved accounts never link this way:
-///    `admin-ro` is a local account only, and mail to `admin`'s address is
-///    readable by the read-only `admin-ro` login.
+///    not be used this way. An account whose address someone else can read
+///    (the owner or a viewer of the domain it is delivered into) never links
+///    this way: they could confirm that address at the provider and take the
+///    account over.
 /// 4. a new account named after the provider username, unless that is not a
 ///    routable mailbox name or an account by that name exists: guessing
 ///    whose it is would hand someone else's mail over.
@@ -180,13 +179,8 @@ pub async fn resolve_sso_account<D: AccountDirectory + ?Sized>(
     let found = |account: LocalAccount, outcome: SsoAccountOutcome| async move {
         let account = match verified_email {
             Some(verified) if account.email.as_deref() != Some(verified) => {
-                // The reserved accounts' address is derived from EMAIL_DOMAIN at boot.
-                if is_reserved_username(Some(&account.username)) {
-                    account
-                } else {
-                    directory.update_email(&account.user_id, verified).await?;
-                    LocalAccount { email: Some(verified.to_string()), ..account }
-                }
+                directory.update_email(&account.user_id, verified).await?;
+                LocalAccount { email: Some(verified.to_string()), ..account }
             }
             _ => account,
         };
@@ -214,16 +208,15 @@ pub async fn resolve_sso_account<D: AccountDirectory + ?Sized>(
     }
 
     if let Some(email) = email {
-        let reserved = [ADMIN_USERNAME.to_string(), ADMIN_RO_USERNAME.to_string()];
-        let mut candidates = directory.find_unlinked_by_email(email, &reserved).await?;
-        if candidates.len() == 1 {
+        let mut candidates = directory.find_unlinked_by_email(email).await?;
+        if candidates.len() == 1 && !directory.others_can_read(email, &candidates[0].user_id).await? {
             if let Some(linked) = try_link(candidates.pop()).await? {
                 return found(linked, SsoAccountOutcome::Linked).await;
             }
         }
     }
 
-    if !is_routable_username(username) || username == ADMIN_RO_USERNAME {
+    if !is_routable_username(username) {
         return Ok(SsoAccountResult::Refused(SsoAccountRefusal::InvalidUsername));
     }
     if directory.find_by_username(username).await?.is_some() {
@@ -231,7 +224,7 @@ pub async fn resolve_sso_account<D: AccountDirectory + ?Sized>(
     }
     // Without an address in the token the account's own mailbox stands in:
     // the reset mail then reaches only its owner.
-    let own_mailbox = format!("{username}@{}", get_user_domain(username));
+    let own_mailbox = format!("{username}@{}", account_domain(username));
     let created = directory.create(username, email.unwrap_or(&own_mailbox), sub).await?;
     if let Some(created) = created {
         return found(created, SsoAccountOutcome::Created).await;
@@ -259,9 +252,13 @@ impl AccountDirectory for PostgresAccountDirectory {
         Ok(to_found_account(find_user_by_username(username).await?))
     }
 
-    async fn find_unlinked_by_email(&self, email: &str, excluded_usernames: &[String]) -> Result<Vec<LocalAccount>> {
-        let models = find_unlinked_users_by_email(email, excluded_usernames).await?;
+    async fn find_unlinked_by_email(&self, email: &str) -> Result<Vec<LocalAccount>> {
+        let models = find_unlinked_users_by_email(email).await?;
         Ok(models.iter().map(LocalAccount::from).collect())
+    }
+
+    async fn others_can_read(&self, email: &str, user_id: &str) -> Result<bool> {
+        Ok(others_can_read_address(email, Some(user_id)).await?)
     }
 
     async fn link(&self, user_id: &str, sub: &str) -> Result<Option<LocalAccount>> {
@@ -269,7 +266,12 @@ impl AccountDirectory for PostgresAccountDirectory {
     }
 
     async fn create(&self, username: &str, email: &str, sub: &str) -> Result<Option<LocalAccount>> {
-        Ok(to_found_account(insert_sso_user(username, email, sub).await?))
+        let created = to_found_account(insert_sso_user(username, email, sub).await?);
+        // A new account owns its own name under the served zone.
+        if let Some(account) = &created {
+            assign_domain(&account.user_id, &account_domain(&account.username)).await?;
+        }
+        Ok(created)
     }
 
     async fn update_email(&self, user_id: &str, email: &str) -> Result<()> {
@@ -314,6 +316,9 @@ mod tests {
         pub race: Race,
         /// Fails every read and write, as a lost database connection would.
         pub broken: bool,
+        /// Addresses someone besides their account can read: a viewer of the
+        /// domain, or an owner that is not the account.
+        pub read_by_others: Mutex<Vec<String>>,
     }
 
     impl MemoryDirectory {
@@ -376,7 +381,12 @@ mod tests {
             Ok(rows.iter().find(|row| row.account.username == username).map(|row| row.account.clone()))
         }
 
-        async fn find_unlinked_by_email(&self, email: &str, excluded: &[String]) -> Result<Vec<LocalAccount>> {
+        async fn others_can_read(&self, email: &str, _user_id: &str) -> Result<bool> {
+            self.check()?;
+            Ok(self.read_by_others.lock().unwrap().iter().any(|read| read.eq_ignore_ascii_case(email)))
+        }
+
+        async fn find_unlinked_by_email(&self, email: &str) -> Result<Vec<LocalAccount>> {
             self.check()?;
             let rows = self.rows.lock().unwrap();
             Ok(rows
@@ -386,7 +396,6 @@ mod tests {
                         && row.account.auth_sub.is_none()
                         && row.signed_up
                         && !row.deleted
-                        && !excluded.contains(&row.account.username)
                 })
                 .take(2)
                 .map(|row| row.account.clone())
@@ -499,8 +508,8 @@ mod tests {
         assert_eq!(account.user_id, admin.user_id);
         assert_eq!(outcome, SsoAccountOutcome::Linked);
         assert_eq!(dir.account("admin").auth_sub.as_deref(), Some("usr_alice"));
-        // The reserved account keeps the address its boot seeds.
-        assert_eq!(dir.account("admin").email.as_deref(), Some("admin@example.test"));
+        // admin is an account like any other: it takes the verified address.
+        assert_eq!(dir.account("admin").email.as_deref(), Some("alice@example.com"));
     }
 
     #[tokio::test]
@@ -568,10 +577,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn rule_3_never_links_a_reserved_unfinished_or_deleted_account_verified_or_not() {
+    async fn rule_3_never_links_an_account_whose_address_others_read_verified_or_not() {
+        for email_verified in [true, false] {
+            let dir = MemoryDirectory::default();
+            dir.add("admin", Some("alice@example.com"), None);
+            dir.read_by_others.lock().unwrap().push("Alice@Example.com".into());
+            let (_, outcome) = found(resolve(&SsoIdentity { email_verified, ..alice() }, &no_links(), &dir).await);
+            assert_eq!(outcome, SsoAccountOutcome::Created);
+            assert_eq!(dir.linked(), ["alice"]);
+        }
+    }
+
+    #[tokio::test]
+    async fn rule_3_links_admin_like_any_account_while_nobody_else_reads_its_address() {
+        let dir = MemoryDirectory::default();
+        let admin = dir.add("admin", Some("alice@example.com"), None);
+        let (account, outcome) = found(resolve(&alice(), &no_links(), &dir).await);
+        assert_eq!((account.user_id, outcome), (admin.user_id, SsoAccountOutcome::Linked));
+    }
+
+    #[tokio::test]
+    async fn rule_3_never_links_an_unfinished_or_deleted_account_verified_or_not() {
         // (username, signed up, deleted)
-        let candidates =
-            [("admin", true, false), ("admin-ro", true, false), ("user_1234abcd", false, false), ("dave", true, true)];
+        let candidates = [("user_1234abcd", false, false), ("dave", true, true)];
         for email_verified in [true, false] {
             for (username, signed_up, deleted) in candidates {
                 let dir = MemoryDirectory::default();
@@ -618,7 +646,7 @@ mod tests {
             let dir = MemoryDirectory::default();
             let identity = SsoIdentity { sub: "usr_bob".into(), username: "bob".into(), email, email_verified: false };
             let (account, _) = found(resolve(&identity, &no_links(), &dir).await);
-            assert_eq!(account.email, Some(format!("bob@{}", get_user_domain("bob"))));
+            assert_eq!(account.email, Some(format!("bob@{}", account_domain("bob"))));
         }
         // The longest address the column takes is still an address.
         let longest = format!("{}@example.com", "b".repeat(243));
@@ -630,7 +658,7 @@ mod tests {
     #[tokio::test]
     async fn rule_4_refuses_a_username_that_cannot_name_a_mailbox() {
         let long = "a".repeat(64);
-        for username in ["Alice", "al_ice", "-alice", "alice-", long.as_str(), "admin-ro", ""] {
+        for username in ["Alice", "al_ice", "-alice", "alice-", long.as_str(), ""] {
             let dir = MemoryDirectory::default();
             let result = resolve(&SsoIdentity { username: username.into(), ..alice() }, &no_links(), &dir).await;
             assert_eq!(result, SsoAccountResult::Refused(SsoAccountRefusal::InvalidUsername), "{username}");

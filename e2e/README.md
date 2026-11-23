@@ -48,7 +48,11 @@ test("an unread mail is counted", async () => {
 });
 ```
 
-- `startServer(options)` boots the server under test. `production: true`
+- `startServer(options)` boots the server under test, then seeds `admin`
+  (password `ADMIN_PASSWORD`) owning the served zone, as an operator does
+  after installing; `seedAdmin: false` leaves the database empty.
+  `createUser` inserts an account with its own `<username>.mail.test`, and
+  `giveDomains` makes an account the owner of more. `production: true`
   gives the production posture, where a client names its own address with
   `X-Forwarded-For`, so each `server.client()` has its own rate-limit
   buckets. `tls: true` opens the TLS listeners. `env` sets anything else.

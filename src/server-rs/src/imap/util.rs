@@ -11,7 +11,6 @@ use sha2::{Digest, Sha256};
 
 use super::types::{js_number_string, FetchMailInput, MailAddressValue, MailAttachment};
 use crate::logger;
-use crate::util::get_user_domain;
 
 // ---------------------------------------------------------------------------
 // JavaScript string semantics
@@ -1419,9 +1418,10 @@ pub fn is_sent_messages_accounts_folder(mailbox: &str) -> bool {
     mailbox == SENT_MESSAGES_ACCOUNTS_FOLDER
 }
 
-/// The address a per-account mailbox belongs to.
-pub fn box_to_account(username: &str, mailbox: &str) -> String {
-    let domain = get_user_domain(username);
+/// The address an account folder names. Folders are named by local part, so
+/// the domain is the session's primary one: the domain a scoped login names,
+/// or the user's default domain.
+pub fn box_to_account(domain: &str, mailbox: &str) -> String {
     let sent_prefix = format!("{SENT_MESSAGES_ACCOUNTS_FOLDER}/");
     let accounts_prefix = format!("{ACCOUNTS_FOLDER}/");
     let local = mailbox

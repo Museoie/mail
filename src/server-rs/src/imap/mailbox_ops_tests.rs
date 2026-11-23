@@ -650,7 +650,7 @@ mod refusals_before_the_store {
     const ASTRAL: &str = "\u{1F600}";
 
     fn store() -> Store {
-        Store::new(SignedUser::new(Some("u1".into()), Some("admin".into()), None))
+        Store::new(SignedUser::new(Some("u1".into()), Some("admin".into()), None), crate::imap::store::StoreScope::whole_store(&crate::domains::account_domain("admin")))
     }
 
     async fn create(name: &str) -> String {

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "bun:test";
-import { getDomain, getUserDomain, isRoutableUsername, recipientUsername, withTimeout } from "./util";
+import { getDomain, isRoutableUsername, withTimeout } from "./util";
 
 describe("getDomain", () => {
   const originalEnv = process.env.EMAIL_DOMAIN;
@@ -20,33 +20,6 @@ describe("getDomain", () => {
   it("returns 'mydomain' as default when EMAIL_DOMAIN is unset", () => {
     delete process.env.EMAIL_DOMAIN;
     expect(getDomain()).toBe("mydomain");
-  });
-});
-
-describe("getUserDomain", () => {
-  const originalEnv = process.env.EMAIL_DOMAIN;
-
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env.EMAIL_DOMAIN = originalEnv;
-    } else {
-      delete process.env.EMAIL_DOMAIN;
-    }
-  });
-
-  it("returns base domain for admin user", () => {
-    process.env.EMAIL_DOMAIN = "example.com";
-    expect(getUserDomain("admin")).toBe("example.com");
-  });
-
-  it("returns subdomain for regular user", () => {
-    process.env.EMAIL_DOMAIN = "example.com";
-    expect(getUserDomain("alice")).toBe("alice.example.com");
-  });
-
-  it("uses default domain when EMAIL_DOMAIN is unset", () => {
-    delete process.env.EMAIL_DOMAIN;
-    expect(getUserDomain("bob")).toBe("bob.mydomain");
   });
 });
 
@@ -107,29 +80,3 @@ describe("isRoutableUsername", () => {
   });
 });
 
-describe("recipientUsername", () => {
-  const originalEnv = process.env.EMAIL_DOMAIN;
-
-  afterEach(() => {
-    if (originalEnv !== undefined) {
-      process.env.EMAIL_DOMAIN = originalEnv;
-    } else {
-      delete process.env.EMAIL_DOMAIN;
-    }
-  });
-
-  it("names the user a served address is delivered to", () => {
-    process.env.EMAIL_DOMAIN = "example.com";
-    expect(recipientUsername("x@bob.example.com", "example.com")).toBe("bob");
-    expect(recipientUsername("X@BOB.Example.COM", "example.com")).toBe("bob");
-    expect(recipientUsername("hi@example.com", "example.com")).toBe("admin");
-    expect(recipientUsername("hi@admin.example.com", "example.com")).toBe("admin");
-  });
-
-  it("names no one for an address outside the served domain", () => {
-    process.env.EMAIL_DOMAIN = "example.com";
-    for (const address of ["x@remote.example", "x@bob.example.com.evil", "x@notexample.com"]) {
-      expect(recipientUsername(address, "example.com")).toBeUndefined();
-    }
-  });
-});

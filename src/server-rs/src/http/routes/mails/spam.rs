@@ -16,7 +16,6 @@ use crate::postgres::repositories::spam_allowlists::{
     add_allowlist_entry, get_allowlist_for_user, remove_allowlist_entry, AddAllowlistEntryResult, SpamAllowlistModel,
     ALLOWLIST_COUNT_MAX, ALLOWLIST_PATTERN_MAX_BYTES,
 };
-use crate::read_only::refuse_read_only;
 use crate::spam::classifier::train_with_email;
 use crate::spam::types::EmailContext;
 use crate::util::is_uuid;
@@ -46,9 +45,6 @@ fn entry_json(entry: &SpamAllowlistModel) -> Value {
 /// when the flag actually flipped (one sample per change, not per call).
 pub async fn post_spam_mark(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = session_user(req)?;
-    if let Some(message) = refuse_read_only(Some(&user), "Marking spam") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let Some(is_spam) = req.body.get("is_spam").and_then(Value::as_bool) else {
         return Ok(ApiResponse::failed("is_spam must be a boolean").into());
     };
@@ -106,9 +102,6 @@ pub async fn get_allowlist(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 
 pub async fn post_allowlist(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = session_user(req)?;
-    if let Some(message) = refuse_read_only(Some(&user), "Adding to the spam allowlist") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let Some(pattern) = req.body.get("pattern").and_then(Value::as_str).filter(|p| !p.is_empty()).map(str::to_string)
     else {
         return Ok(ApiResponse::failed("pattern is required").into());
@@ -135,9 +128,6 @@ pub async fn post_allowlist(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 
 pub async fn delete_allowlist(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = session_user(req)?;
-    if let Some(message) = refuse_read_only(Some(&user), "Removing from the spam allowlist") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let pattern = req.param("pattern").to_string();
     Ok(if remove_allowlist_entry(&user.id, &pattern).await? {
         ApiResponse::success()

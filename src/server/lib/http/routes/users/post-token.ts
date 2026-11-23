@@ -2,14 +2,12 @@ import { MailDataToSend } from "common";
 import {
   createAuthenticationMail,
   createToken,
-  getSignedUser,
   getUser,
   isValidEmail,
-  sendMail,
-  startTimer,
-  isReservedUsername,
-  deliversToAdminMailbox
+  startTimer
 } from "server";
+import { sendSystemMail } from "../../../mails/send";
+import { othersCanReadAddress } from "../../../domains";
 import { Route } from "../route";
 import { getClientIp, tokenLimiter } from "../../rate-limit";
 
@@ -41,50 +39,26 @@ export const postTokenRoute = new Route<TokenPostResponse>(
       };
     }
 
-    // Refuse the boot-seeded accounts before createToken runs. This route is
+    // Refuse an address someone other than its account can read, before
+    // createToken runs: the link comes back into a domain whose owner or
+    // viewers read it, so it would hand them the account (or, for a sign-up,
+    // an account under an address they don't control). This route is
     // unauthenticated, and createToken's existing-user branch writes
-    // `{token, expiry}` onto the matched row AND schedules a hard-DELETE via
-    // startTimer — so without the gate an outside caller mints a live reset
-    // token for admin from nothing but the address.
+    // `{token, expiry}` onto the matched row, so the gate has to come first.
     // Same-shape success response as a normal send so no probe signal.
     const existing = await getUser({ email });
-    if (isReservedUsername(existing?.username)) {
+    if (await othersCanReadAddress(email, existing?.id)) {
       tokenLimiter.recordFailure(ip);
       return { status: "success" };
     }
 
-    // Same for an address delivered into admin's own mailbox: the sent link
-    // comes back through the receive webhook under admin's user_id, which the
-    // read-only role reads by design.
-    if (deliversToAdminMailbox(email)) {
-      tokenLimiter.recordFailure(ip);
-      return { status: "success" };
-    }
+    const { id, username, token } = await createToken(email);
 
-    const [adminUser, createdUser] = await Promise.all([
-      getUser({ username: "admin" }),
-      createToken(email)
-    ]);
+    const authenticationEmail = createAuthenticationMail(email, token, username);
 
-    const signedAdminUser = getSignedUser(adminUser);
-
-    if (!signedAdminUser) throw new Error("Admin user does not exist.");
-    const { id, username, token } = createdUser;
-
-    const authenticationEamil = createAuthenticationMail(
-      email,
-      token,
-      username
-    );
-
-    // No Sent record: the body carries a live signup token, and the sending
-    // identity is admin — whose mailbox the read-only role reads by design.
-    await sendMail(
-      signedAdminUser,
-      new MailDataToSend(authenticationEamil),
-      undefined,
-      { persistToSentMailbox: false }
-    );
+    // Sent from the server itself and stored nowhere: the body carries a live
+    // sign-up token.
+    await sendSystemMail(new MailDataToSend(authenticationEmail));
 
     startTimer(id);
 

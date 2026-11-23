@@ -1,4 +1,3 @@
-import { ADMIN_RO_USERNAME } from "../read-only";
 
 /** The environment single sign-on is configured from. */
 export interface SsoEnv {
@@ -96,10 +95,6 @@ export const parseLinkUsers = (
     const remote = parts[1]?.trim() ?? "";
     if (parts.length !== 2 || !local || !remote) {
       problems.push(`AUTH_LINK_USERS entry "${entry.trim()}" is not <local account>=<auth username>`);
-      continue;
-    }
-    if (local === ADMIN_RO_USERNAME) {
-      problems.push(`AUTH_LINK_USERS cannot link ${ADMIN_RO_USERNAME}, which only signs in locally`);
       continue;
     }
     if (locals.has(local)) {

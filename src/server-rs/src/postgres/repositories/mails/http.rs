@@ -170,6 +170,7 @@ pub async fn get_mail_headers_delta(
             sent: options.sent,
             saved: options.saved,
             spam: options.spam,
+            domains: options.domains.clone(),
             since: Some(since.to_string()),
             ..Default::default()
         };
@@ -270,10 +271,12 @@ fn account_stats(rows: Vec<Record>) -> Vec<AccountStat> {
 pub async fn get_account_stats(
     user_id: &str,
     sent: bool,
-    domain_filter: Option<&str>,
+    domain_filter: Option<&[String]>,
     spam_only: bool,
+    // Only the mail of these of the owner's domains (a viewer's read).
+    scope_domains: Option<&[String]>,
 ) -> Vec<AccountStat> {
-    match rows_of(&build_account_stats_query(user_id, sent, domain_filter, spam_only)).await {
+    match rows_of(&build_account_stats_query(user_id, sent, domain_filter, spam_only, scope_domains)).await {
         Ok(rows) => account_stats(rows),
         Err(error) => {
             logger::error_with("Failed to get account stats", json!({}), &error);
@@ -283,7 +286,7 @@ pub async fn get_account_stats(
 }
 
 /// Received accounts that own at least one mail matching a search term.
-pub async fn search_account_stats(user_id: &str, search_term: &str, domain_filter: Option<&str>) -> Vec<AccountStat> {
+pub async fn search_account_stats(user_id: &str, search_term: &str, domain_filter: Option<&[String]>) -> Vec<AccountStat> {
     match rows_of(&build_search_account_stats_query(user_id, search_term, domain_filter)).await {
         Ok(rows) => account_stats(rows),
         Err(error) => {

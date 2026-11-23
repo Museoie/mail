@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef } from "react";
 import { useQuery } from "react-query";
 import { AccountsGetResponse } from "server";
-import { Category, Context } from "client";
+import { Category, Context, defaultDomainOf } from "client";
 import {
   accountsQueryUrl,
   fetchAccounts
@@ -67,6 +67,7 @@ const Header = () => {
   const {
     viewSize,
     domainName,
+    domains,
     userInfo,
     selectedAccount,
     selectedCategory,
@@ -88,10 +89,7 @@ const Header = () => {
   );
 
   const username = userInfo?.username;
-  const fullEmailHostName =
-    username === "admin"
-      ? domainName
-      : [username, domainName].filter((e) => e).join(".");
+  const fullEmailHostName = defaultDomainOf(domains ?? [], username, domainName);
 
   const { title, fullTitle, count, countLabel } = headerTitleAndCount({
     selectedAccount,

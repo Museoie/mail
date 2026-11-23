@@ -52,7 +52,8 @@ export const buildSetMailFlagsQueries = (
   end: number,
   useUid: boolean,
   setClause: string,
-  conditional: boolean
+  conditional: boolean,
+  domains?: string[]
 ): SetMailFlagsQueries => {
   // Two flavors of query — domain-scoped stays on `mails.uid_domain`,
   // per-mailbox joins `mail_mailbox_uid`. RETURNING clauses select
@@ -66,7 +67,7 @@ export const buildSetMailFlagsQueries = (
   // the same set the reads do — otherwise `UID STORE 1:* +FLAGS (\Deleted)`
   // on INBOX would flag quarantined spam the client was never shown, and the
   // following EXPUNGE would destroy it.
-  const membership = membershipCondition(mailbox, sent);
+  const membership = membershipCondition(mailbox, sent, "", domains);
 
   if (usesDomainUidSpace(mailbox)) {
     const returningCols = `${MAIL_ID}, ${UID_DOMAIN} as uid, read, saved, deleted, draft, answered, ${MODSEQ} as modseq`;
@@ -106,7 +107,7 @@ export const buildSetMailFlagsQueries = (
       const whereClause = `m.${USER_ID} = $1 AND m.${SENT} = $2
         AND x.${USER_ID} = m.${USER_ID} AND x.${MAILBOX} = $3 AND x.${MAIL_ID} = m.${MAIL_ID}
         AND x.${UID} >= $4 AND x.${UID} <= $5
-        AND m.${EXPUNGED} = FALSE${membershipCondition(mailbox, sent, "m.")}`;
+        AND m.${EXPUNGED} = FALSE${membershipCondition(mailbox, sent, "m.", domains)}`;
       selectSql = `SELECT ${returningCols} FROM mails m, ${MAIL_MAILBOX_UID} x WHERE ${whereClause}`;
       matchedUidSql = `SELECT ${uidCol} FROM mails m, ${MAIL_MAILBOX_UID} x WHERE ${whereClause}`;
       // UPDATE ... FROM syntax joins the mapping to the target mails
@@ -128,7 +129,7 @@ export const buildSetMailFlagsQueries = (
       // a box that shows spam, where a gated join would drop them.
       const membershipJoin = `JOIN mails z ON z.${USER_ID} = y.${USER_ID} AND z.${MAIL_ID} = y.${MAIL_ID}
            AND z.${SENT} = $2 AND z.${EXPUNGED} = FALSE
-           AND ${membershipExpression(mailbox, sent, "z.")}`;
+           AND ${membershipExpression(mailbox, sent, "z.", domains)}`;
       const targetSubquery = `(
         SELECT y.${MAIL_ID} FROM ${MAIL_MAILBOX_UID} y
         ${membershipJoin}

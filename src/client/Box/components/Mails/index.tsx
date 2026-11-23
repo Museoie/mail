@@ -626,9 +626,8 @@ const RenderedMails = ({
     selectedAccount: contextAccount,
     selectedCategory: contextCategory,
     isAllAccounts: contextAllAccounts,
-    domainName,
-    density,
-    userInfo
+    domains = [],
+    density
   } = useContext(Context);
   const selectedAccount = accountProp ?? contextAccount;
   const selectedCategory = categoryProp ?? contextCategory;
@@ -689,7 +688,6 @@ const RenderedMails = ({
 
   // A folder lists conversations, one row each; search lists the matching
   // messages themselves, each with its own highlight.
-  const username = userInfo?.username;
   const rows = useMemo(() => {
     const mails = Array.isArray(query.data) ? query.data : [];
     if (selectedCategory === Category.Search) {
@@ -700,8 +698,8 @@ const RenderedMails = ({
         saved: mail.saved
       }));
     }
-    return groupConversations(mails, ownAddressesFor(username, domainName));
-  }, [query.data, selectedCategory, username, domainName]);
+    return groupConversations(mails, ownAddressesFor(domains));
+  }, [query.data, selectedCategory, domains]);
 
   const pageSize = 4 + 8 * page;
   const hasNextPage = !isSearch && hasNextListPage(queryUrl);
@@ -920,7 +918,7 @@ const RenderedMails = ({
       ) : null;
     const mails = Array.isArray(query.data) ? query.data : [];
     const pagedRows = rows.slice(0, pageSize);
-    const isSent = (m: MailHeaderData) => isSentMail(m, domainName);
+    const isSent = (m: MailHeaderData) => isSentMail(m, domains);
 
     // Search shows the loaded result count; every folder shows the selected
     // account's count from the accounts buckets (null until they load, in

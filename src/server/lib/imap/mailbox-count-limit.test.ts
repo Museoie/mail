@@ -19,7 +19,15 @@ import {
 } from "bun:test";
 import { restoreLeaves } from "test-helpers";
 import type { SignedUser } from "common";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 // Pinned as a literal, not imported: the ceiling is the contract these cases
 // exist to hold, so changing its value has to fail here.
@@ -102,7 +110,7 @@ const create = async (
   name: string,
   user: SignedUser = VALID_USER
 ): Promise<string[]> => {
-  const store = new Store(user);
+  const store = newStore(user);
   const lines: string[] = [];
   await createMailbox("A1", name, store, (data: string) => {
     lines.push(data);

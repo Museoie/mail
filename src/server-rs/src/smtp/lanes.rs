@@ -5,7 +5,7 @@
 use serde_json::{json, Value};
 
 use super::bounded::BoundedMessage;
-use super::handler::{refusals, CredentialStamp, DataFailure, MailDirectory, MailHandler};
+use super::handler::{refusals, CredentialStamp, DataFailure, DomainScope, MailDirectory, MailHandler};
 use super::outgoing::{
     address_list, resolve_outgoing_sender, split_envelope_recipients, EnvelopeRecipients, OutgoingSender,
 };
@@ -19,8 +19,8 @@ use crate::mails::receive::{
 use crate::mails::send::{send_mail, MailDataToSend, SendMailOptions};
 use crate::mails::text_to_html::plain_text_to_html;
 use crate::mime::parser::{parse_message, ParseOptions, ParsedMessage};
+use crate::domains::default_domain;
 use crate::models::SignedUser;
-use crate::util::get_user_domain;
 
 /// The refusal a lane met while reading, as its answer.
 fn refused(message: &mut BoundedMessage) -> Option<DataFailure> {
@@ -100,7 +100,20 @@ impl<D: MailDirectory> MailHandler<D> {
                 return Err(refusal);
             }
             let parsed = parsed.map_err(DataFailure::Failed)?;
-            send_outgoing(parsed, &username, signed, session).await.map_err(DataFailure::Failed)
+
+            // A `user@domain` login sends from that one domain; a plain login
+            // from any domain the user owns, the default first.
+            let owned = self.directory.owned_domains(&signed.id).await.map_err(DataFailure::Failed)?;
+            let scope_domain = session.state.get::<DomainScope>().and_then(|scope| scope.scope_domain.clone());
+            let domains = sendable_domains(&owned, &username, scope_domain.as_deref());
+            if domains.is_empty() {
+                logger::info(
+                    "SMTP: refused an outgoing message from a user with no domain",
+                    json!({ "authenticatedAs": username }),
+                );
+                return Err(refusals::no_sending_domain().into());
+            }
+            send_outgoing(parsed, &username, &domains, signed, session).await.map_err(DataFailure::Failed)
         }
         .await;
         drop(message);
@@ -130,19 +143,33 @@ fn first_from(parsed: &ParsedMessage) -> (Option<&str>, Option<&str>) {
     (first.and_then(|entry| entry.address.as_deref()), first.map(|entry| entry.name.as_str()))
 }
 
+/// The domains a submission may go out from: the scope's one when the login
+/// is scoped (and owned), otherwise every owned domain, the default first.
+pub(crate) fn sendable_domains(owned: &[String], username: &str, scope_domain: Option<&str>) -> Vec<String> {
+    if let Some(scope) = scope_domain {
+        return owned.iter().filter(|domain| domain.as_str() == scope).cloned().collect();
+    }
+    let fallback = default_domain(owned, username);
+    fallback
+        .iter()
+        .cloned()
+        .chain(owned.iter().filter(|domain| Some(*domain) != fallback.as_ref()).cloned())
+        .collect()
+}
+
 /// What a submission is sent as, from the parsed message and the envelope.
 pub(crate) fn outgoing_mail(
     parsed: &ParsedMessage,
     username: &str,
-    user_domain: &str,
+    domains: &[String],
     envelope: &SmtpEnvelope,
 ) -> MailDataToSend {
     let (from_address, from_name) = first_from(parsed);
     let envelope_from = envelope.mail_from.as_ref().map(|from| from.address.as_str());
     let addressed_to = address_list(parsed.to.as_ref());
     let rcpt_to: Vec<String> = envelope.rcpt_to.iter().map(|to| to.address.clone()).collect();
-    let OutgoingSender { sender, recipients } =
-        resolve_outgoing_sender(username, user_domain, from_address, envelope_from, &rcpt_to, &addressed_to);
+    let OutgoingSender { sender, domain, recipients } =
+        resolve_outgoing_sender(username, domains, from_address, envelope_from, &rcpt_to, &addressed_to);
     let EnvelopeRecipients { to, cc, bcc } =
         split_envelope_recipients(&recipients, &addressed_to, &address_list(parsed.cc.as_ref()));
 
@@ -163,6 +190,7 @@ pub(crate) fn outgoing_mail(
         html: Value::String(html),
         sender_full_name: Value::String(sender_full_name),
         sender: Value::String(sender),
+        sender_domain: Some(Value::String(domain)),
         // A reply written in a mail client keeps its place in the
         // conversation: the headers go out with it and onto the Sent copy.
         in_reply_to: parsed.in_reply_to.clone().map(Value::String),
@@ -189,10 +217,11 @@ pub(crate) fn outgoing_files(parsed: &ParsedMessage) -> Vec<UploadedFile> {
 async fn send_outgoing(
     parsed: ParsedMessage,
     username: &str,
+    domains: &[String],
     user: SignedUser,
     session: &SmtpSession,
 ) -> anyhow::Result<()> {
-    let mail = outgoing_mail(&parsed, username, &get_user_domain(username), &session.envelope);
+    let mail = outgoing_mail(&parsed, username, domains, &session.envelope);
     let files = outgoing_files(&parsed);
     send_mail(&user, mail, &files, SendMailOptions::default()).await.map_err(anyhow::Error::new)?;
     Ok(())
@@ -230,8 +259,9 @@ mod tests {
             parse("From: Alice Example <alice@alice.test.com>\r\nTo: bob@remote.example\r\nSubject: Hi\r\n\r\nline one\r\nline two\r\n")
                 .await;
         let envelope = envelope("alice@alice.test.com", &["bob@remote.example"]);
-        let mail = outgoing_mail(&parsed, "alice", "alice.test.com", &envelope);
+        let mail = outgoing_mail(&parsed, "alice", &["alice.test.com".into()], &envelope);
         assert_eq!(mail.sender, json!("alice"));
+        assert_eq!(mail.sender_domain, Some(json!("alice.test.com")));
         assert_eq!(mail.sender_full_name, json!("Alice Example"));
         assert_eq!(mail.to, json!("bob@remote.example"));
         assert_eq!((mail.cc.clone(), mail.bcc.clone()), (None, None));
@@ -247,7 +277,7 @@ mod tests {
             parse("From: shop@alice.test.com\r\nTo: a@remote.example\r\nCc: B <b@remote.example>\r\n\r\nbody\r\n")
                 .await;
         let rcpt = ["a@remote.example", "b@remote.example", "hidden@remote.example"];
-        let mail = outgoing_mail(&parsed, "alice", "alice.test.com", &envelope("alice@alice.test.com", &rcpt));
+        let mail = outgoing_mail(&parsed, "alice", &["alice.test.com".into()], &envelope("alice@alice.test.com", &rcpt));
         // A From header naming another account of the user's domain sends as it.
         assert_eq!(mail.sender, json!("shop"));
         assert_eq!(mail.sender_full_name, json!("shop"));
@@ -261,11 +291,23 @@ mod tests {
     async fn sends_a_header_less_submission_entirely_as_bcc_and_keeps_the_html() {
         let parsed = parse("Content-Type: text/html\r\n\r\n<p>hi</p>\r\n").await;
         let mail =
-            outgoing_mail(&parsed, "admin", "test.com", &envelope("", &["x@remote.example", "y@remote.example"]));
+            outgoing_mail(&parsed, "admin", &["test.com".into()], &envelope("", &["x@remote.example", "y@remote.example"]));
         assert_eq!(mail.sender, json!("admin"));
         assert_eq!(mail.to, json!(""));
         assert_eq!(mail.bcc, Some(json!("x@remote.example,y@remote.example")));
         assert_eq!(mail.html, json!(parsed.html.clone().unwrap()));
+    }
+
+    #[test]
+    fn a_scoped_login_sends_from_its_one_domain_and_a_plain_one_from_all_the_default_first() {
+        let zone = crate::domains::served_zone();
+        let own = crate::domains::account_domain("alice");
+        let owned = vec!["example.org".to_string(), own.clone()];
+        assert_eq!(sendable_domains(&owned, "alice", None), vec![own.clone(), "example.org".to_string()]);
+        assert_eq!(sendable_domains(&owned, "alice", Some("example.org")), vec!["example.org".to_string()]);
+        // A scope the user does not own leaves nothing to send from.
+        assert!(sendable_domains(&owned, "alice", Some(&zone)).is_empty());
+        assert!(sendable_domains(&[], "alice", None).is_empty());
     }
 
     #[tokio::test]
@@ -299,7 +341,7 @@ mod tests {
         ))
         .await;
         let envelope = envelope("alice@alice.test.com", &["bob@remote.example"]);
-        let mail = outgoing_mail(&parsed, "alice", "alice.test.com", &envelope);
+        let mail = outgoing_mail(&parsed, "alice", &["alice.test.com".into()], &envelope);
         assert_eq!(mail.in_reply_to, Some(json!("<b@remote.example>")));
         assert_eq!(mail.references, Some(vec!["<a@remote.example>".to_string(), "<b@remote.example>".to_string()]));
     }

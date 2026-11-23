@@ -81,19 +81,16 @@ if (PG_URL) describe("single sign-on account statements against a real Postgres"
 
   const usernames = (rows: { username: string }[]) => rows.map((row) => row.username).sort();
 
-  it("finds unlinked signed-up accounts by address ignoring case, minus the excluded names", async () => {
+  it("finds unlinked signed-up accounts by address ignoring case", async () => {
     await fresh();
     await addUser("bob", { email: "Alice@Example.com" });
     await addUser("carol", { email: "alice@example.com", auth_sub: "usr_carol" });
     await addUser("user_1234abcd", { email: "alice@example.com", password: null });
     await addUser("dave", { email: "alice@example.com", is_deleted: true });
-    await addUser("admin", { email: "alice@example.com" });
     await addUser("erin", { email: "erin@example.com" });
 
-    const found = await run(buildFindUnlinkedUsersByEmail("ALICE@example.COM", ["admin", "admin-ro"]));
+    const found = await run(buildFindUnlinkedUsersByEmail("ALICE@example.COM"));
     expect(usernames(found.rows)).toEqual(["bob"]);
-    const withAdmin = await run(buildFindUnlinkedUsersByEmail("alice@example.com", []));
-    expect(usernames(withAdmin.rows)).toEqual(["admin", "bob"]);
   });
 
   it("links an account once, and a subject to one account", async () => {

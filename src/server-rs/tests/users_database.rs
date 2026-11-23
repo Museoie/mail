@@ -104,7 +104,7 @@ fn database() -> Option<&'static str> {
             std::env::set_var("NODE_ENV", "test");
 
             RUNTIME.block_on(async {
-                for table in ["users", "sessions"] {
+                for table in ["users", "sessions", "domains", "domain_claims", "domain_roles", "former_domains"] {
                     let spec = schema()
                         .tables
                         .iter()
@@ -238,16 +238,42 @@ fn a_name_another_account_has_is_refused_and_the_sign_up_stays_pending() {
 }
 
 #[test]
-fn a_reserved_name_is_refused_even_where_no_row_holds_it() {
+fn a_completed_sign_up_owns_its_own_name_under_the_served_zone() {
     with_database(|| async {
-        // No `admin` or `admin-ro` row exists in this database.
+        let email = format!("{}@elsewhere.example", unique("owner"));
+        let (id, token) = sign_up(&email).await;
+        let chosen = unique("owner");
+        set_user_info(&email, &chosen, "a-first-password", Some(&token)).await.unwrap();
+        let owned = mail_server::domains::owned_domain_names(&id).await.unwrap();
+        assert_eq!(owned, vec![mail_server::domains::account_domain(&chosen)]);
+    });
+}
+
+#[test]
+fn an_account_single_sign_on_creates_owns_its_own_name_under_the_served_zone() {
+    use mail_server::sso::accounts::{AccountDirectory, PostgresAccountDirectory};
+    with_database(|| async {
+        let name = unique("sso");
+        let account = PostgresAccountDirectory
+            .create(&name, &format!("{name}@elsewhere.example"), &format!("usr_{name}"))
+            .await
+            .unwrap()
+            .expect("the account is created");
+        let owned = mail_server::domains::owned_domain_names(&account.user_id).await.unwrap();
+        assert_eq!(owned, vec![mail_server::domains::account_domain(&name)]);
+    });
+}
+
+#[test]
+fn no_name_is_reserved_any_more() {
+    with_database(|| async {
+        // `admin` is an account name like any other: it owns no domain of
+        // its own beyond `admin.<zone>`.
         let email = format!("{}@elsewhere.example", unique("grabber"));
         let (_, token) = sign_up(&email).await;
-        for name in ["admin", "admin-ro"] {
-            let refused = set_user_info(&email, name, "a-first-password", Some(&token)).await;
-            assert!(refused.unwrap_err().to_string().contains("username is reserved"), "{name}");
-        }
-        assert!(row_by_email(&email).await.unwrap().1);
+        let signed = set_user_info(&email, "admin", "a-first-password", Some(&token)).await.unwrap();
+        assert_eq!(signed.username, "admin");
+        assert!(!row_by_email(&email).await.unwrap().1);
     });
 }
 

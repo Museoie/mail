@@ -923,8 +923,8 @@ for (const box of BOXES) {
     "isInbox", "isDomainScoped", "isAccountsFolder", "isSentMessagesAccountsFolder"]) {
     utilCall(fn, box);
   }
-  utilCall("boxToAccount", "admin", box);
-  utilCall("boxToAccount", "testuser", box);
+  utilCall("boxToAccount", "mydomain", box);
+  utilCall("boxToAccount", "testuser.mydomain", box);
 }
 for (const [source, dest] of [["src-msg-id", "INBOX/accounts/foo"], ["src-msg-id-B", "INBOX/accounts/foo"], ["src", "dest"], ["srcdest", ""], ["", ""], ["<\u00e9@x>", "Archiv\u00e9"]]) {
   utilCall("deriveCopyMessageId", source, dest);

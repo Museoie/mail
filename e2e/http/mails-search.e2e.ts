@@ -454,15 +454,17 @@ describe("GET /api/mails/search-accounts/:value", () => {
     expect(queried.body.body).toHaveLength(plain.body.body.length);
   });
 
-  test("never counts another user's mail; admin sees only @mail.test accounts", async () => {
+  test("never counts another user's mail; admin sees the accounts of both its domains", async () => {
     const other = await newMailbox(server);
     const admin = await adminMailbox(server);
     await other.mail({ subject: "Clementine", to: [addr(box.address()), addr(other.address())] });
     await admin.mail({ subject: "Clementine", to: [addr("info@mail.test"), addr("x@admin.mail.test"), addr(box.address())], date: "2026-02-01T00:00:00Z" });
     expect(await searchAccounts(box, "clementine")).toEqual([]);
     expect((await searchAccounts(other, "clementine")).map((a) => a.key)).toEqual([other.address()]);
-    expect(await searchAccounts(admin, "clementine")).toEqual([
+    const found = await searchAccounts(admin, "clementine");
+    expect(found.sort((a, b) => a.key.localeCompare(b.key))).toEqual([
       { key: "info@mail.test", doc_count: 1, unread_doc_count: 1, saved_doc_count: 0, updated: "2026-02-01T00:00:00.000Z" },
+      { key: "x@admin.mail.test", doc_count: 1, unread_doc_count: 1, saved_doc_count: 0, updated: "2026-02-01T00:00:00.000Z" },
     ]);
   });
 });

@@ -21,13 +21,8 @@ import {
   getDomainUidNext as pgGetDomainUidNext,
   getAccountUidNext as pgGetAccountUidNext,
 } from "../postgres/repositories/mails";
-import {
-  getUser,
-  getText,
-  getDomain,
-  isLocalAddress,
-  recipientUsername,
-} from "server";
+import { getUser, getText } from "server";
+import { resolveDeliveryDomain, type DeliveryDomain } from "../domains";
 import {
   ATTACHMENT_FOLDER,
   getAttachmentFilePath,
@@ -42,14 +37,17 @@ import { logger } from "../logger";
 
 export interface SaveMailHandlerOptions {
   remoteAddress?: string;
+  /** Which domain an address is delivered into; replaceable for tests. */
+  resolveDelivery?: (address: string) => Promise<DeliveryDomain | null>;
 }
 
 /**
- * Stores an incoming message into the mailbox of every local recipient that
- * resolves to an account, and answers how many it wrote.
+ * Stores an incoming message with the owner of every domain its envelope
+ * recipients are delivered into, once per owner, and answers how many it wrote.
  *
- * A recipient inside the served domain need not have an account behind it, and
- * one that does not is skipped rather than failing the call. Returning the count
+ * A recipient need not be delivered anywhere (a foreign address, or a name
+ * under the served zone with no account), and one that is not is skipped
+ * rather than failing the call. Returning the count
  * is what lets the caller tell "stored" from "accepted and dropped" — a caller
  * that answers its own protocol needs to know the message landed somewhere.
  *
@@ -66,25 +64,30 @@ export const saveMailHandler = async (
   const from = JSON.stringify(convertMailAddress(data.from)?.value);
   logger.info("Received an email", { timestamp: new Date().toISOString(), envelopeTo, from });
 
-  const domain = getDomain();
-  const validData = validateIncomingMail(data, domain);
-  if (!validData) {
+  const deliveries = await resolveDeliveries(
+    data,
+    options.resolveDelivery ?? resolveDeliveryDomain
+  );
+  if (deliveries.length === 0) {
     logger.warn("Recipient is not valid. Mails is not saved.");
     return 0;
   }
 
-  const usernames = getUsernamesFromIncomingMail(validData);
   const saved = await Promise.all(
-    usernames.map((u) => saveIncomingMail(u, validData, { remoteAddress: options.remoteAddress }))
+    deliveries.map(({ ownerId }) =>
+      saveIncomingMail(ownerId, data, { remoteAddress: options.remoteAddress })
+    )
   );
-  const storedCount = saved.filter((result) => !!result).length;
+  const storedFor = saved.filter((result): result is SavedIncomingMail => !!result);
+  const storedCount = storedFor.length;
   if (storedCount === 0) {
     logger.warn("No recipient resolved to a mailbox. Mail is not saved.", { envelopeTo });
     return 0;
   }
   logger.info("Successfully saved an email");
 
-  const mailboxes = getMailboxesFromIncomingMail(validData);
+  const usernames = storedFor.map((result) => result.username);
+  const mailboxes = deliveries.flatMap(({ addresses }) => addresses.map(accountToBox));
   await push.notifyNewMails(usernames, mailboxes);
   logger.info(`Sent push notifications to users: [${usernames.toString()}]`);
 
@@ -95,14 +98,20 @@ interface SaveIncomingMailOptions {
   remoteAddress?: string;
 }
 
+interface SavedIncomingMail {
+  _id: string;
+  username: string;
+}
+
 const saveIncomingMail = async (
-  username: string,
+  ownerId: string,
   incoming: IncomingMail,
   options: SaveIncomingMailOptions = {}
-) => {
-  const user = await getUser({ username });
-  if (!user) {
-    logger.warn(`User not found for username: ${username}`);
+): Promise<SavedIncomingMail | undefined> => {
+  const user = await getUser({ id: ownerId });
+  const username = user?.username;
+  if (!user || !username) {
+    logger.warn(`User not found for id: ${ownerId}`);
     logger.warn("Skipping saving mail", { incoming });
     return;
   }
@@ -134,7 +143,8 @@ const saveIncomingMail = async (
     }
   }
 
-  return saveMail(mail, user?.id, spamResult);
+  const saved = await saveMail(mail, user?.id, spamResult);
+  return saved ? { ...saved, username } : undefined;
 };
 
 export const saveMail = async (
@@ -410,47 +420,37 @@ export const saveBuffer = async (buffer: Buffer | string): Promise<string> => {
   return id;
 };
 
-const getUsernamesFromIncomingMail = (data: IncomingMail): string[] => {
+interface IncomingDelivery extends DeliveryDomain {
+  /** The envelope recipients delivered into this owner's domains. */
+  addresses: string[];
+}
+
+/**
+ * The owners an incoming message is stored with, one entry per owner however
+ * many of their domains or addresses it names, so a message to two of one
+ * person's domains is stored once.
+ */
+const resolveDeliveries = async (
+  data: IncomingMail,
+  resolve: (address: string) => Promise<DeliveryDomain | null>
+): Promise<IncomingDelivery[]> => {
   const { envelopeTo } = data;
   if (!envelopeTo) return [];
-  const array: MailAddressValueType[] = [];
-  if (Array.isArray(envelopeTo)) array.push(...envelopeTo);
-  else array.push(envelopeTo);
-  const domain = getDomain();
-  return array
-    .map((e) => (e.address ? recipientUsername(e.address, domain) : undefined))
-    .filter((username): username is string => username !== undefined);
-};
-
-const getMailboxesFromIncomingMail = (data: IncomingMail): string[] => {
-  const { envelopeTo } = data;
-  if (!envelopeTo) return [];
-  const array: MailAddressValueType[] = [];
-  if (Array.isArray(envelopeTo)) array.push(...envelopeTo);
-  else array.push(envelopeTo);
-  const domain = getDomain();
-  return array
-    .filter((e) => e.address && isLocalAddress(e.address, domain))
-    .map((e) => accountToBox(e.address as string));
-};
-
-export const validateIncomingMail = (
-  data?: IncomingMail,
-  domainName?: string
-): IncomingMail | undefined => {
-  if (!data || !domainName) return undefined;
-
-  const { envelopeTo } = data;
-  if (!envelopeTo) return undefined;
-
-  const addressArray: MailAddressValueType[] = [];
-  if (Array.isArray(envelopeTo)) addressArray.push(...envelopeTo);
-  else addressArray.push(envelopeTo);
-
-  const isAddressCorrect = !!addressArray.find((e) => {
-    return e.address && isLocalAddress(e.address, domainName);
+  const entries: MailAddressValueType[] = Array.isArray(envelopeTo) ? envelopeTo : [envelopeTo];
+  const addresses = [
+    ...new Set(
+      entries
+        .map((entry) => entry.address?.trim().toLowerCase())
+        .filter((address): address is string => !!address)
+    ),
+  ];
+  const resolved = await Promise.all(addresses.map((address) => resolve(address)));
+  const byOwner = new Map<string, IncomingDelivery>();
+  resolved.forEach((delivery, i) => {
+    if (!delivery) return;
+    const existing = byOwner.get(delivery.ownerId);
+    if (existing) existing.addresses.push(addresses[i]);
+    else byOwner.set(delivery.ownerId, { ...delivery, addresses: [addresses[i]] });
   });
-
-  if (isAddressCorrect) return data as IncomingMail;
-  return undefined;
+  return [...byOwner.values()];
 };

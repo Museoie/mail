@@ -9,7 +9,7 @@ import {
   SignedUser
 } from "common";
 import {
-  getUserDomain,
+  getDomain,
   saveMail,
   getText,
   saveBuffer,
@@ -23,6 +23,7 @@ import { bareMessageId, storedIdForms } from "./threading";
 import { validateMailData, MailValidationError } from "./validation";
 import { sendAlarm } from "../alarm";
 import { logger } from "../logger";
+import { defaultDomain, isInServedZone, ownedDomainNames } from "../domains";
 
 export class MailSendingError extends Error {
   constructor(message: string) {
@@ -57,6 +58,17 @@ export const sendMail = async (
 
   const { persistToSentMailbox = true } = options ?? {};
   const { id: userId, username } = user;
+
+  // A user sends only from a domain they own: a viewer reads a domain and
+  // never sends as it, and nobody sends as a domain they hold no role on.
+  const owned = await ownedDomainNames(userId);
+  const domain = mailToSend.senderDomain?.trim().toLowerCase() || defaultDomain(owned, username);
+  if (!domain || !owned.includes(domain)) {
+    throw new MailValidationError(
+      domain ? `You can't send from ${domain}.` : "You have no domain to send from."
+    );
+  }
+  mailToSend.senderDomain = domain;
   if (mailToSend.inReplyTo) {
     // Mail appended over IMAP stores its Message-ID without brackets, and a
     // bare id isn't a valid msg-id in a header: recipients' parsers drop it.
@@ -66,7 +78,7 @@ export const sendMail = async (
       : await threadReferences(userId, mailToSend.inReplyTo);
   }
   try {
-    const response = await sendMailgunMail(username, mailToSend, files);
+    const response = await sendMailgunMail(domain, mailToSend, files);
     if (!persistToSentMailbox) return response;
     const messageId = response?.id || randomUUID();
     let sentMail;
@@ -99,30 +111,68 @@ export const sendMail = async (
 
     return response;
   } catch (error: unknown) {
-    logger.error("Email sending request failed", {}, error);
-    sendAlarm(
-      "Mail Send Failed",
-      `**Error:** ${error instanceof Error ? error.message : String(error)}`
-    ).catch(() => undefined);
-
-    // Provide user-friendly error messages for common Mailgun errors
-    let message = "Failed to send email. Please try again.";
-
-    const err = error as { status?: number; message?: string; code?: string };
-    if (err?.status === 401 || err?.status === 403) {
-      message = "Email service not configured correctly";
-    } else if (err?.status === 400) {
-      message = err?.message || "Invalid email request";
-    } else if (err?.status === 429) {
-      message = "Too many requests. Please try again later.";
-    } else if (err?.code === "ENOTFOUND" || err?.code === "ECONNREFUSED") {
-      message = "Unable to reach email service. Please try again later.";
-    } else if (err?.code === "ECONNRESET" || (error as { details?: string })?.details === "socket hang up") {
-      message = err?.message || "Failed to send email. Please try again.";
-    }
-
-    throw new MailSendingError(message);
+    throw sendingFailure(error, domain);
   }
+};
+
+/**
+ * Sends mail from this server itself rather than from a user: the sign-up and
+ * password-reset links. It goes out from `<sender>@<EMAIL_DOMAIN>` and is
+ * stored nowhere, so the link it carries is readable only by its recipient.
+ */
+export const sendSystemMail = async (mailToSend: MailDataToSend) => {
+  const validation = validateMailData(mailToSend);
+  if (!validation.valid) {
+    throw new MailValidationError(validation.error!);
+  }
+  const domain = getDomain();
+  try {
+    return await sendMailgunMail(domain, new MailDataToSend({ ...mailToSend, senderDomain: domain }), undefined);
+  } catch (error: unknown) {
+    throw sendingFailure(error, domain);
+  }
+};
+
+/**
+ * Logs and alarms a failed send, and words it for the person who sent it.
+ *
+ * Mailgun answers 404 for a sending domain it doesn't have. Any user can
+ * verify a domain outside the served zone and send from it before the
+ * operator has added it to Mailgun, so that refusal is the sender's to act
+ * on: it is logged at warn and never alarms. A 404 for the zone or a name
+ * under it (every account's own domain, and every system mail) means the
+ * operator's own Mailgun setup is broken, so it alarms like any other fault.
+ */
+const sendingFailure = (error: unknown, domain: string): MailSendingError => {
+  if ((error as { status?: number } | null)?.status === 404 && !isInServedZone(domain)) {
+    logger.warn("Mailgun has no sending domain for this send", { domain }, error);
+    return new MailSendingError(
+      `This server can't send from ${domain} yet. Ask its operator to add the domain to Mailgun.`
+    );
+  }
+  logger.error("Email sending request failed", {}, error);
+  sendAlarm(
+    "Mail Send Failed",
+    `**Error:** ${error instanceof Error ? error.message : String(error)}`
+  ).catch(() => undefined);
+
+  // Provide user-friendly error messages for common Mailgun errors
+  let message = "Failed to send email. Please try again.";
+
+  const err = error as { status?: number; message?: string; code?: string };
+  if (err?.status === 401 || err?.status === 403) {
+    message = "Email service not configured correctly";
+  } else if (err?.status === 400) {
+    message = err?.message || "Invalid email request";
+  } else if (err?.status === 429) {
+    message = "Too many requests. Please try again later.";
+  } else if (err?.code === "ENOTFOUND" || err?.code === "ECONNREFUSED") {
+    message = "Unable to reach email service. Please try again later.";
+  } else if (err?.code === "ECONNRESET" || (error as { details?: string })?.details === "socket hang up") {
+    message = err?.message || "Failed to send email. Please try again.";
+  }
+
+  return new MailSendingError(message);
 };
 
 /**
@@ -187,11 +237,11 @@ const getSentMail = async (
   messageId: string,
   files?: UploadedFileDynamicArray
 ): Promise<Mail> => {
-  const { username } = user;
-  const { sender, senderFullName, to, cc, bcc, subject, html } = mailToSend;
+  const { sender, senderDomain, senderFullName, to, cc, bcc, subject, html } = mailToSend;
 
   const text = getText(html);
-  const userDomain = getUserDomain(username);
+  // `sendMail` has already settled the domain to one the user owns.
+  const userDomain = senderDomain!;
   const fromEmail = `${sender}@${userDomain}`.toLowerCase();
   const attachments = (await getAttachmentsToSave(files)) || [];
 

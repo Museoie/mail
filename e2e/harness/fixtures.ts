@@ -35,10 +35,40 @@ export const createUser = async (
     "INSERT INTO users (username, password, email) VALUES ($1, $2, $3) RETURNING user_id",
     [username, await hashPassword(password), email]
   );
+  // A finished sign-up owns its own name under the served zone.
+  await giveDomains(server, row!.user_id, [`${username}.${server.domain}`]);
   return { id: row!.user_id, username, email, password };
 };
 
-/** The built-in admin account the server seeds at boot. */
+/**
+ * Makes `userId` the owner of each of `domains`, as `bun run user add-domain`
+ * does. A name someone already owns stays theirs.
+ */
+export const giveDomains = async (server: TestServer, userId: string, domains: string[]) => {
+  for (const domain of domains) {
+    await server.db.query(
+      "INSERT INTO domains (name, user_id) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING",
+      [domain.toLowerCase(), userId]
+    );
+  }
+};
+
+/**
+ * The account an operator sets up after installing: `admin`, owning the bare
+ * served zone and its own `admin.<zone>`, as the upgrade steps leave it.
+ * Idempotent, and a server that seeds `admin` itself keeps its row.
+ */
+export const seedAdmin = async (server: TestServer, password: string) => {
+  await server.db.query(
+    `INSERT INTO users (username, password, email) VALUES ('admin', $1, $2)
+     ON CONFLICT (username) DO NOTHING`,
+    [await hashPassword(password), `admin@${server.domain}`]
+  );
+  const admin = await adminUser(server);
+  await giveDomains(server, admin.id, [server.domain, `admin.${server.domain}`]);
+};
+
+/** The `admin` account the harness seeds (see {@link seedAdmin}). */
 export const adminUser = async (server: TestServer): Promise<{ id: string; email: string }> => {
   const [row] = await server.db.query<{ user_id: string; email: string }>(
     "SELECT user_id, email FROM users WHERE username = 'admin'"

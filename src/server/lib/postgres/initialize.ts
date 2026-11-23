@@ -1,12 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { pool } from "./client";
-import { verifyPassword } from "../verify-password";
-import {
-  writeUser,
-  searchUser,
-  deleteSessionsAuthenticatedAs,
-  deleteSessionsForUser,
-} from "./repositories";
+import { backfillAccountDomains, findDomain } from "./repositories";
 import { buildCreateTable, buildCreateIndex, buildIndexName } from "./database";
 import { runBootMaintenance, MaintenanceWork, Statement } from "./maintenance";
 import { sendAlarm } from "../alarm";
@@ -22,8 +16,7 @@ import {
   SUBJECT_KEY_SQL,
 } from "./repositories/mails/thread";
 import { logger } from "../logger";
-import { ADMIN_RO_USERNAME } from "../read-only";
-import { withTimeout } from "../util";
+import { getDomain, withTimeout } from "../util";
 import {
   Table,
   Schema,
@@ -37,6 +30,10 @@ import {
   mailUidCountersTable,
   mailMailboxUidTable,
   mailgunEventsTable,
+  domainsTable,
+  domainClaimsTable,
+  domainRolesTable,
+  formerDomainsTable,
 } from "./models";
 
 export const version = "1";
@@ -55,6 +52,11 @@ export const tables: Table<unknown, Schema>[] = [
   // Depends on mails (FK to mails.mail_id ON DELETE CASCADE).
   mailMailboxUidTable,
   mailgunEventsTable,
+  domainsTable,
+  domainClaimsTable,
+  // Depends on domains (FK to domains.domain_id ON DELETE CASCADE).
+  domainRolesTable,
+  formerDomainsTable,
 ];
 
 // The full-text search index predates `table.indexes` and keeps its original
@@ -282,270 +284,43 @@ export const bootMaintenance = async (signal?: AbortSignal): Promise<void> => {
   }
 };
 
-/** Published in `.env.example`, so it is a credential only until an operator
- *  supplies their own. */
-const DEFAULT_ADMIN_PASSWORD = "inbox";
-
-export type AdminPasswordPlan =
-  /** No admin row yet — this boot creates one and its password is the seed. */
-  | { action: "seed"; password: string; usingDefault: boolean }
-  /** An operator asked, through the environment, for the stored password to be
-   *  replaced by ADMIN_PASSWORD. */
-  | { action: "reset"; password: string }
-  /** The stored password survives the boot untouched. */
-  | { action: "keep"; resetWithoutPassword: boolean; unrecognizedReset: boolean };
-
 /**
- * Decides what a boot may do to admin's password column.
+ * Checks the domain rows against the accounts, at every boot before any
+ * listener binds.
  *
- * The stored password is the live credential: the reset flow writes it, and a
- * boot that re-derives it from the environment silently undoes that write on
- * the next restart. So the environment seeds the column and otherwise only
- * touches it when ADMIN_PASSWORD_RESET explicitly asks.
+ * Every account that can sign in owns its own name under the served zone.
+ * New accounts get that row where they are created (sign-up, single sign-on,
+ * the user script), and delivery creates a missing one on first mail. This
+ * covers the accounts neither reaches before they need it: an account made by
+ * a previous version, including one made during a rolling deploy, or a row
+ * restored or imported straight into `users`. Without its row such an account
+ * cannot send, list its accounts or share its domain until mail arrives for
+ * it. The statement is idempotent: a name already taken stays with its owner.
  *
- * @example
- * planAdminPassword({ adminExists: true, adminPassword: "hunter2" });
- * // => { action: "keep", resetWithoutPassword: false, unrecognizedReset: false }
+ * It also warns when no account owns the served zone itself, since mail to
+ * `*@<EMAIL_DOMAIN>` is then refused.
  */
-export const planAdminPassword = ({
-  adminExists,
-  adminPassword,
-  adminPasswordReset,
-}: {
-  adminExists: boolean;
-  adminPassword?: string;
-  adminPasswordReset?: string;
-}): AdminPasswordPlan => {
-  if (!adminExists) {
-    return {
-      action: "seed",
-      password: adminPassword || DEFAULT_ADMIN_PASSWORD,
-      usingDefault: !adminPassword || adminPassword === DEFAULT_ADMIN_PASSWORD,
-    };
-  }
-  if (adminPasswordReset !== "1") {
-    return {
-      action: "keep",
-      resetWithoutPassword: false,
-      unrecognizedReset: !!adminPasswordReset,
-    };
-  }
-  // Resetting to the published default is the outcome nobody asks for, so an
-  // empty ADMIN_PASSWORD refuses the reset rather than honouring it.
-  if (!adminPassword)
-    return { action: "keep", resetWithoutPassword: true, unrecognizedReset: false };
-  return { action: "reset", password: adminPassword };
-};
+export const initializeDomains = async (): Promise<void> => {
+  const zone = getDomain().toLowerCase();
 
-const logAdminPasswordPlan = (plan: AdminPasswordPlan, adminPassword?: string): void => {
-  if (plan.action === "seed" && plan.usingDefault) {
-    logger.warn(
-      `[CONFIG WARNING] The admin account was created with '${DEFAULT_ADMIN_PASSWORD}', the value\n` +
-        "  published in .env.example — anyone who can reach this server can sign in as admin.\n" +
-        "  Set ADMIN_PASSWORD in your .env file to something else, then boot once with\n" +
-        "  ADMIN_PASSWORD_RESET=1 to apply it."
-    );
-    return;
-  }
-  if (plan.action === "reset") {
-    logger.warn(
-      "[CONFIG WARNING] ADMIN_PASSWORD_RESET=1 replaced the stored admin password with ADMIN_PASSWORD.\n" +
-        "  Remove ADMIN_PASSWORD_RESET from the environment: while it is set, every restart applies\n" +
-        "  ADMIN_PASSWORD again and discards whatever password the admin set afterwards."
-    );
-    return;
-  }
-  if (plan.action === "keep" && plan.resetWithoutPassword) {
-    logger.warn(
-      "[CONFIG WARNING] ADMIN_PASSWORD_RESET=1 is set but ADMIN_PASSWORD is empty.\n" +
-        "  The stored admin password is unchanged — set ADMIN_PASSWORD and restart to apply the reset."
-    );
-    return;
-  }
-  if (plan.action === "keep" && plan.unrecognizedReset) {
-    logger.warn(
-      "[CONFIG WARNING] ADMIN_PASSWORD_RESET is set to a value other than '1', so it was ignored\n" +
-        "  and the stored admin password is unchanged. Only the exact string '1' requests a reset."
-    );
-    return;
-  }
-  if (adminPassword) {
-    logger.info(
-      "Admin already exists, so ADMIN_PASSWORD was not applied. Boot once with " +
-        "ADMIN_PASSWORD_RESET=1 to replace the stored password with it."
-    );
-  }
-};
-
-export const initializeAdminUser = async (): Promise<void> => {
-  const { ADMIN_PASSWORD, ADMIN_PASSWORD_RESET } = process.env;
-
-  const existingAdminUser = await searchUser({ username: "admin" });
-  const plan = planAdminPassword({
-    adminExists: !!existingAdminUser,
-    adminPassword: ADMIN_PASSWORD,
-    adminPasswordReset: ADMIN_PASSWORD_RESET,
-  });
-
-  const indexingAdminUserResult = await writeUser({
-    user_id: existingAdminUser?.user_id,
-    username: "admin",
-    // Undefined drops the column from the INSERT, which drops it from the
-    // conflict clause too, so the stored hash survives the boot.
-    password: plan.action === "keep" ? undefined : plan.password,
-    // A reset replaces the hash, so the credential generation moves in the
-    // same write — otherwise a session row restored after the boot-time
-    // delete would still stamp the old generation and pass the fence.
-    // Boot runs before any listener binds, so no concurrent rotation can
-    // interleave with this computed bump; a keep/seed boot must not bump,
-    // or every redeploy would log admin out.
-    password_version:
-      plan.action === "reset"
-        ? (existingAdminUser?.password_version ?? 1) + 1
-        : undefined,
-    // Pull the domain from EMAIL_DOMAIN so admin's identity stays consistent
-    // with `getDomain()` everywhere else. Hardcoding `admin@localhost` made the
-    // UI's default-account lookup miss every cloned mail in sandbox/dev
-    // environments where EMAIL_DOMAIN was set but admin's email kept the
-    // localhost fallback — `getAccountStats` filters by domain and returned 0
-    // matches, so the inbox rendered empty even though data was present.
-    email: `admin@${process.env.EMAIL_DOMAIN || "localhost"}`,
-  });
-  const createdAdminUserId = indexingAdminUserResult?._id;
-  if (!createdAdminUserId) throw new Error("Failed to create admin user");
-
-  if (plan.action === "reset") {
-    // Sessions live in Postgres and survive the restart that applies the new
-    // password, and the cookie is rolling, so an operator resetting a
-    // compromised admin gets nothing from the rotation alone. No mail
-    // connection can exist to sweep here: this runs before any listener binds.
-    const deletedSessions = await deleteSessionsForUser(createdAdminUserId);
-    logger.info(
-      "ADMIN_PASSWORD_RESET applied — deleted the sessions the previous password issued.",
-      { deletedSessions }
-    );
-  }
-
-  logger.info("Successfully initialized PostgreSQL database and setup admin user.");
-
-  logAdminPasswordPlan(plan, ADMIN_PASSWORD);
-
-  // Warn if EMAIL_DOMAIN is not explicitly configured.
-  // Without a correct domain, getAccountStats() filters all emails out (domain condition)
-  // causing the inbox to appear empty even when emails exist.
   if (!process.env.EMAIL_DOMAIN) {
     logger.warn(
       "[CONFIG WARNING] EMAIL_DOMAIN is not set. Defaulting to 'mydomain'.\n" +
-        "  The inbox will appear empty if your emails are addressed to a different domain.\n" +
-        "  Set EMAIL_DOMAIN=yourdomain.com in your .env file to see incoming emails."
-    );
-  }
-};
-
-/**
- * Reconciles the read-only administrative user (`ADMIN_RO_USERNAME`) with
- * `ADMIN_RO_PASSWORD` on every boot, in both directions:
- *
- * - set — seeds or re-seeds the account. Idempotent: reuses the existing row if
- *   the username is already present, so a redeploy keeps the same user_id.
- *   Authenticating with these credentials produces a session whose effective
- *   identity is admin and whose `isReadOnly` flag refuses every mutating
- *   surface. Changing the value to a new one also deletes the sessions the
- *   previous password issued, so rotating a leaked credential withdraws it
- *   everywhere; a redeploy with an unchanged value logs nobody out.
- * - unset — revokes any account a previous boot seeded and deletes the sessions
- *   it already issued, so removing the env var and redeploying is a complete
- *   revocation rather than a no-op that leaves a working credential behind.
- */
-export const initializeAdminReadOnlyUser = async (): Promise<void> => {
-  const { ADMIN_RO_PASSWORD } = process.env;
-
-  if (!ADMIN_RO_PASSWORD) {
-    await revokeAdminReadOnlyUser();
-    return;
-  }
-
-  const existing = await searchUser({ username: ADMIN_RO_USERNAME });
-  // Compared before the write, which replaces the hash it is compared against.
-  const passwordRotated =
-    !!existing && !(await verifyPassword(ADMIN_RO_PASSWORD, existing.password));
-
-  // Revoked before the write, not after: the stored hash is the only rotation
-  // signal, so a delete that raises once the new hash is persisted leaves the
-  // restarted boot comparing equal, skipping the revocation for good. Failing
-  // with the old hash still stored keeps the next boot's retry honest.
-  let deletedSessions: number | undefined;
-  if (passwordRotated) {
-    deletedSessions = await deleteSessionsAuthenticatedAs(ADMIN_RO_USERNAME);
-  }
-
-  const result = await writeUser({
-    user_id: existing?.user_id,
-    username: ADMIN_RO_USERNAME,
-    password: ADMIN_RO_PASSWORD,
-    // Only a rotation moves the generation, in the same write as the new
-    // hash: a grant stamped before the rotation then fails the fence even
-    // if the session delete missed it (a restored row, another process's
-    // connection). An unchanged value must not bump — a steady-state
-    // redeploy logs nobody out — and a first seed takes the DEFAULT 1.
-    password_version: passwordRotated
-      ? (existing?.password_version ?? 1) + 1
-      : undefined,
-    // Same domain rationale as admin (see initializeAdminUser above) — a
-    // consistent `@EMAIL_DOMAIN` local part keeps the account lookup happy
-    // across dev / sandbox / prod.
-    email: `${ADMIN_RO_USERNAME}@${process.env.EMAIL_DOMAIN || "localhost"}`,
-  });
-  if (!result?._id) throw new Error("Failed to create read-only admin user");
-
-  if (passwordRotated) {
-    logger.info(
-      "ADMIN_RO_PASSWORD changed — deleted the sessions the previous password issued.",
-      { deletedSessions }
+        "  Accounts receive mail at <username>.<EMAIL_DOMAIN>, so set EMAIL_DOMAIN=yourdomain.com\n" +
+        "  in your .env file to receive mail."
     );
   }
 
-  logger.info("Successfully initialized read-only admin user.");
-};
-
-/**
- * Revokes a previously seeded read-only admin account. The row is kept so a
- * later re-enable reuses its user_id; what is destroyed is the credential —
- * the stored password is replaced with a secret that exists nowhere, which no
- * login can present. Retaining the column as a valid hash (rather than
- * clearing it) keeps the three authentication surfaces on their normal
- * wrong-password path.
- *
- * Refusing new logins is only half of it: sessions outlive the password they
- * were minted from, and the cookie is rolling, so the sessions the credential
- * already issued are deleted in the same step.
- */
-const revokeAdminReadOnlyUser = async (): Promise<void> => {
-  const existing = await searchUser({ username: ADMIN_RO_USERNAME });
-  if (!existing) {
-    logger.debug(
-      "[CONFIG] ADMIN_RO_PASSWORD is not set — skipping read-only admin user seed. " +
-        "Set it to enable the read-only role."
-    );
-    return;
+  const backfilled = await backfillAccountDomains(zone);
+  if (backfilled > 0) {
+    logger.info("Gave accounts their own domain under the served zone.", { backfilled });
   }
 
-  const revoked = await writeUser({
-    user_id: existing.user_id,
-    username: ADMIN_RO_USERNAME,
-    password: randomBytes(32).toString("hex"),
-    email: existing.email ?? undefined,
-    // Revocation replaces the hash, so the generation moves in the same
-    // write: without the bump, a session row restored after the delete
-    // would still stamp the old generation and pass the fence.
-    password_version: (existing.password_version ?? 1) + 1,
-  });
-  if (!revoked?._id) throw new Error("Failed to revoke read-only admin user");
-
-  const deletedSessions = await deleteSessionsAuthenticatedAs(ADMIN_RO_USERNAME);
-
-  logger.info(
-    "ADMIN_RO_PASSWORD is not set — revoked the previously seeded read-only admin user.",
-    { deletedSessions }
-  );
+  if (!(await findDomain(zone))) {
+    logger.warn(
+      `[CONFIG WARNING] No account owns ${zone}, so mail to *@${zone} is refused.\n` +
+        `  Give it to an account with: bun run user add-domain <username> ${zone}\n` +
+        `  (from the built files, as in the Docker image: bun ./build/cli/user.js add-domain <username> ${zone})`
+    );
+  }
 };

@@ -15,7 +15,10 @@ use bytes::Bytes;
 use futures_util::Stream;
 use serde_json::json;
 
-use super::auth::{handle_authenticate, handle_login, AuthBackend, AuthConnection, AuthResult, ServerAuthBackend};
+use super::auth::{
+    handle_authenticate, handle_login, AuthBackend, AuthConnection, AuthResult, ServerAuthBackend, SessionScope,
+};
+use crate::postgres::repositories::domains::{get_domain_access, DomainAccess};
 use super::capabilities::get_capabilities;
 use super::chunked_write::{write_chunked_to_socket, write_stream_to_socket};
 use super::close_socket::close_socket;
@@ -44,15 +47,20 @@ pub struct SessionState {
     pub selected_mailbox_message_count: usize,
     pub mailbox_read_only: bool,
     /// The mailboxes and messages of the account the session reads, set by
-    /// a successful sign-in (for a read-only credential, the account it is
-    /// mapped onto).
+    /// a successful sign-in (for a login scoped to a viewed domain, its
+    /// owner's).
     pub store: Option<Store>,
     pub authenticated: bool,
-    /// True when the caller signed in with a read-only credential. Every
-    /// state-changing command then refuses with `NO [READ-ONLY]`; the flag
-    /// is scoped to this one connection.
+    /// True when the login is scoped to a domain the person only views (the
+    /// viewer role): the store is the owner's, and nothing in it is theirs to
+    /// change. Every state-changing command then refuses with `NO
+    /// [READ-ONLY]`; the flag is scoped to this one connection.
     pub is_read_only_user: bool,
     pub authenticated_as: Option<String>,
+    /// The domain a `user@domain` login is scoped to and the role it rests
+    /// on, re-checked on every command so a revoked or moved role ends the
+    /// session.
+    pub scope: Option<SessionScope>,
     /// The credential generation the connection was minted from, stamped at
     /// sign-in. The per-command gate re-checks it against the row's current
     /// version, so a connection that outlives a password rotation loses its
@@ -395,10 +403,11 @@ impl ImapSession {
     fn signed_in(&self, result: AuthResult) {
         {
             let mut state = self.state();
-            state.store = Some(Store::new(result.user));
+            state.store = Some(Store::new(result.user, result.store_scope));
             state.authenticated = true;
             state.is_read_only_user = result.is_read_only;
             state.authenticated_as = Some(result.authenticated_as);
+            state.scope = result.scope;
             state.credential_password_version = Some(result.password_version);
         }
         if let Some(this) = self.this() {
@@ -443,18 +452,33 @@ impl ImapSession {
     }
 
     /// Guard for state-changing commands. True when the caller may go on;
-    /// false after writing `NO [READ-ONLY]` for a read-only session. The
-    /// refusal names the caller by the credential it presented, never by
-    /// the effective user.
+    /// false after writing `NO [READ-ONLY]` for a login scoped to a domain
+    /// the person only views. The refusal names the person, never the
+    /// domain's owner whose store the session reads.
     fn allow_mutation(&self, tag: &str, command: &str) -> bool {
-        let attributed_to = {
+        let (attributed_to, domain) = {
             let state = self.state();
             if !state.is_read_only_user {
                 return true;
             }
-            state.authenticated_as.clone().filter(|name| !name.is_empty()).unwrap_or_else(|| "read-only".to_string())
+            (
+                state.authenticated_as.clone().filter(|name| !name.is_empty()).unwrap_or_else(|| "read-only".to_string()),
+                state.scope.as_ref().map(|scope| scope.domain.clone()).unwrap_or_else(|| "this domain".to_string()),
+            )
         };
-        self.write(&format!("{tag} NO [READ-ONLY] {command} not permitted for read-only user ({attributed_to}).\r\n"));
+        self.write(&format!("{tag} NO [READ-ONLY] {command} not permitted: {attributed_to} can only read {domain}.\r\n"));
+        false
+    }
+
+    /// Guard for the commands that manage user-created mailboxes. Those hold
+    /// the whole store's mail, so a login scoped to one domain neither lists
+    /// nor manages them.
+    fn allow_mailbox_management(&self, tag: &str, command: &str) -> bool {
+        let scoped = self.state().store.as_ref().is_some_and(Store::is_domain_scoped);
+        if !scoped {
+            return true;
+        }
+        self.write(&format!("{tag} NO [CANNOT] {command} is not available to a login scoped to one domain.\r\n"));
         false
     }
 
@@ -500,6 +524,9 @@ impl ImapSession {
         if !self.allow_mutation(tag, "CREATE") {
             return;
         }
+        if !self.allow_mailbox_management(tag, "CREATE") {
+            return;
+        }
         mailbox_ops::create_mailbox(tag, mailbox, &store, self).await;
     }
 
@@ -510,6 +537,9 @@ impl ImapSession {
         if !self.allow_mutation(tag, "DELETE") {
             return;
         }
+        if !self.allow_mailbox_management(tag, "DELETE") {
+            return;
+        }
         mailbox_ops::delete_mailbox(tag, mailbox, &store, self).await;
     }
 
@@ -518,6 +548,9 @@ impl ImapSession {
             return;
         };
         if !self.allow_mutation(tag, "RENAME") {
+            return;
+        }
+        if !self.allow_mailbox_management(tag, "RENAME") {
             return;
         }
         mailbox_ops::rename_mailbox(tag, old_name, new_name, &store, self).await;
@@ -879,11 +912,73 @@ impl ImapSession {
     /// error rather than letting through a grant that could not be proven
     /// current.
     pub async fn verify_credential_version(&self, tag: &str) -> Result<bool> {
-        self.verify_credential_version_with(tag, |username: &str| {
-            let username = username.to_string();
-            async move { get_credential_password_version(&username).await }
+        // An unstamped session carries no grant to re-check, its scope included.
+        let stamped = {
+            let state = self.state();
+            state.authenticated && state.authenticated_as.is_some() && state.credential_password_version.is_some()
+        };
+        if !stamped {
+            return Ok(true);
+        }
+        let current = self
+            .verify_credential_version_with(tag, |username: &str| {
+                let username = username.to_string();
+                async move { get_credential_password_version(&username).await }
+            })
+            .await?;
+        if !current {
+            return Ok(false);
+        }
+        self.verify_scope_with(tag, |user_id: String, domain: String| async move {
+            Ok(get_domain_access(&user_id, &domain).await?)
         })
         .await
+    }
+
+    /// The role a scoped login rests on, re-read on every command: a viewer
+    /// whose role was revoked, or a domain that moved to another owner, loses
+    /// the session at its next command on every server, not only where the
+    /// change was made. Same refusal shape as a rotated credential. True when
+    /// the caller may go on.
+    pub async fn verify_scope_with<F, Fut>(&self, tag: &str, access_of: F) -> Result<bool>
+    where
+        F: FnOnce(String, String) -> Fut,
+        Fut: std::future::Future<Output = Result<Option<DomainAccess>>>,
+    {
+        let (scope, authenticated_as) = {
+            let state = self.state();
+            match (&state.scope, state.authenticated) {
+                (Some(scope), true) => (scope.clone(), state.authenticated_as.clone()),
+                _ => return Ok(true),
+            }
+        };
+        let access = access_of(scope.user_id.clone(), scope.domain.clone()).await?;
+        if access.is_some_and(|access| access.role == scope.role && access.owner_id == scope.owner_id) {
+            return Ok(true);
+        }
+        {
+            let mut state = self.state();
+            state.authenticated = false;
+            state.credential_password_version = None;
+        }
+        if let Some(this) = self.this() {
+            let registered: Arc<dyn RegisteredSession> = this;
+            unregister_session(&registered);
+        }
+        logger::info(
+            "IMAP session de-authenticated: domain role changed after auth",
+            json!({
+                "component": "imap",
+                "authenticatedAs": authenticated_as,
+                "scopeDomain": scope.domain,
+                "sessionId": self.session_id,
+            }),
+        );
+        self.write(&format!(
+            "{tag} NO [AUTHENTICATIONFAILED] Your role on {} changed, please re-authenticate\r\n",
+            scope.domain
+        ));
+        Ok(false)
     }
 
     /// [`ImapSession::verify_credential_version`], reading the credential
@@ -1017,7 +1112,7 @@ impl ImapSession {
     pub(crate) fn sign_in_for_test(&self, username: &str, selected_mailbox: Option<&str>) {
         let mut state = self.state();
         state.authenticated = true;
-        state.store = Some(Store::new(SignedUser::new(Some("user-1".into()), Some(username.into()), Some("u@test".into()))));
+        state.store = Some(Store::new(SignedUser::new(Some("user-1".into()), Some(username.into()), Some("u@test".into())), crate::imap::store::StoreScope::whole_store(&crate::domains::account_domain(username))));
         state.authenticated_as = Some(username.to_string());
         state.selected_mailbox = selected_mailbox.map(str::to_string);
     }

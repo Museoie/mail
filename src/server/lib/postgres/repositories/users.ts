@@ -188,19 +188,13 @@ export const findUserByUsername = async (username: string): Promise<UserModel | 
  * with no password is a sign-up still waiting for its link, not an account.
  * Two rows are enough to tell "exactly one" from "more than one".
  */
-export const buildFindUnlinkedUsersByEmail = (
-  email: string,
-  excludedUsernames: string[]
-): PreparedQuery => ({
-  sql: `SELECT * FROM ${USERS} WHERE LOWER(${EMAIL}) = LOWER($1) AND ${AUTH_SUB} IS NULL AND ${PASSWORD} IS NOT NULL AND ${USERNAME} <> ALL($2::text[]) AND ${SOFT_DELETE_CONDITION} LIMIT 2`,
-  values: [email, excludedUsernames],
+export const buildFindUnlinkedUsersByEmail = (email: string): PreparedQuery => ({
+  sql: `SELECT * FROM ${USERS} WHERE LOWER(${EMAIL}) = LOWER($1) AND ${AUTH_SUB} IS NULL AND ${PASSWORD} IS NOT NULL AND ${SOFT_DELETE_CONDITION} LIMIT 2`,
+  values: [email],
 });
 
-export const findUnlinkedUsersByEmail = async (
-  email: string,
-  excludedUsernames: string[]
-): Promise<UserModel[]> => {
-  const { sql, values } = buildFindUnlinkedUsersByEmail(email, excludedUsernames);
+export const findUnlinkedUsersByEmail = async (email: string): Promise<UserModel[]> => {
+  const { sql, values } = buildFindUnlinkedUsersByEmail(email);
   const result = await pool.query(sql, values);
   return result.rows.map((row: unknown) => new UserModel(row));
 };

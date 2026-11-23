@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 use crate::alarm::{http_client, spawn_alarm};
 use crate::http::upload::UploadedFile;
-use crate::util::get_user_domain;
+use crate::domains::mailgun_domain_for;
 use crate::{env, js, logger};
 
 use super::send::{js_string, text_of_html, MailDataToSend};
@@ -371,10 +371,11 @@ pub fn plan_mailgun_send(to: Option<&str>, cc: Option<&str>, bcc: Option<&str>, 
     MailgunPlan::PerBcc(external_bcc)
 }
 
-/// Sends `mail` from `username`'s domain through Mailgun. `None` when every
-/// recipient is local and nothing was sent.
+/// Sends `mail` from `<sender>@<domain>` through Mailgun, to its recipients
+/// outside the served zone; the caller has settled `domain` as one the sender
+/// may send from. `None` when every recipient is local and nothing was sent.
 pub async fn send_mailgun_mail(
-    username: &str,
+    domain: &str,
     mail: &MailDataToSend,
     files: &[UploadedFile],
 ) -> anyhow::Result<Option<MailgunResponse>> {
@@ -388,7 +389,10 @@ pub async fn send_mailgun_mail(
     }
 
     let text = text_of_html(&mail.html)?;
-    let from_address = format!("{}@{}", js_string(&mail.sender), get_user_domain(username));
+    let from_address = format!("{}@{domain}", js_string(&mail.sender));
+    // Mail from a domain under the served zone goes out through the zone's own
+    // Mailgun domain; any other domain through a Mailgun domain of its own name.
+    let sending_domain = mailgun_domain_for(domain);
     let from = if js::is_truthy(&mail.sender_full_name) {
         format!("{} <{from_address}>", js_string(&mail.sender_full_name))
     } else {
@@ -411,7 +415,7 @@ pub async fn send_mailgun_mail(
     let bcc = match plan {
         MailgunPlan::Local => unreachable!("answered above"),
         MailgunPlan::One { to, cc, bcc } => {
-            let data = create_mailgun_message(&email_domain, &message(to, cc, bcc)).await?;
+            let data = create_mailgun_message(&sending_domain, &message(to, cc, bcc)).await?;
             logger::info("Email sending request succeeded", json!({}));
             return Ok(Some(data));
         }
@@ -420,7 +424,7 @@ pub async fn send_mailgun_mail(
 
     let results = send_batched(&bcc, |address| {
         let message = message(vec![address], None, None);
-        let domain = email_domain.clone();
+        let domain = sending_domain.clone();
         async move { create_mailgun_message(&domain, &message).await }
     })
     .await;

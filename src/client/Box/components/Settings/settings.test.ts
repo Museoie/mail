@@ -157,10 +157,11 @@ describe("Settings page", () => {
         "Appearance",
         "Compose",
         "Notifications",
+        "Domains",
         "Spam allowlist"
       ]);
       expect(
-        container.querySelector(".allowlist .allowlist-entries .pattern")
+        container.querySelector(".allowlist:not(.domains) .allowlist-entries .pattern")
           ?.textContent
       ).toBe("*@example.com");
       expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -447,7 +448,7 @@ describe("Settings account section", () => {
     }
   });
 
-  it("offers no reset link for admin, whose password is configured", async () => {
+  it("offers admin the reset link like any account: no password comes from the server's settings", async () => {
     const mount = await mountSettings("comfortable", {
       userInfo: { id: "a", username: "admin", email: "admin@example.com" }
     });
@@ -455,8 +456,8 @@ describe("Settings account section", () => {
       const buttons = Array.from(mount.container.querySelectorAll("button")).map(
         (b) => b.textContent
       );
-      expect(buttons).not.toContain("Send reset link");
-      expect(mount.container.textContent).toContain("ADMIN_PASSWORD");
+      expect(buttons).toContain("Send reset link");
+      expect(mount.container.textContent).not.toContain("ADMIN_PASSWORD");
     } finally {
       await mount.teardown();
     }

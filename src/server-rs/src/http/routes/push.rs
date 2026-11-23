@@ -7,7 +7,6 @@ use crate::http::request::HttpRequest;
 use crate::http::respond::Response;
 use crate::{env, push};
 use crate::push_validation::validate_push_subscription;
-use crate::read_only::refuse_read_only;
 
 async fn get_public_key(_req: &mut HttpRequest) -> anyhow::Result<Reply> {
     // The variable's own value, as the Bun server answers it: also when it
@@ -21,9 +20,8 @@ async fn get_public_key(_req: &mut HttpRequest) -> anyhow::Result<Reply> {
     .into())
 }
 
-// A read-only session carries admin's id, so it must not refresh admin's subscriptions.
 async fn get_refresh(req: &mut HttpRequest) -> anyhow::Result<Reply> {
-    let owner = req.session.user.as_ref().filter(|user| user.is_read_only != Some(true)).map(|user| user.id.clone());
+    let owner = req.session.user.as_ref().map(|user| user.id.clone());
     let refreshed = match owner {
         Some(user_id) => push::refresh_subscription(req.param("id"), &user_id).await,
         None => false,
@@ -38,9 +36,6 @@ async fn get_refresh(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 
 async fn post_subscribe(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = req.session.user.clone();
-    if let Some(message) = refuse_read_only(user.as_ref(), "Subscribing to push") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let user = user.ok_or_else(|| anyhow::anyhow!("the route runs behind the session gate"))?;
 
     let Some(body) = req.body_object() else {
@@ -60,9 +55,6 @@ async fn post_subscribe(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 // Scoped to the session user, so one user cannot delete another's by id.
 async fn delete_subscribe(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = req.session.user.clone();
-    if let Some(message) = refuse_read_only(user.as_ref(), "Unsubscribing from push") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let user = user.ok_or_else(|| anyhow::anyhow!("the route runs behind the session gate"))?;
     Ok(if push::delete_subscription_for_user(req.param("id"), &user.id).await {
         ApiResponse::success()

@@ -1,0 +1,57 @@
+.domains {
+  .domain-entry {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .domain-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    .pattern {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .domain-role {
+    font-size: 0.8rem;
+    color: var(--textDim);
+  }
+
+  .domain-record {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--textDim);
+    word-break: break-all;
+
+    code {
+      color: var(--text);
+    }
+  }
+
+  .domain-viewers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+  }
+
+  .domain-viewer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--surface);
+    border-radius: 999px;
+    font-size: 0.8rem;
+  }
+
+  .domain-viewer-add {
+    flex: 1;
+    min-width: 12rem;
+  }
+}

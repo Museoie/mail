@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { MailType, MailAddressValueType, AttachmentType } from "common";
-import { getUserDomain } from "server";
 import { logger } from "server";
 
 export const deriveCopyMessageId = (
@@ -604,8 +603,12 @@ export const isSentMessagesAccountsFolder = (box: string): boolean => {
   return box === SENT_MESSAGES_ACCOUNTS_FOLDER;
 };
 
-export const boxToAccount = (username: string, box: string): string => {
-  const domain = getUserDomain(username);
+/**
+ * The address an account folder names. Folders are named by local part, so
+ * the domain is the session's primary one: the domain a scoped login names,
+ * or the user's default domain.
+ */
+export const boxToAccount = (domain: string, box: string): string => {
   let localPart = box;
   if (localPart.startsWith(SENT_MESSAGES_ACCOUNTS_FOLDER + "/")) {
     localPart = localPart.slice(SENT_MESSAGES_ACCOUNTS_FOLDER.length + 1);

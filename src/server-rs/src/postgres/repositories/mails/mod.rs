@@ -3,6 +3,7 @@
 pub mod core;
 pub mod core_query;
 pub mod counters;
+pub mod domain_scope;
 pub mod http;
 pub mod http_query;
 pub mod imap;

@@ -14,7 +14,7 @@
 use serde_json::{json, Value};
 
 use super::table::{run_query, PreparedQuery, Record};
-use super::views::uses_domain_uid_space;
+use super::views::{membership_condition, uses_domain_uid_space};
 use crate::postgres::{DbError, DbResult, Param};
 use crate::{logger, params};
 
@@ -320,16 +320,29 @@ pub async fn get_next_modseq(user_id: &str) -> DbResult<i64> {
 }
 
 /// The statement `get_highest_modseq` runs.
-pub fn build_highest_modseq_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+///
+/// A scoped login's HIGHESTMODSEQ covers only its domains' mail. Unscoped it
+/// stays the box-wide maximum, membership aside, as before.
+pub fn build_highest_modseq_query(
+    user_id: &str,
+    mailbox: Option<&str>,
+    sent: bool,
+    domains: Option<&[String]>,
+) -> PreparedQuery {
+    let scope = |prefix: &str| domains.map(|domains| membership_condition(None, true, prefix, Some(domains))).unwrap_or_default();
     match mailbox.filter(|name| !uses_domain_uid_space(Some(name))) {
         None => PreparedQuery {
-            sql: "\n        SELECT COALESCE(MAX(modseq), 1) AS highest FROM mails\n        WHERE user_id = $1 AND sent = $2\n      "
-                .to_string(),
+            sql: format!(
+                "\n        SELECT COALESCE(MAX(modseq), 1) AS highest FROM mails\n        WHERE user_id = $1 AND sent = $2{}\n      ",
+                scope("")
+            ),
             values: params![user_id, sent],
         },
         Some(mailbox) => PreparedQuery {
-            sql: "\n        SELECT COALESCE(MAX(m.modseq), 1) AS highest FROM mails m\n        JOIN mail_mailbox_uid x\n          ON x.user_id = m.user_id\n          AND x.mailbox = $3\n          AND x.mail_id = m.mail_id\n        WHERE m.user_id = $1 AND m.sent = $2\n      "
-                .to_string(),
+            sql: format!(
+                "\n        SELECT COALESCE(MAX(m.modseq), 1) AS highest FROM mails m\n        JOIN mail_mailbox_uid x\n          ON x.user_id = m.user_id\n          AND x.mailbox = $3\n          AND x.mail_id = m.mail_id\n        WHERE m.user_id = $1 AND m.sent = $2{}\n      ",
+                scope("m.")
+            ),
             values: params![user_id, sent, mailbox],
         },
     }
@@ -338,9 +351,9 @@ pub fn build_highest_modseq_query(user_id: &str, mailbox: Option<&str>, sent: bo
 /// HIGHESTMODSEQ for a mailbox: the largest mod-sequence of any message
 /// routed to it. A database fault reads as 1, the floor every row starts at,
 /// never as 0, which would signal "no persistent mod-sequences".
-pub async fn get_highest_modseq(user_id: &str, mailbox: Option<&str>, sent: bool) -> i64 {
+pub async fn get_highest_modseq(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> i64 {
     let result: Result<i64, DbError> =
-        run_query(&build_highest_modseq_query(user_id, mailbox, sent)).await.map(|result| {
+        run_query(&build_highest_modseq_query(user_id, mailbox, sent, domains)).await.map(|result| {
             result
                 .rows
                 .first()

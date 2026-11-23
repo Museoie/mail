@@ -64,8 +64,10 @@ export const updateSession = async (
     [SESSION_USER_ID]: user.id,
     [SESSION_USERNAME]: user.username,
     [SESSION_EMAIL]: user.email,
-    [SESSION_IS_READ_ONLY]: user.isReadOnly ?? null,
-    [SESSION_AUTHENTICATED_AS]: user.authenticatedAs ?? null,
+    // Written by the retired read-only admin login only; kept on the table
+    // so a previous version can still read the rows this one writes.
+    [SESSION_IS_READ_ONLY]: null,
+    [SESSION_AUTHENTICATED_AS]: null,
     // The revocation fence: stamp the credential generation the
     // session was minted from. This must be the version the caller
     // authenticated against — NOT a fresh read of the user row — so a login
@@ -110,25 +112,6 @@ export const purgeSessions = async (): Promise<number> => {
   const now = new Date().toISOString();
   return sessionsTable.deleteWhere({
     [COOKIE_EXPIRES]: { op: "<=", value: now, notNull: true },
-  });
-};
-
-/**
- * Deletes every session issued to a given authenticating credential.
- * Revoking a credential has to reach the sessions it already issued: the
- * cookie outlives the password it was minted from, and `rolling` renews its
- * window on every request, so a credential that is no longer accepted at login
- * would otherwise stay usable indefinitely through an existing session.
- * @param authenticatedAs
- * @returns A promise to be a count of deleted sessions. A failed delete
- * rejects, so a revocation that left its sessions alive cannot report itself
- * as a revocation that had none to delete.
- */
-export const deleteSessionsAuthenticatedAs = async (
-  authenticatedAs: string
-): Promise<number> => {
-  return sessionsTable.deleteWhere({
-    [SESSION_AUTHENTICATED_AS]: authenticatedAs,
   });
 };
 
@@ -197,6 +180,18 @@ export class PostgresSessionStore implements SessionStore {
       return null;
     }
 
+    // A session the retired read-only admin login issued carries admin's
+    // user id. This version has no read-only session, so serving it would
+    // hand that login admin's whole account: it ends here instead. A
+    // previous version still running during a rolling deploy may write one.
+    if (sessionModel.session_is_read_only) {
+      logger.info("Session rejected: issued by the retired read-only login", { session_id });
+      await this.destroy(session_id).catch((error) =>
+        logger.error("Failed to delete session", { session_id }, error)
+      );
+      return null;
+    }
+
     // The revocation fence: a grant proves itself current on
     // every read, not only at issuance. A session row resurrected by an
     // in-flight request after `deleteSessionsForUser`, or a session minted
@@ -250,11 +245,6 @@ export class PostgresSessionStore implements SessionStore {
     runtimeSession.user.username = sessionModel.session_username;
     runtimeSession.user.email = sessionModel.session_email;
     runtimeSession.user.passwordVersion = stampedVersion;
-    if (sessionModel.session_is_read_only) {
-      runtimeSession.user.isReadOnly = true;
-      runtimeSession.user.authenticatedAs =
-        sessionModel.session_authenticated_as ?? undefined;
-    }
     runtimeSession.cookie = cookie;
     if (sessionModel.auth_sid && sessionModel.auth_recheck_at) {
       runtimeSession.auth = {

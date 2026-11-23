@@ -235,6 +235,7 @@ export const getMailHeadersDelta = async (
         sent: options.sent,
         saved: options.saved,
         spam: options.spam,
+        domains: options.domains,
         since,
       }),
       pool.query<{ mail_id: string }>(eviction.sql, eviction.values),
@@ -333,12 +334,14 @@ export const searchMails = async (
 export const getAccountStats = async (
   user_id: string,
   sent: boolean,
-  domainFilter?: string,
+  domainFilter?: string[],
   // Restrict to spam-flagged mail, so the per-account spam folder gets the same
   // address-grouped counts/badges as received. Spam is always received, so this
   // uses the received (to/cc/bcc/envelope_to) address expansion regardless of
   // `sent`.
-  spamOnly = false
+  spamOnly = false,
+  // Only the mail of these of the owner's domains (a viewer's read).
+  scopeDomains?: string[]
 ): Promise<
   {
     address: string;
@@ -353,7 +356,8 @@ export const getAccountStats = async (
       user_id,
       sent,
       domainFilter,
-      spamOnly
+      spamOnly,
+      scopeDomains
     );
     const result = await pool.query(sql, values);
     return result.rows.map((row: Record<string, unknown>) => ({
@@ -379,7 +383,7 @@ export const getAccountStats = async (
 export const searchAccountStats = async (
   user_id: string,
   searchTerm: string,
-  domainFilter?: string
+  domainFilter?: string[]
 ): Promise<
   {
     address: string;

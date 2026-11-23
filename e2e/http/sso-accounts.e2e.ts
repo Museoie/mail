@@ -18,7 +18,6 @@ beforeAll(async () => {
     env: issuer.env({
       // Spaces and empty entries are allowed; the local account comes first.
       AUTH_LINK_USERS: "admin=boss, carol = carol-sso ,,ghost=ghost-sso,",
-      ADMIN_RO_PASSWORD: "read-only-password-e2e",
     }),
   });
 }, 90_000);
@@ -29,8 +28,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await server.db.query("DELETE FROM sessions");
-  await server.db.query("DELETE FROM users WHERE username NOT IN ('admin', 'admin-ro')");
-  await server.db.query("UPDATE users SET auth_sub = NULL");
+  await server.db.query("DELETE FROM users WHERE username <> 'admin'");
+  // A sign-in may give admin a verified address, as any account; put it back.
+  await server.db.query("UPDATE users SET auth_sub = NULL, email = 'admin@mail.test'");
 });
 
 interface UserRow {
@@ -89,7 +89,7 @@ describe("1. the account already linked to the person", () => {
     const again = await signedInAs(person("carol-sso", { sub: "usr_alice", email: "alice@people.example" }));
     expect(again).toEqual(first);
     expect(await links()).toEqual({ alice: "usr_alice" });
-    expect(await usernames()).toEqual(["admin", "admin-ro", "alice", "carol", "lookalike"]);
+    expect(await usernames()).toEqual(["admin", "alice", "carol", "lookalike"]);
   });
 
   test("is found by subject alone, exactly as the provider spells it", async () => {
@@ -104,11 +104,10 @@ describe("2. the account AUTH_LINK_USERS names for the provider username", () =>
   test("is linked on the first sign-in, and is the account from then on", async () => {
     const admin = await userNamed("admin");
     const user = await signedInAs(person("boss"));
-    expect(user).toEqual({ id: admin!.user_id, username: "admin", email: "admin@mail.test", passwordVersion: 1 });
+    // admin is an account like any other: it takes the address the provider verified.
+    expect(user).toEqual({ id: admin!.user_id, username: "admin", email: "boss@people.example", passwordVersion: 1 });
     expect(await links()).toEqual({ admin: "usr_boss" });
-    expect(await usernames()).toEqual(["admin", "admin-ro"]);
-    // The reserved account keeps the address the boot gave it, verified or not.
-    expect((await userNamed("admin"))!.email).toBe("admin@mail.test");
+    expect(await usernames()).toEqual(["admin"]);
 
     expect((await signedInAs(person("boss"))).id).toBe(admin!.user_id);
   });
@@ -134,7 +133,7 @@ describe("2. the account AUTH_LINK_USERS names for the provider username", () =>
   test("is skipped when no such account exists, or it is deleted", async () => {
     const created = await signedInAs(person("ghost-sso"));
     expect(created.username).toBe("ghost-sso");
-    expect(await usernames()).toEqual(["admin", "admin-ro", "ghost-sso"]);
+    expect(await usernames()).toEqual(["admin", "ghost-sso"]);
 
     await createUser(server, "carol");
     await server.db.query("UPDATE users SET is_deleted = TRUE WHERE username = 'carol'");
@@ -157,7 +156,7 @@ describe("3. the one account with the person's email address", () => {
     expect(user).toEqual({ id: bob.id, username: "bob", email: "alice@people.example", passwordVersion: 1 });
     expect(await links()).toEqual({ bob: "usr_alice" });
     expect((await userNamed("bob"))!.email).toBe("alice@people.example");
-    expect(await usernames()).toEqual(["admin", "admin-ro", "bob"]);
+    expect(await usernames()).toEqual(["admin", "bob"]);
     expect(await sessions()).toEqual([
       { session_user_id: bob.id, session_username: "bob", session_email: "alice@people.example" },
     ]);
@@ -185,15 +184,26 @@ describe("3. the one account with the person's email address", () => {
     }
   });
 
-  test("is never a reserved account", async () => {
-    const boss = await signedInAs(person("zed", { email: "admin@mail.test" }));
-    expect(boss.username).toBe("zed");
-    const readOnly = await signedInAs(person("yan", { email: "ADMIN-RO@mail.test" }));
-    expect(readOnly.username).toBe("yan");
-    expect(await links()).toEqual({ yan: "usr_yan", zed: "usr_zed" });
-    // With one other account sharing a reserved account's address, that one is the only candidate.
-    const twin = await createUser(server, "twin", { email: "admin@mail.test" });
-    expect((await signedInAs(person("walt", { email: "admin@mail.test" }))).id).toBe(twin.id);
+  test("may be admin's while nobody else reads its address, and never while someone does", async () => {
+    const admin = await userNamed("admin");
+    expect((await signedInAs(person("zed", { email: "admin@mail.test" }))).id).toBe(admin!.user_id);
+    expect(await links()).toEqual({ admin: "usr_zed" });
+
+    // A viewer of mail.test reads admin's address, so the address proves nothing.
+    await server.db.query("UPDATE users SET auth_sub = NULL");
+    const watcher = await createUser(server, "watcher");
+    await server.db.query(
+      `INSERT INTO domain_roles (domain_id, user_id, role)
+       SELECT domain_id, $1, 'viewer' FROM domains WHERE name = 'mail.test'`,
+      [watcher.id]
+    );
+    try {
+      const yan = await signedInAs(person("yan", { email: "ADMIN@mail.test" }));
+      expect(yan.username).toBe("yan");
+      expect(await links()).toEqual({ yan: "usr_yan" });
+    } finally {
+      await server.db.query("DELETE FROM domain_roles WHERE user_id = $1", [watcher.id]);
+    }
   });
 
   test("is never an unfinished sign-up, a deleted account, or one linked already", async () => {
@@ -227,6 +237,16 @@ describe("3. the one account with the person's email address", () => {
 });
 
 describe("4. a new account named after the provider username", () => {
+  test("owns its own name under the served zone from its first sign-in", async () => {
+    const client = server.client();
+    const created = await signedInAs(person("newcomer", { email: null }), client);
+    expect(created.username).toBe("newcomer");
+    const { body } = await client.get("/api/domains");
+    expect(body.body.domains.map((d: { name: string; role: string }) => [d.name, d.role])).toEqual([
+      ["newcomer.mail.test", "owner"],
+    ]);
+  });
+
   test("is created with the token's address, verified or not", async () => {
     for (const [username, emailVerified] of [
       ["vera", true],
@@ -299,7 +319,6 @@ describe("4. a new account named after the provider username", () => {
       "ålice",
       "",
       "a".repeat(64),
-      "admin-ro",
     ]) {
       const { done } = await signIn(server.client(), issuer, { who: person(username, { sub: "usr_odd" }) });
       expect({ username, location: done.headers.get("location") }).toEqual({
@@ -308,7 +327,7 @@ describe("4. a new account named after the provider username", () => {
       });
       expectRefusal(done, "invalid_username");
     }
-    expect(await usernames()).toEqual(["admin", "admin-ro"]);
+    expect(await usernames()).toEqual(["admin"]);
     expect(await links()).toEqual({});
     expect(await sessions()).toEqual([]);
 
@@ -336,7 +355,7 @@ describe("4. a new account named after the provider username", () => {
     expectRefusal(deleted.done, "account_exists");
 
     expect(await links()).toEqual({ alice: "usr_other" });
-    expect(await usernames()).toEqual(["admin", "admin-ro", "alice", "gone"]);
+    expect(await usernames()).toEqual(["admin", "alice", "gone"]);
     expect(await sessions()).toEqual([]);
     expect((await userNamed("alice"))!.email).toBe("someone@elsewhere.example");
   });
@@ -381,11 +400,11 @@ describe("the account's address at each sign-in", () => {
     expect((await userNamed("alice"))!.updated).toEqual(before!.updated);
   });
 
-  test("never changes on a reserved account", async () => {
+  test("changes on admin as on any account", async () => {
     await signedInAs(person("boss", { email: "boss@people.example" }));
     const again = await signedInAs(person("boss", { email: "boss2@people.example" }));
-    expect(again.email).toBe("admin@mail.test");
-    expect((await userNamed("admin"))!.email).toBe("admin@mail.test");
+    expect(again.email).toBe("boss2@people.example");
+    expect((await userNamed("admin"))!.email).toBe("boss2@people.example");
   });
 
   // NOTE: an `email` claim that is neither a string nor empty-ish (a number, a
@@ -403,7 +422,7 @@ describe("the account's address at each sign-in", () => {
       });
       expectRefusal(done, "failed");
     }
-    expect(await usernames()).toEqual(["admin", "admin-ro"]);
+    expect(await usernames()).toEqual(["admin"]);
     expect(await sessions()).toEqual([]);
     const alarm = await waitFor(() => server.alarms.alarms[0], { what: "the sign-on alarm" });
     expect(alarm.title).toBe("🚨 Mail Server Error: Single sign-on failed");

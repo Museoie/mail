@@ -10,10 +10,18 @@ import {
 } from "bun:test";
 import { restoreLeaves } from "test-helpers";
 import type { MailType, SignedUser } from "common";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
 import { boxToAccount } from "./util";
 import type { CopyRequest } from "./types";
 import type { SequenceState } from "./sequence-resolver";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 const VALID_USER: SignedUser = { id: "u1", username: "admin" } as SignedUser;
 
@@ -106,7 +114,7 @@ const buildStore = (opts: {
   sourceMails?: Array<Partial<MailType>>;
   storeMailReturns?: boolean;
 }): FakeStoreContext => {
-  const store = new Store(VALID_USER);
+  const store = newStore(VALID_USER);
   const storeMailCalls: Array<Partial<MailType>> = [];
   store.mailboxExists = async (box: string) =>
     box === "INBOX" || opts.existsBoxes.includes(box);
@@ -245,7 +253,7 @@ const makeCopyStore = (
   existsBoxes: string[],
   mails: Array<Partial<MailType>>
 ) => {
-  const store = new Store(VALID_USER);
+  const store = newStore(VALID_USER);
   store.mailboxExists = async (box: string) =>
     box === "INBOX" || existsBoxes.includes(box);
   store.getMessages = async () => {
@@ -513,7 +521,7 @@ describe("COPY address routing into a utility folder (#725)", () => {
       true,
       { store, storeMailCalls: stored }
     );
-    const destAddress = boxToAccount(VALID_USER.username, "Archive");
+    const destAddress = boxToAccount("example.com", "Archive");
     expect(stored[0].to?.value).toEqual([{ address: destAddress, name: "" }]);
     expect(stored[0].envelopeTo).toEqual([{ address: destAddress, name: "" }]);
   });

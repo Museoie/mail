@@ -15,7 +15,7 @@ import {
   MAIL_ID,
   UID,
 } from "../../models";
-import { usesDomainUidSpace } from "./views";
+import { membershipCondition, usesDomainUidSpace } from "./views";
 
 const buildReserveUidQuery = (
   user_id: string,
@@ -441,15 +441,19 @@ export const getNextModseq = async (user_id: string): Promise<number> => {
 export const getHighestModseq = async (
   user_id: string,
   mailbox: string | null,
-  sent: boolean
+  sent: boolean,
+  domains?: string[]
 ): Promise<number> => {
   try {
     let sql: string;
     let values: ParamValue[];
+    // A scoped login's HIGHESTMODSEQ covers only its domains' mail. Unscoped
+    // it stays the box-wide maximum, membership aside, as before.
+    const scope = domains === undefined ? "" : membershipCondition(null, true, "", domains);
     if (usesDomainUidSpace(mailbox)) {
       sql = `
         SELECT COALESCE(MAX(${MODSEQ}), 1) AS highest FROM mails
-        WHERE ${USER_ID} = $1 AND ${SENT} = $2
+        WHERE ${USER_ID} = $1 AND ${SENT} = $2${scope}
       `;
       values = [user_id, sent];
     } else {
@@ -459,7 +463,7 @@ export const getHighestModseq = async (
           ON x.${USER_ID} = m.${USER_ID}
           AND x.${MAILBOX} = $3
           AND x.${MAIL_ID} = m.${MAIL_ID}
-        WHERE m.${USER_ID} = $1 AND m.${SENT} = $2
+        WHERE m.${USER_ID} = $1 AND m.${SENT} = $2${domains === undefined ? "" : membershipCondition(null, true, "m.", domains)}
       `;
       values = [user_id, sent, mailbox];
     }

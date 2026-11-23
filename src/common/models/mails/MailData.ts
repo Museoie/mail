@@ -123,7 +123,13 @@ export interface ReplyData {
 }
 
 export interface MailDataToSendType {
+  /** The local part of the address the mail is sent from. */
   sender: string;
+  /**
+   * The domain of that address: one the sender owns. Omitted, the sender's
+   * default domain.
+   */
+  senderDomain?: string;
   senderFullName: string;
   to: string;
   cc?: string;
@@ -140,6 +146,7 @@ export class MailDataToSend
   implements MailDataToSendType
 {
   declare sender: string;
+  declare senderDomain?: string;
   declare senderFullName: string;
   declare to: string;
   declare cc?: string;

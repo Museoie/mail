@@ -7,7 +7,6 @@ use url::Url;
 
 use crate::auth_client::js_trim;
 use crate::env;
-use crate::read_only::ADMIN_RO_USERNAME;
 
 /// The environment single sign-on is configured from.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -116,10 +115,6 @@ pub fn parse_link_users(value: Option<&str>, problems: &mut Vec<String>) -> Hash
         if parts.len() != 2 || local.is_empty() || remote.is_empty() {
             problems
                 .push(format!("AUTH_LINK_USERS entry \"{}\" is not <local account>=<auth username>", js_trim(entry)));
-            continue;
-        }
-        if local == ADMIN_RO_USERNAME {
-            problems.push(format!("AUTH_LINK_USERS cannot link {ADMIN_RO_USERNAME}, which only signs in locally"));
             continue;
         }
         if locals.contains(local) {
@@ -412,12 +407,11 @@ mod tests {
     }
 
     #[test]
-    fn link_users_refuses_the_read_only_account_and_a_name_used_twice_on_either_side() {
-        let (linked, problems) = parse(Some("admin-ro=alice,admin=bob,admin=carol,dave=bob"));
+    fn link_users_refuses_a_name_used_twice_on_either_side() {
+        let (linked, problems) = parse(Some("admin=bob,admin=carol,dave=bob"));
         assert_eq!(
             problems,
             [
-                "AUTH_LINK_USERS cannot link admin-ro, which only signs in locally",
                 "AUTH_LINK_USERS names the local account \"admin\" twice",
                 "AUTH_LINK_USERS names the auth username \"bob\" twice",
             ]

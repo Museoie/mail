@@ -2,6 +2,7 @@ import { MailHeaderData, SignedUser, MailAddressValueType, Insight } from "commo
 import { searchMails, SearchMailResult } from "../postgres/repositories/mails";
 import { buildSnippet } from "./snippet";
 import { envelopeToOf } from "./headers";
+import { addressOnDomains, ownAddressDomains } from "../domains";
 
 export const searchMail = async (
   user: SignedUser,
@@ -12,10 +13,14 @@ export const searchMail = async (
   value = value.trim();
   if (!value) return [];
 
-  const mailModels = await searchMails(user.id, value, field);
+  const [mailModels, ownDomains] = await Promise.all([
+    searchMails(user.id, value, field),
+    ownAddressDomains(user.id),
+  ]);
+  const isOwn = addressOnDomains(ownDomains);
 
   return mailModels.map((m: SearchMailResult) => {
-    const envelopeTo = envelopeToOf(m, user.username);
+    const envelopeTo = envelopeToOf(m, isOwn);
     return new MailHeaderData({
       id: m.mail_id,
       subject: m.subject,

@@ -86,6 +86,7 @@ describe("a plain-text delivery", () => {
       received: [{ key: box.address(), doc_count: 1, unread_doc_count: 1, saved_doc_count: 0, updated: "2026-03-01T10:00:00.000Z" }],
       sent: [],
       spam: [],
+      shared: [],
     });
   });
 
@@ -445,12 +446,12 @@ describe("delivered mail and the write routes", () => {
     expect(subjects((await box.client.get(`/api/mails/headers/${box.address()}?spam=1`)).body.body)).toEqual(["Writable"]);
     expect((await box.client.delete(`/api/mails/${row.mail_id}`)).body).toEqual({ status: "success" });
     expect(await readMail(server, row.mail_id)).toBeUndefined();
-    expect((await box.client.get("/api/mails/accounts")).body.body).toEqual({ received: [], sent: [], spam: [] });
+    expect((await box.client.get("/api/mails/accounts")).body.body).toEqual({ received: [], sent: [], spam: [], shared: [] });
   });
 });
 
 describe("deliveries to admin", () => {
-  test("mail for the bare domain and for admin.<domain> both land with admin; only the first is an account", async () => {
+  test("mail for the bare domain and for admin.<domain> both land with admin, as accounts of both its domains", async () => {
     const admin = await adminMailbox(server);
     const bareId = nextId();
     const subId = nextId();
@@ -460,9 +461,9 @@ describe("deliveries to admin", () => {
     expect(subjects((await admin.client.get("/api/mails/headers/delivered-sub@admin.mail.test")).body.body)).toEqual(["To admin.domain"]);
     const keys = (await admin.client.get("/api/mails/accounts")).body.body.received.map((a: { key: string }) => a.key);
     expect(keys).toContain("delivered-bare@mail.test");
-    expect(keys).not.toContain("delivered-sub@admin.mail.test");
+    expect(keys).toContain("delivered-sub@admin.mail.test");
     const unified = (await admin.client.get("/api/mails/unified")).body.body.map((h: { id: string }) => h.id);
     expect(unified).toContain(bare.mail_id);
-    expect(unified).not.toContain(sub.mail_id);
+    expect(unified).toContain(sub.mail_id);
   });
 });

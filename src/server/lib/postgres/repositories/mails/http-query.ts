@@ -8,6 +8,7 @@
  * ```
  */
 import { ParamValue } from "../../database";
+import { mailInDomainsCondition, scopeToDomains } from "./domain-scope";
 import {
   MESSAGE_ID,
   IN_REPLY_TO,
@@ -39,6 +40,8 @@ export interface GetMailHeadersOptions {
   // Restrict to spam-flagged received mail. Spam is a per-account folder like
   // received/sent, so it rides the same address-scoped query path.
   spam?: boolean;
+  /** Only the mail of these of the owner's domains (`mailInDomainsCondition`). */
+  domains?: string[];
   from?: number;
   size?: number;
   since?: string;
@@ -90,6 +93,9 @@ const RECEIVED_ADDRESS_EXPANSION = `jsonb_array_elements(
   COALESCE(bcc_address, '[]'::jsonb) ||
   COALESCE(envelope_to, '[]'::jsonb)
 )->>'address' as address`;
+// The lower-cased domain part of the `address` an expansion produced.
+const ADDRESS_DOMAIN = `lower(regexp_replace(address, '^.*@', ''))`;
+
 const RECEIVED_ADDRESS_NOT_NULL = `(to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)`;
 
 // Select only columns needed for mail headers — excludes html/attachments
@@ -175,6 +181,11 @@ export const buildMailHeadersQuery = (
     sql += ` AND is_spam = FALSE`;
   }
 
+  if (options.domains !== undefined) {
+    sql += ` AND ${mailInDomainsCondition(paramIdx++)}`;
+    values.push(options.domains);
+  }
+
   if (options.since !== undefined) {
     sql += ` AND updated > $${paramIdx++}`;
     values.push(options.since);
@@ -248,7 +259,7 @@ export const buildDeltaEvictionQuery = (
         AND ${evictionCondition}
         AND updated > $3
     `;
-  return { sql: expungedSql, values: [user_id, addressJson, since] };
+  return scopeToDomains(expungedSql, [user_id, addressJson, since], options.domains);
 };
 
 /** Paging / cursor options for the unified list. The unified view is the All
@@ -388,11 +399,20 @@ export const buildSearchMailsQuery = (
   return { sql, values: [user_id, searchTerm] };
 };
 
+/**
+ * The accounts (addresses) a store holds mail for, with their counts.
+ *
+ * `domainFilter` keeps the addresses on those domains, so the external
+ * correspondents a mail names are not listed as accounts. `scopeDomains`
+ * keeps only the mail of those domains (`mailInDomainsCondition`), for a
+ * viewer reading one domain of the owner's.
+ */
 export const buildAccountStatsQuery = (
   user_id: string,
   sent: boolean,
-  domainFilter: string | undefined,
-  spamOnly: boolean
+  domainFilter: string[] | undefined,
+  spamOnly: boolean,
+  scopeDomains?: string[]
 ): { sql: string; values: ParamValue[] } => {
   const useSentExpansion = sent && !spamOnly;
 
@@ -415,8 +435,12 @@ export const buildAccountStatsQuery = (
 
   // Use address matching (from_address for sent, to/cc/bcc for received) rather
   // than the `sent` boolean flag, so self-emails appear in both views correctly.
+  const values: ParamValue[] = [user_id];
   const domainCondition = domainFilter
-    ? `AND address ILIKE '%@' || $2`
+    ? `AND ${ADDRESS_DOMAIN} = ANY($${values.push(domainFilter)}::text[])`
+    : "";
+  const scopeCondition = scopeDomains
+    ? `AND ${mailInDomainsCondition(values.push(scopeDomains))}`
     : "";
 
   // DISTINCT collapses rows where the same address appears more than once in
@@ -436,6 +460,7 @@ export const buildAccountStatsQuery = (
           AND draft = FALSE
           ${spamCondition}
           AND ${addressNotNull}
+          ${scopeCondition}
       )
       SELECT
         address,
@@ -449,18 +474,15 @@ export const buildAccountStatsQuery = (
       GROUP BY address
       ORDER BY latest DESC
     `;
-  const values: ParamValue[] = domainFilter
-    ? [user_id, domainFilter]
-    : [user_id];
   return { sql, values };
 };
 
 export const buildSearchAccountStatsQuery = (
   user_id: string,
   searchTerm: string,
-  domainFilter?: string
+  domainFilter?: string[]
 ): { sql: string; values: ParamValue[] } => {
-  const domainCondition = domainFilter ? `AND address ILIKE '%@' || $3` : "";
+  const domainCondition = domainFilter ? `AND ${ADDRESS_DOMAIN} = ANY($3::text[])` : "";
   const sql = `
       WITH expanded_mails AS (
         SELECT DISTINCT

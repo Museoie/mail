@@ -698,7 +698,16 @@ const normalize = (value: unknown): Json => {
 type StoreInstance = InstanceType<typeof Store>;
 type MailInstance = InstanceType<typeof Mail>;
 const userOf = (a: Args) => USERS[a.user as string];
-const storeOf = (a: Args): StoreInstance => new Store(new SignedUser(userOf(a)));
+// A plain login on the user's own domain, as the session opens one.
+const ownDomainOf = (a: Args) => {
+  const { username } = userOf(a);
+  return username === "admin" ? DOMAIN : `${username}.${DOMAIN}`;
+};
+const storeOf = (a: Args): StoreInstance =>
+  new Store(new SignedUser(userOf(a)), {
+    accountDomains: [ownDomainOf(a)],
+    primaryDomain: ownDomainOf(a),
+  });
 
 const mailIdsOf = async (user_id: string, messageIds: string[]): Promise<string[]> => {
   const result = await pool.query(
@@ -720,7 +729,7 @@ const assertAccountOrderDecided = async (a: Args) => {
   const { id, username } = userOf(a);
   for (const sent of [false, true]) {
     const domain = username === "admin" ? DOMAIN : `${username}.${DOMAIN}`;
-    const { sql, values } = httpQuery.buildAccountStatsQuery(id, sent, domain, false);
+    const { sql, values } = httpQuery.buildAccountStatsQuery(id, sent, [domain], false);
     const rows = (await pool.query(sql, values)).rows;
     const latest = rows.map((row) => String(row.latest));
     if (new Set(latest).size !== latest.length) {
@@ -788,8 +797,7 @@ const copyOrMove = async (a: Args, move: boolean): Promise<unknown> => {
     batch.forEach((mail) => sources.push(mail));
   }
   if (sources.length === 0) return { status: "nothing" };
-  const user = store.getUser();
-  const dest = resolveDestContext(user.username, destination);
+  const dest = resolveDestContext(store.getPrimaryDomain(), destination);
   const sourceIsDomainScoped = util.isDomainScoped(box);
   const srcUidOf = (mail: StoreFetchedMail) => (sourceIsDomainScoped ? mail.uid!.domain : mail.uid!.account);
   sources.sort((x, y) => srcUidOf(x) - srcUidOf(y));
@@ -1021,7 +1029,7 @@ const ops: Record<string, (a: Args) => Promise<unknown>> = {
     mail.deleted = flags.includes("\\Deleted");
     mail.answered = flags.includes("\\Answered");
     const user = store.getUser();
-    const account = util.boxToAccount(user.username, target);
+    const account = util.boxToAccount(store.getPrimaryDomain(), target);
     const targetIsSent = util.isSentBox(target);
     mail.sent = targetIsSent;
     mail.uid.domain = await counters.getDomainUidNext(user.id, targetIsSent);

@@ -1,8 +1,8 @@
 /**
- * Tests for the read-only IMAP session guard. Verifies that after
- * authenticating as `ADMIN_RO_USERNAME`, ImapSession refuses every
- * state-mutating IMAP command with `NO [READ-ONLY]` while letting
- * non-mutating ones through. Admin sessions are unaffected.
+ * Tests for the read-only IMAP session guard. A login scoped to a domain the
+ * person only views (`viewer@example.com`) reads the owner's store, so
+ * ImapSession refuses every state-mutating IMAP command with `NO [READ-ONLY]`
+ * while letting non-mutating ones through. The owner's sessions are unaffected.
  *
  * Isolation follows the same FakePool pattern as condstore.test.ts —
  * mock the pool driver at process scope so the lazy pool in postgres/client.ts points
@@ -51,7 +51,8 @@ const pgMock = () => ({
 mock.module("server/lib/postgres/pool", pgMock);
 
 const { ImapSession } = await import("./session");
-const { ADMIN_RO_USERNAME } = await import("../read-only");
+// The person a viewer-scoped login names.
+const VIEWER_USERNAME = "auditor";
 const { resetPool } = await import("../postgres/client");
 
 beforeAll(() => {
@@ -121,20 +122,18 @@ async function authAs(isReadOnly: boolean, authenticatedAs = "admin") {
     getAllUids: async () => [8, 9],
     getFirstUnseenUid: async () => null,
     getHighestModseq: async () => 5,
+    isDomainScoped: () => isReadOnly,
   };
   s.isReadOnlyUser = isReadOnly;
   s.authenticatedAs = authenticatedAs;
+  (s as unknown as { scope: unknown }).scope = isReadOnly
+    ? { userId: "viewer-id", domain: "example.com", role: "viewer", ownerId: "admin-id" }
+    : undefined;
   return { session, writes };
 }
 
 beforeEach(() => {
   mockQuery.mockClear();
-});
-
-describe("read-only IMAP user — constant", () => {
-  it("names the reserved read-only username", () => {
-    expect(ADMIN_RO_USERNAME).toBe("admin-ro");
-  });
 });
 
 describe("read-only IMAP user — guard refuses mutating commands", () => {
@@ -256,7 +255,7 @@ describe("read-only IMAP user — guard refuses mutating commands", () => {
 
   for (const { name, verb, run } of mutatingCases) {
     it(`refuses ${name} with NO [READ-ONLY] naming the original credential`, async () => {
-      const { session, writes } = await authAs(true, ADMIN_RO_USERNAME);
+      const { session, writes } = await authAs(true, VIEWER_USERNAME);
       // STORE / EXPUNGE / COPY / MOVE need a selected mailbox to reach
       // the guard; the guard runs AFTER the selection check so setting
       // the field skips the "no mailbox" BAD path.
@@ -269,7 +268,7 @@ describe("read-only IMAP user — guard refuses mutating commands", () => {
       // admin in audit logs.
       expect(joined).toContain(`A1 NO [READ-ONLY]`);
       expect(joined).toContain(verb);
-      expect(joined).toContain(ADMIN_RO_USERNAME);
+      expect(joined).toContain(VIEWER_USERNAME);
     });
   }
 });
@@ -279,7 +278,7 @@ describe("read-only IMAP user — SELECT announces the enforced mode", () => {
     // RFC 3501 6.3.1: the announcement has to match what the mutating ops
     // enforce. Announcing READ-WRITE here makes clients queue flag writes
     // that then come back NO [READ-ONLY] in a retry loop.
-    const { session, writes } = await authAs(true, ADMIN_RO_USERNAME);
+    const { session, writes } = await authAs(true, VIEWER_USERNAME);
     await session.selectMailbox("A1", "INBOX");
     expect(writes.join("")).toContain("A1 OK [READ-ONLY] SELECT completed\r\n");
     // The same flag the STORE / EXPUNGE / COPY refusals read.
@@ -299,7 +298,7 @@ describe("read-only IMAP user — SELECT announces the enforced mode", () => {
   it("keeps EXAMINE naming EXAMINE for a read-only user", async () => {
     // The response code and the echoed command answer different questions;
     // folding them back together would rename this SELECT.
-    const { session, writes } = await authAs(true, ADMIN_RO_USERNAME);
+    const { session, writes } = await authAs(true, VIEWER_USERNAME);
     await session.examineMailbox("A1", "INBOX");
     expect(writes.join("")).toContain("A1 OK [READ-ONLY] EXAMINE completed\r\n");
   });

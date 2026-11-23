@@ -126,14 +126,13 @@ describe("parseLinkUsers", () => {
     ]);
   });
 
-  it("refuses the read-only account and a name used twice on either side", () => {
-    const { links, problems } = parse("admin-ro=alice,admin=bob,admin=carol,dave=bob");
+  it("refuses a name used twice on either side", () => {
+    const { links, problems } = parse("viewer=alice,admin=bob,admin=carol,dave=bob");
     expect(problems).toEqual([
-      "AUTH_LINK_USERS cannot link admin-ro, which only signs in locally",
       'AUTH_LINK_USERS names the local account "admin" twice',
       'AUTH_LINK_USERS names the auth username "bob" twice',
     ]);
-    expect(links).toEqual(new Map([["bob", "admin"]]));
+    expect(links).toEqual(new Map([["alice", "viewer"], ["bob", "admin"]]));
   });
 });
 

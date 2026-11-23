@@ -9,9 +9,17 @@ import {
   deleteMailbox,
   renameMailbox,
 } from "./mailbox-ops";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
 import type { SignedUser } from "common";
 import type { SequenceState } from "./sequence-resolver";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 describe("isInbox util (#600)", () => {
   it("matches the canonical INBOX", () => {
@@ -38,7 +46,7 @@ describe("isInbox util (#600)", () => {
 
 describe("Store.mailboxExists is case-insensitive for INBOX (#600)", () => {
   const makeStore = (): Store => {
-    const store = new Store({ id: "u1", username: "admin" } as SignedUser);
+    const store = newStore({ id: "u1", username: "admin" } as SignedUser);
     // Throw on listMailboxes so the test confirms the INBOX path skips it.
     // Non-INBOX names would call listMailboxes — we don't exercise those here.
     store.listMailboxes = async () => {
@@ -247,7 +255,7 @@ describe("CREATE / DELETE / RENAME reject INBOX (#600 — review finding 3)", ()
   // refs in the inline comments at the call sites.
 
   const makeStore = (): Store => {
-    const store = new Store({ id: "u1", username: "admin" } as SignedUser);
+    const store = newStore({ id: "u1", username: "admin" } as SignedUser);
     // Patch out getUser/listMailboxes so the no-op stubs are never called
     // (we expect the INBOX guard to fire BEFORE any DB work happens).
     return store;

@@ -6,11 +6,8 @@
  */
 
 import { Socket } from "net";
-import {
-  getUser,
-  logger,
-  resolveSessionUser,
-} from "server";
+import { SignedUser } from "common";
+import { getUser, logger } from "server";
 import {
   isAuthRateLimited,
   normalizeAuthAccount,
@@ -21,15 +18,23 @@ import { verifyPassword } from "../verify-password";
 import { getSso } from "../sso";
 import { checkAppPassword } from "../sso/app-password";
 import { Store } from "./store";
+import { defaultDomain, ownedDomainNames, parseScopedLogin } from "../domains";
+import { getDomainAccess } from "../postgres/repositories/domains";
 import { closeSocket } from "./close-socket";
 
 export interface AuthResult {
   store: Store;
   authenticated: true;
-  /** True when the caller authenticated with the read-only credential. */
+  /** True when the login is scoped to a domain the person only views. */
   isReadOnly: boolean;
-  /** Original username the caller sent, before any session-scope remap. */
+  /**
+   * The person who signed in: the username part of the login, which names
+   * the credential row. The store may be another account's (a viewed
+   * domain's owner).
+   */
   authenticatedAs: string;
+  /** The domain a `user@domain` login is scoped to, and the grant it rests on. */
+  scope?: SessionScope;
   /**
    * The credential generation the session was minted from.
    * Read from the credential row at auth time — the per-command gate
@@ -58,7 +63,76 @@ const failAuth = async (
   return null;
 };
 
-type ResolvedSessionUser = NonNullable<Awaited<ReturnType<typeof resolveSessionUser>>>;
+/** The domain a scoped login reads, the person's role on it, and its owner. */
+export interface SessionScope {
+  /** The person's own user id, which the role is keyed by. */
+  userId: string;
+  domain: string;
+  role: "owner" | "viewer";
+  ownerId: string;
+}
+
+interface ResolvedSessionUser {
+  /** The account whose rows the session reads. */
+  user: SignedUser;
+  isReadOnly: boolean;
+  /** The person's username, without any `@domain` scope. */
+  username: string;
+  scope?: SessionScope;
+  /** Undefined reads the whole store; set, only those domains. */
+  domains?: string[];
+  /** The domains whose addresses are listed as account folders. */
+  accountDomains: string[];
+  /** The domain account folders are read under. */
+  primaryDomain: string;
+}
+
+/**
+ * The store a person's login opens. A plain login reads their own store, all
+ * their domains. A `user@domain` login reads only that domain: from their own
+ * store when they own it, read-only from its owner's when they view it, and
+ * not at all (null) when they hold no role on it.
+ */
+const resolveScope = async (
+  person: SignedUser,
+  username: string,
+  scopeDomain: string | undefined
+): Promise<ResolvedSessionUser | null> => {
+  if (scopeDomain === undefined) {
+    const owned = await ownedDomainNames(person.id);
+    const primaryDomain = defaultDomain(owned, username) ?? "";
+    // Account folders are named by local part and read back on the primary
+    // domain, so only that domain's addresses are listed: a folder for an
+    // address on another domain would open a different mailbox. A login
+    // scoped to that domain lists its folders.
+    return {
+      user: person,
+      isReadOnly: false,
+      username,
+      accountDomains: primaryDomain ? [primaryDomain] : [],
+      primaryDomain,
+    };
+  }
+  const access = await getDomainAccess(person.id, scopeDomain);
+  if (!access) return null;
+  const scope: SessionScope = {
+    userId: person.id,
+    domain: access.name,
+    role: access.role,
+    ownerId: access.ownerId,
+  };
+  const base = {
+    username,
+    scope,
+    domains: [access.name],
+    accountDomains: [access.name],
+    primaryDomain: access.name,
+  };
+  if (access.role === "owner") return { ...base, user: person, isReadOnly: false };
+  const owner = (await getUser({ id: access.ownerId }))?.getSigned();
+  if (!owner) return null;
+  return { ...base, user: owner, isReadOnly: true };
+};
 
 /**
  * The shared authentication core both mechanisms funnel through, so the
@@ -80,18 +154,31 @@ type ResolvedSessionUser = NonNullable<Awaited<ReturnType<typeof resolveSessionU
  * fail, so it lets them propagate as before).
  */
 const authenticateCredentials = async (
-  username: string,
+  login: string,
   password: string,
   ip: string,
   socket: Socket,
   write: (data: string) => boolean | undefined,
   tag: string
 ): Promise<(ResolvedSessionUser & { passwordVersion: number }) | null> => {
+  const { username, domain: scopeDomain } = parseScopedLogin(login);
   // The attempted identity: failures accumulate per (ip, account) and the
   // success below forgives only this account's own bucket. The per-IP
   // aggregate is never reset here, so alternating accounts from one IP
   // cannot wipe the counter.
   const account = normalizeAuthAccount(username);
+
+  // A scope the person holds no role on fails like a wrong password, so the
+  // answer says nothing about which half of the login was wrong.
+  const granted = async (person: SignedUser, passwordVersion: number) => {
+    const resolved = await resolveScope(person, username, scopeDomain);
+    if (!resolved) return failAuth(tag, ip, socket, write, account);
+    // Scoped reset: forgive only the authenticating account's own bucket.
+    // The per-IP aggregate keeps its count, so a success here cannot wipe
+    // another account's failures from the same IP.
+    resetAuthFailures(ip, account);
+    return { ...resolved, passwordVersion };
+  };
   if (isAuthRateLimited(ip, account)) {
     write(`${tag} NO [AUTHENTICATIONFAILED] Too many failed attempts\r\n`);
     closeSocket(socket);
@@ -106,13 +193,7 @@ const authenticateCredentials = async (
   // the app passwords of everyone behind the same address.
   if (!sso || sso.config.localLogin) {
     const local = await checkLocalPassword(username, password);
-    if (local) {
-      // Scoped reset: forgive only the authenticating account's own bucket. The
-      // per-IP aggregate keeps its count, so a success here cannot wipe another
-      // account's failures from the same IP.
-      resetAuthFailures(ip, account);
-      return local;
-    }
+    if (local) return granted(local.user, local.passwordVersion);
     if (!sso) return failAuth(tag, ip, socket, write, account);
   }
 
@@ -122,22 +203,14 @@ const authenticateCredentials = async (
     return null;
   }
   if (appPassword.status === "rejected") return failAuth(tag, ip, socket, write, account);
-  resetAuthFailures(ip, account);
-  return {
-    user: appPassword.user,
-    isReadOnly: false,
-    passwordVersion: appPassword.passwordVersion,
-  };
+  return granted(appPassword.user, appPassword.passwordVersion);
 };
 
-/**
- * The account's own stored password, with the read-only remap applied; null
- * when it doesn't match or the remap has no effective user.
- */
+/** The account's own stored password; null when it doesn't match. */
 const checkLocalPassword = async (
   username: string,
   password: string
-): Promise<(ResolvedSessionUser & { passwordVersion: number }) | null> => {
+): Promise<{ user: SignedUser; passwordVersion: number } | null> => {
   const user = await getUser({ username, password });
   const signedUser = user?.getSigned();
 
@@ -145,16 +218,11 @@ const checkLocalPassword = async (
 
   if (!user || !signedUser || !pwMatches) return null;
 
-  const resolved = await resolveSessionUser(signedUser);
-  if (!resolved) return null;
-
   // Stamp the credential row's generation — the per-command gate compares
   // this against the row's current version. Read here, at auth time, so a
   // LOGIN that straddled a rotation stamps the stale generation and fails
-  // its next comparison. Keyed on the credential the caller
-  // presented, never the remapped effective user: the read-only credential
-  // is its own row and survives a rotation on the account it reads.
-  return { ...resolved, passwordVersion: user.passwordVersion ?? 1 };
+  // its next comparison.
+  return { user: signedUser, passwordVersion: user.passwordVersion ?? 1 };
 };
 
 /**
@@ -210,13 +278,13 @@ export async function handleAuthenticate(
     // handler.ts (a fast bcrypt round on strong hardware would drop the
     // per-command "IMAP command completed" line to DEBUG). Auth events
     // need a durable INFO surface at the same level as CREATE / RENAME /
-    // DELETE from mailbox-ops.ts. `authenticatedAs` names the original
-    // credential (unchanged by the read-only remap) so a compromised
-    // read-only credential does not read in the log as admin.
+    // DELETE from mailbox-ops.ts. `authenticatedAs` names the person, and
+    // `effectiveUsername` the account whose rows a viewer's session reads.
     logger.info("IMAP AUTHENTICATE success", {
       component: "imap",
       tag,
-      authenticatedAs: username,
+      authenticatedAs: resolved.username,
+      scopeDomain: resolved.scope?.domain,
       effectiveUsername: resolved.user.username,
       isReadOnly: resolved.isReadOnly,
       remote: `${ip}:${socket.remotePort ?? 0}`,
@@ -225,13 +293,7 @@ export async function handleAuthenticate(
     write(
       `${tag} OK [CAPABILITY ${getCapabilities()}] AUTHENTICATE completed\r\n`
     );
-    return {
-      store: new Store(resolved.user),
-      authenticated: true,
-      isReadOnly: resolved.isReadOnly,
-      authenticatedAs: username,
-      passwordVersion: resolved.passwordVersion,
-    };
+    return toAuthResult(resolved);
   } catch (error) {
     logger.error("AUTHENTICATE error", { component: "imap" }, error);
     write(`${tag} BAD AUTHENTICATE failed\r\n`);
@@ -278,17 +340,27 @@ export async function handleLogin(
   logger.info("IMAP LOGIN success", {
     component: "imap",
     tag,
-    authenticatedAs: cleanUsername,
+    authenticatedAs: resolved.username,
+    scopeDomain: resolved.scope?.domain,
     effectiveUsername: resolved.user.username,
     isReadOnly: resolved.isReadOnly,
     remote: `${ip}:${socket.remotePort ?? 0}`,
   });
   write(`${tag} OK [CAPABILITY ${getCapabilities()}] LOGIN completed\r\n`);
-  return {
-    store: new Store(resolved.user),
-    authenticated: true,
-    isReadOnly: resolved.isReadOnly,
-    authenticatedAs: cleanUsername,
-    passwordVersion: resolved.passwordVersion,
-  };
+  return toAuthResult(resolved);
 }
+
+const toAuthResult = (
+  resolved: ResolvedSessionUser & { passwordVersion: number }
+): AuthResult => ({
+  store: new Store(resolved.user, {
+    domains: resolved.domains,
+    accountDomains: resolved.accountDomains,
+    primaryDomain: resolved.primaryDomain,
+  }),
+  authenticated: true,
+  isReadOnly: resolved.isReadOnly,
+  authenticatedAs: resolved.username,
+  scope: resolved.scope,
+  passwordVersion: resolved.passwordVersion,
+});

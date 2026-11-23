@@ -32,6 +32,24 @@ async function bundle() {
   }
 
   logger.info("Bun build succeeded to compile server.");
+
+  // The account script, self-contained like the server bundle, so the image
+  // that only carries build/ can run it: `bun ./build/cli/user.js <command>`.
+  const cli = await Bun.build({
+    entrypoints: [path.resolve(root, "..", "scripts", "user.ts")],
+    outdir: path.resolve(root, "..", "build", "cli"),
+    naming: "user.js",
+    target: "bun",
+    minify: false
+  });
+  if (!cli.success) {
+    logger.error("Build of the account script failed:");
+    for (const log of cli.logs) {
+      logger.error(String(log));
+    }
+    process.exit(1);
+  }
+  logger.info("Bun build succeeded to compile the account script.");
 }
 
 bundle();

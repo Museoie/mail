@@ -371,7 +371,7 @@ impl Harness {
             "getUidNext" => json!(get_uid_next(user_id(), &uid_scope(&args["scope"])).await?),
             "getNextModseq" => json!(get_next_modseq(user_id()).await?),
             "getHighestModseq" => {
-                json!(get_highest_modseq(user_id(), opt_text(args, "mailbox"), flag(args, "sent")).await)
+                json!(get_highest_modseq(user_id(), opt_text(args, "mailbox"), flag(args, "sent"), None).await)
             }
             "deleteMailboxUid" => {
                 delete_mailbox_uid(user_id(), text(args, "mailbox"), mail_id()).await?;
@@ -465,6 +465,7 @@ impl Harness {
                     flag(args, "useUid"),
                     set_clause,
                     conditional,
+                    None,
                 );
                 if set_clause.is_empty() {
                     let selected = pool().query(&queries.select_sql, &queries.base_values).await?;

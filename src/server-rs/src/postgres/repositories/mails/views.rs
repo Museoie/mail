@@ -21,6 +21,8 @@
 //! let filter = membership_condition(Some("Junk"), false, "m."); // " AND m.is_spam = TRUE"
 //! ```
 
+use super::domain_scope::{domains_array_literal, mail_in_domains_expression};
+
 pub const INBOX_ACCOUNTS_PREFIX: &str = "INBOX/accounts/";
 
 /// The name the INBOX tree's mapping rows are recorded under in
@@ -100,11 +102,19 @@ pub fn membership_filter(mailbox: Option<&str>, sent: bool) -> MembershipFilter 
 
 /// The rule as a boolean SQL expression, `TRUE` for a box that filters
 /// nothing. `prefix` qualifies each column, such as `"m."`.
-pub fn membership_expression(mailbox: Option<&str>, sent: bool, prefix: &str) -> String {
-    let terms: Vec<String> = membership_filter(mailbox, sent)
+///
+/// With `domains`, the box additionally shows only the mail of those of the
+/// owner's domains (`mail_in_domains_expression`): an IMAP login scoped to one
+/// domain sees that domain's mail in every box. The names are validated and
+/// inlined, so the fragment stays free of placeholders and appends to any query.
+pub fn membership_expression(mailbox: Option<&str>, sent: bool, prefix: &str, domains: Option<&[String]>) -> String {
+    let mut terms: Vec<String> = membership_filter(mailbox, sent)
         .into_iter()
         .map(|(column, value)| format!("{prefix}{column} = {}", if value { "TRUE" } else { "FALSE" }))
         .collect();
+    if let Some(domains) = domains {
+        terms.push(mail_in_domains_expression(&domains_array_literal(domains), prefix));
+    }
     if terms.is_empty() {
         "TRUE".to_string()
     } else {
@@ -114,8 +124,8 @@ pub fn membership_expression(mailbox: Option<&str>, sent: bool, prefix: &str) ->
 
 /// The same rule as a suffix for an existing `WHERE`, empty when the box
 /// filters nothing so it appends cleanly to any clause.
-pub fn membership_condition(mailbox: Option<&str>, sent: bool, prefix: &str) -> String {
-    let expression = membership_expression(mailbox, sent, prefix);
+pub fn membership_condition(mailbox: Option<&str>, sent: bool, prefix: &str, domains: Option<&[String]>) -> String {
+    let expression = membership_expression(mailbox, sent, prefix, domains);
     if expression == "TRUE" {
         String::new()
     } else {
@@ -131,16 +141,16 @@ mod tests {
 
     #[test]
     fn utility_views_select_their_rows_by_flag() {
-        assert_eq!(membership_expression(Some(DRAFTS_VIEW), false, ""), "draft = TRUE");
-        assert_eq!(membership_expression(Some(JUNK_VIEW), false, ""), "is_spam = TRUE");
-        assert_eq!(membership_condition(Some(DRAFTS_VIEW), false, ""), " AND draft = TRUE");
-        assert_eq!(membership_condition(Some(JUNK_VIEW), false, ""), " AND is_spam = TRUE");
+        assert_eq!(membership_expression(Some(DRAFTS_VIEW), false, "", None), "draft = TRUE");
+        assert_eq!(membership_expression(Some(JUNK_VIEW), false, "", None), "is_spam = TRUE");
+        assert_eq!(membership_condition(Some(DRAFTS_VIEW), false, "", None), " AND draft = TRUE");
+        assert_eq!(membership_condition(Some(JUNK_VIEW), false, "", None), " AND is_spam = TRUE");
     }
 
     #[test]
     fn utility_views_qualify_the_column_with_the_callers_alias() {
-        assert_eq!(membership_expression(Some(DRAFTS_VIEW), false, "m."), "m.draft = TRUE");
-        assert_eq!(membership_condition(Some(JUNK_VIEW), false, "m."), " AND m.is_spam = TRUE");
+        assert_eq!(membership_expression(Some(DRAFTS_VIEW), false, "m.", None), "m.draft = TRUE");
+        assert_eq!(membership_condition(Some(JUNK_VIEW), false, "m.", None), " AND m.is_spam = TRUE");
     }
 
     #[test]
@@ -164,7 +174,7 @@ mod tests {
     fn utility_views_do_not_inherit_a_prototype_key_as_a_view_name() {
         assert!(!is_utility_view(Some("constructor")));
         assert!(!is_utility_view(Some("toString")));
-        assert_eq!(membership_expression(Some("constructor"), false, ""), "TRUE");
+        assert_eq!(membership_expression(Some("constructor"), false, "", None), "TRUE");
     }
 
     #[test]
@@ -172,25 +182,25 @@ mod tests {
         assert!(is_utility_view(Some("drafts")));
         assert!(is_utility_view(Some("JUNK")));
         assert!(uses_domain_uid_space(Some("drafts")));
-        assert_eq!(membership_expression(Some("drafts"), false, ""), "draft = TRUE");
-        assert_eq!(membership_expression(Some("JUNK"), false, ""), "is_spam = TRUE");
+        assert_eq!(membership_expression(Some("drafts"), false, "", None), "draft = TRUE");
+        assert_eq!(membership_expression(Some("JUNK"), false, "", None), "is_spam = TRUE");
     }
 
     // views.test.ts — "INBOX"
 
     #[test]
     fn inbox_hides_spam_and_drafts() {
-        assert_eq!(membership_expression(None, false, ""), "is_spam = FALSE AND draft = FALSE");
+        assert_eq!(membership_expression(None, false, "", None), "is_spam = FALSE AND draft = FALSE");
         assert_eq!(
-            membership_expression(Some("INBOX/accounts/alice"), false, "m."),
+            membership_expression(Some("INBOX/accounts/alice"), false, "m.", None),
             "m.is_spam = FALSE AND m.draft = FALSE"
         );
     }
 
     #[test]
     fn inbox_stops_at_the_accounts_prefix_boundary() {
-        assert_eq!(membership_expression(Some("INBOX/accounts"), false, ""), "TRUE");
-        assert_eq!(membership_expression(Some("INBOX/accountsish"), false, ""), "TRUE");
+        assert_eq!(membership_expression(Some("INBOX/accounts"), false, "", None), "TRUE");
+        assert_eq!(membership_expression(Some("INBOX/accountsish"), false, "", None), "TRUE");
     }
 
     #[test]
@@ -201,10 +211,10 @@ mod tests {
 
     #[test]
     fn inbox_leaves_sent_mail_and_user_created_boxes_unfiltered() {
-        assert_eq!(membership_expression(None, true, ""), "TRUE");
-        assert_eq!(membership_expression(Some("Sent Messages/accounts/alice"), true, ""), "TRUE");
-        assert_eq!(membership_expression(Some("Archive"), false, ""), "TRUE");
-        assert_eq!(membership_condition(Some("Archive"), false, ""), "");
+        assert_eq!(membership_expression(None, true, "", None), "TRUE");
+        assert_eq!(membership_expression(Some("Sent Messages/accounts/alice"), true, "", None), "TRUE");
+        assert_eq!(membership_expression(Some("Archive"), false, "", None), "TRUE");
+        assert_eq!(membership_condition(Some("Archive"), false, "", None), "");
     }
 
     // views.test.ts — "the IMAP-side folder table agrees with the predicate".

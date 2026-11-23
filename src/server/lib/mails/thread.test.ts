@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import { SignedUser } from "common";
 import { getThread, ownAddressesOf, ThreadRepository } from "./thread";
 import { getDomain } from "../util";
@@ -78,7 +78,7 @@ const repositoryOver = (rows: ThreadRow[]) => {
 
 const thread = (mailId: string, rows: ThreadRow[]) => {
   const { repository } = repositoryOver(rows);
-  return getThread(USER, mailId, repository, isOwn);
+  return getThread(USER, mailId, isOwn, repository);
 };
 
 
@@ -103,9 +103,9 @@ describe("getThread", () => {
   });
 
   // Regression: the thread returned each row's whole stored envelope.
-  it("shows each row's envelope only as far as it names the user", async () => {
+  it("shows each row's envelope only as far as it is on the user's own domains", async () => {
     const domain = getDomain();
-    const own = { address: `hello@${domain}` };
+    const own = { address: "hello@inbox.test" };
     const hidden = { address: `hidden@bob.${domain}` };
     const result = await thread("a", [row("a", { envelope_to: [own, hidden] })]);
     expect(result[0].envelopeTo).toEqual({ value: [own], text: "" });
@@ -117,14 +117,14 @@ describe("getThread", () => {
     const b = row("b", { in_reply_to: "<a@x>" });
     const c = row("c", { in_reply_to: "<b@x>" });
     const { repository, calls } = repositoryOver([a, b, c]);
-    const result = await getThread(USER, "a", repository, isOwn);
+    const result = await getThread(USER, "a", isOwn, repository);
     expect(result.map((m) => m.id).sort()).toEqual(["a", "b", "c"]);
     expect(calls.length).toBeGreaterThan(1);
   });
 
   it("asks for both stored spellings of each id", async () => {
     const { repository, calls } = repositoryOver([row("a")]);
-    await getThread(USER, "a", repository, isOwn);
+    await getThread(USER, "a", isOwn, repository);
     expect(calls[0].ids).toEqual(["<a@x>", "a@x"]);
   });
 
@@ -186,17 +186,17 @@ describe("getThread", () => {
       row("a", { in_reply_to: "<q@x>" }),
       row("q", { in_reply_to: "<p@x>" })
     ]);
-    await getThread(USER, "a", headerOnly.repository, isOwn);
+    await getThread(USER, "a", isOwn, headerOnly.repository);
     expect(headerOnly.subjectCalls).toEqual([]);
 
     const legacy = repositoryOver([row("a", { subject: "Re: Project Plan" })]);
-    await getThread(USER, "a", legacy.repository, isOwn);
+    await getThread(USER, "a", isOwn, legacy.repository);
     expect(legacy.subjectCalls).toEqual([{ seed: "a", spam: false }]);
   });
 
   it("includes spam and flags it when the opened mail is spam", async () => {
     const { repository, calls } = repositoryOver([row("a", { is_spam: true })]);
-    const result = await getThread(USER, "a", repository, isOwn);
+    const result = await getThread(USER, "a", isOwn, repository);
     expect(calls[0].spam).toBe(true);
     expect(result[0].spam).toBe(true);
   });
@@ -228,25 +228,18 @@ describe("getThread", () => {
 });
 
 describe("ownAddressesOf", () => {
-  const originalDomain = process.env.EMAIL_DOMAIN;
-  afterAll(() => {
-    if (originalDomain === undefined) delete process.env.EMAIL_DOMAIN;
-    else process.env.EMAIL_DOMAIN = originalDomain;
-  });
-
-  it("is the user's own domain only, not other users' on the server", () => {
-    process.env.EMAIL_DOMAIN = "inbox.test";
-    const bobs = ownAddressesOf("bob");
+  it("is the user's own domains only, not other users' on the server", () => {
+    const bobs = ownAddressesOf(["bob.inbox.test", "example.org"]);
     expect(bobs("x@bob.inbox.test")).toBe(true);
+    expect(bobs("x@EXAMPLE.org")).toBe(true);
     expect(bobs("work@inbox.test")).toBe(false);
     expect(bobs("carol@carol.inbox.test")).toBe(false);
-    const admins = ownAddressesOf("admin");
+    const admins = ownAddressesOf(["inbox.test"]);
     expect(admins("work@inbox.test")).toBe(true);
     expect(admins("x@bob.inbox.test")).toBe(false);
   });
 
   it("joins a header-less exchange between two users on the server", async () => {
-    process.env.EMAIL_DOMAIN = "inbox.test";
     const dinner = row("a", {
       subject: "Dinner",
       from_address: [{ address: "x@bob.inbox.test" }],
@@ -259,12 +252,7 @@ describe("ownAddressesOf", () => {
       to_address: [{ address: "x@bob.inbox.test" }]
     });
     const { repository } = repositoryOver([dinner, reply]);
-    const result = await getThread(
-      USER,
-      "a",
-      repository,
-      ownAddressesOf("admin")
-    );
+    const result = await getThread(USER, "a", ownAddressesOf(["inbox.test"]), repository);
     expect(result.map((m) => m.id)).toEqual(["a", "b"]);
   });
 });

@@ -257,10 +257,9 @@ describe("a misconfiguration refuses to start, naming every problem", () => {
       ],
     ],
     [
-      "AUTH_LINK_USERS linking the read-only account, or a name twice on either side",
-      { ...SETTINGS, AUTH_LINK_USERS: "admin-ro=alice,admin=bob,admin=carol,dave=bob" },
+      "AUTH_LINK_USERS naming a name twice on either side",
+      { ...SETTINGS, AUTH_LINK_USERS: "admin=bob,admin=carol,dave=bob" },
       [
-        "AUTH_LINK_USERS cannot link admin-ro, which only signs in locally",
         'AUTH_LINK_USERS names the local account "admin" twice',
         'AUTH_LINK_USERS names the auth username "bob" twice',
       ],

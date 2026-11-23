@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use mail_server::alarm::send_alarm;
 use mail_server::postgres::initialize::{
-    boot_maintenance, initialize_admin_read_only_user, initialize_admin_user, initialize_postgres,
+    boot_maintenance, initialize_domains, initialize_postgres,
 };
 use mail_server::postgres::pool;
 use mail_server::{http, push, smtp};
@@ -16,8 +16,7 @@ async fn start() -> anyhow::Result<()> {
     // binds, and the provider is first contacted by the first sign-in.
     mail_server::sso::initialize_sso()?;
     initialize_postgres().await?;
-    initialize_admin_user().await?;
-    initialize_admin_read_only_user().await?;
+    initialize_domains().await?;
     push::init_push()?;
     let http_server = http::initialize_http().await?;
     // Sweeps `attachments/.incoming`, then opens SMTP_PORT, and with a

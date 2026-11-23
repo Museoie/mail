@@ -6,7 +6,7 @@ import {
   ownAddressesFor
 } from "./conversations";
 
-const isOwn = ownAddressesFor("admin", "inbox.test");
+const isOwn = ownAddressesFor(["inbox.test"]);
 
 const mail = (
   id: string,
@@ -126,9 +126,11 @@ describe("conversationSenders", () => {
 });
 
 describe("ownAddressesFor", () => {
-  it("is the user's own mail domain", () => {
-    expect(ownAddressesFor("bob", "inbox.test")("x@bob.inbox.test")).toBe(true);
-    expect(ownAddressesFor("bob", "inbox.test")("x@inbox.test")).toBe(false);
-    expect(ownAddressesFor("admin", "inbox.test")("x@inbox.test")).toBe(true);
+  it("is every domain the user owns, and no other", () => {
+    const own = ownAddressesFor(["bob.inbox.test", "example.org"]);
+    expect(own("x@bob.inbox.test")).toBe(true);
+    expect(own("x@Example.ORG")).toBe(true);
+    expect(own("x@inbox.test")).toBe(false);
+    expect(ownAddressesFor(["inbox.test"])("x@inbox.test")).toBe(true);
   });
 });

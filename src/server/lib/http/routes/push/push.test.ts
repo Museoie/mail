@@ -1,12 +1,6 @@
 import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import type { ApiResponse } from "../route";
 import type { HttpRequest } from "../../request";
-import { SignedUser } from "common";
-import {
-  ADMIN_RO_USERNAME,
-  refuseReadOnly,
-  remapReadOnlySession,
-} from "../../../read-only";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -56,9 +50,6 @@ mock.module("server", () => ({
   mailsTable: { queryOne: mock(async () => null) },
   SpamAllowlistModel: class {},
   logger: { error: mock(() => {}), info: mock(() => {}), warn: mock(() => {}) },
-  ADMIN_RO_USERNAME,
-  refuseReadOnly,
-  remapReadOnlySession,
 }));
 
 // The stubs above reach the leaf modules through the barrel (`lib/logger.ts`
@@ -124,14 +115,6 @@ describe("getRefreshRoute", () => {
     expect(mockRefreshSubscription).not.toHaveBeenCalled();
   });
 
-  it("refreshes nothing for a read-only session, whose id is admin's", async () => {
-    const { getRefreshRoute } = await import("./get-refresh");
-    const session = { user: remapReadOnlySession(new SignedUser({ id: "admin-id", username: "admin", email: "a@b.c" }), ADMIN_RO_USERNAME) };
-    const req = makeReq({ params: { id: "sub1" }, session });
-    const result = await getRefreshRoute.callback(req);
-    expect(result).toEqual({ status: "failed", message: "No subscription found" });
-    expect(mockRefreshSubscription).not.toHaveBeenCalled();
-  });
 });
 
 // ── post-subscribe ────────────────────────────────────────────────────────────
@@ -229,57 +212,5 @@ describe("deleteSubscribeRoute", () => {
     const result = await deleteSubscribeRoute.callback(req);
     expect((result as ApiResponse<unknown>).status).toBe("failed");
     expect((result as ApiResponse<unknown>).message).toMatch(/No subscription found/i);
-  });
-});
-
-// ── read-only guard sweep ─────────────────────────────────────────────────────
-
-describe("read-only guard on push routes", () => {
-  const readOnlyReq = (overrides: Record<string, unknown> = {}) =>
-    ({
-      session: {
-        user: remapReadOnlySession(
-          new SignedUser({
-            id: "u1",
-            username: "admin",
-            email: "admin@localhost",
-          }),
-          ADMIN_RO_USERNAME
-        ),
-      },
-      params: {},
-      body: {},
-      ...overrides,
-    }) as unknown as HttpRequest;
-
-  beforeEach(() => {
-    mockStoreSubscription.mockClear();
-    mockDeleteSubscriptionForUser.mockClear();
-  });
-
-  it("post-subscribe refuses a read-only session BEFORE storeSubscription", async () => {
-    const { postSubscribeRoute } = await import("./post-subscribe");
-    const req = readOnlyReq({
-      body: {
-        subscription: {
-          endpoint: "https://updates.push.services.mozilla.com/wpush/v2/x",
-          keys: { p256dh: "a".repeat(87), auth: "b".repeat(22) },
-        },
-      },
-    });
-    const result = await postSubscribeRoute.callback(req);
-    expect((result as ApiResponse<unknown>).status).toBe("failed");
-    expect((result as ApiResponse<unknown>).message).toContain("read-only");
-    expect((result as ApiResponse<unknown>).message).toContain(ADMIN_RO_USERNAME);
-    expect(mockStoreSubscription).not.toHaveBeenCalled();
-  });
-
-  it("delete-subscribe refuses a read-only session BEFORE deleteSubscriptionForUser", async () => {
-    const { deleteSubscribeRoute } = await import("./delete-subscribe");
-    const req = readOnlyReq({ params: { id: "sub1" } });
-    const result = await deleteSubscribeRoute.callback(req);
-    expect((result as ApiResponse<unknown>).status).toBe("failed");
-    expect((result as ApiResponse<unknown>).message).toContain("read-only");
-    expect(mockDeleteSubscriptionForUser).not.toHaveBeenCalled();
   });
 });

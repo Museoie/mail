@@ -1,5 +1,6 @@
 //! Data access, one module per table or query family.
 
+pub mod domains;
 pub mod mailboxes;
 pub mod mailgun_events;
 pub mod mails;

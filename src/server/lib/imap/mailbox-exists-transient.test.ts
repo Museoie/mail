@@ -1,9 +1,17 @@
 
 import { describe, it, expect } from "bun:test";
-import { Store } from "./store";
+import { Store, type StoreScope } from "./store";
 import { selectMailbox, statusMailbox } from "./mailbox-ops";
 import type { SignedUser } from "common";
 import type { SequenceState } from "./sequence-resolver";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 const VALID_USER: SignedUser = { id: "u1", username: "admin" } as SignedUser;
 
@@ -15,7 +23,7 @@ const buildStore = (opts: {
   rawBoxes?: string[];
   throwInListOrThrow?: boolean;
 }): Store => {
-  const store = new Store(VALID_USER);
+  const store = newStore(VALID_USER);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (store as any).listMailboxesOrThrow = async () => {
     if (opts.throwInListOrThrow) {

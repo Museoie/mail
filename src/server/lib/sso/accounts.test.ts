@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { getUserDomain } from "../util";
+import { accountDomain } from "../domains";
 import {
   resolveSsoAccount,
   type AccountDirectory,
@@ -25,6 +25,8 @@ const viewOf = (row: Row | undefined): LocalAccount | null => (row ? view(row) :
 class MemoryDirectory implements AccountDirectory {
   readonly rows: Row[] = [];
   readonly writes: string[] = [];
+  /** Who reads each domain's mail (its owner and viewers), by domain. */
+  readonly readers = new Map<string, string[]>();
   private next = 1;
 
   add(row: Partial<Row> & { username: string }): Row {
@@ -44,18 +46,19 @@ class MemoryDirectory implements AccountDirectory {
   findBySub = async (sub: string) => viewOf(this.rows.find((row) => row.authSub === sub));
   findByUsername = async (username: string) =>
     viewOf(this.rows.find((row) => row.username === username));
-  findUnlinkedByEmail = async (email: string, excluded: string[]) =>
+  findUnlinkedByEmail = async (email: string) =>
     this.rows
       .filter(
         (row) =>
           row.email?.toLowerCase() === email.toLowerCase() &&
           row.authSub === null &&
           row.signedUp &&
-          !row.deleted &&
-          !excluded.includes(row.username)
+          !row.deleted
       )
       .slice(0, 2)
       .map(view);
+  othersCanRead = async (email: string, userId: string) =>
+    (this.readers.get(email.split("@").pop()!.toLowerCase()) ?? []).some((id) => id !== userId);
   link = async (userId: string, sub: string) => {
     this.writes.push(`link ${userId} ${sub}`);
     const row = this.rows.find((r) => r.userId === userId);
@@ -103,8 +106,8 @@ describe("resolveSsoAccount", () => {
     expect(result.ok && result.account.userId).toBe(admin.userId);
     expect(result.ok && result.outcome).toBe("linked");
     expect(admin.authSub).toBe("usr_alice");
-    // The reserved account keeps the address its boot seeds.
-    expect(admin.email).toBe("admin@example.test");
+    // Like any account, it takes the provider's verified address.
+    expect(admin.email).toBe("alice@example.com");
   });
 
   it("2. skips a named account that is linked already, and goes on to the next rule", async () => {
@@ -160,10 +163,8 @@ describe("resolveSsoAccount", () => {
     }
   });
 
-  it("3. never links a reserved, unfinished or deleted account, verified or not", async () => {
+  it("3. never links an unfinished or deleted account, verified or not", async () => {
     const candidates = [
-      { username: "admin" },
-      { username: "admin-ro" },
       { username: "user_1234abcd", signedUp: false },
       { username: "dave", deleted: true },
     ];
@@ -176,6 +177,28 @@ describe("resolveSsoAccount", () => {
         expect(dir.rows.filter((r) => r.authSub).map((r) => r.username)).toEqual(["alice"]);
       }
     }
+  });
+
+  it("3. never links an account whose address someone else can read", async () => {
+    // The domain's owner, or a viewer of it, could confirm the address at the
+    // provider and take the account over.
+    for (const emailVerified of [true, false]) {
+      const dir = new MemoryDirectory();
+      const admin = dir.add({ username: "admin", email: "alice@example.com" });
+      dir.readers.set("example.com", [admin.userId, "u-viewer"]);
+      const result = await resolveSsoAccount({ ...ALICE, emailVerified }, NO_LINKS, dir);
+      expect(result.ok && result.outcome).toBe("created");
+      expect(admin.authSub).toBeNull();
+    }
+  });
+
+  it("3. links an account whose address only that account reads", async () => {
+    const dir = new MemoryDirectory();
+    const admin = dir.add({ username: "admin", email: "alice@example.com" });
+    dir.readers.set("example.com", [admin.userId]);
+    const result = await resolveSsoAccount(ALICE, NO_LINKS, dir);
+    expect(result.ok && result.account.userId).toBe(admin.userId);
+    expect(result.ok && result.outcome).toBe("linked");
   });
 
   it("4. creates an account named after the username, with the verified address", async () => {
@@ -212,12 +235,12 @@ describe("resolveSsoAccount", () => {
         NO_LINKS,
         dir
       );
-      expect(result.ok && result.account.email).toBe(`bob@${getUserDomain("bob")}`);
+      expect(result.ok && result.account.email).toBe(`bob@${accountDomain("bob")}`);
     }
   });
 
   it("4. refuses a username that cannot name a mailbox", async () => {
-    for (const username of ["Alice", "al_ice", "-alice", "alice-", "a".repeat(64), "admin-ro"]) {
+    for (const username of ["Alice", "al_ice", "-alice", "alice-", "a".repeat(64)]) {
       const dir = new MemoryDirectory();
       const result = await resolveSsoAccount({ ...ALICE, username }, NO_LINKS, dir);
       expect(result).toEqual({ ok: false, reason: "invalid_username" });

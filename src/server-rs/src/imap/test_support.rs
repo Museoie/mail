@@ -12,8 +12,8 @@ use serde_json::Value;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::auth::AuthBackend;
-use crate::models::{SignedUser, User};
-use crate::read_only::{remap_read_only_session, ADMIN_RO_USERNAME, ADMIN_USERNAME};
+use crate::models::User;
+use crate::postgres::repositories::domains::{DomainAccess, DomainRole};
 use crate::sso::app_password::AppPasswordCheck;
 use crate::sso::Sso;
 use crate::tls::TlsAcceptor;
@@ -119,6 +119,9 @@ pub(crate) enum FakeAuthCall {
     Record(String, Option<String>),
     Reset(String, Option<String>),
     GetUser(String),
+    GetUserById(String),
+    /// The role read for a scoped login: the person's id and the domain.
+    DomainAccess(String, String),
     /// The password compared, and the digest it was compared against.
     Verify(String, Option<String>),
     AppPassword(String, String, String),
@@ -136,6 +139,8 @@ pub(crate) struct FakeAuthBackend {
     pub(crate) sso: Option<Arc<Sso>>,
     /// What the provider answers; `Rejected` when unset.
     pub(crate) app_password: Option<AppPasswordCheck>,
+    /// The roles people hold on domains, by the person's user id.
+    pub(crate) domains: Vec<(String, DomainAccess)>,
     pub(crate) calls: Mutex<Vec<FakeAuthCall>>,
 }
 
@@ -202,20 +207,23 @@ impl AuthBackend for FakeAuthBackend {
         crate::verify_password::verify_password(Some(password), stored_hash).await
     }
 
-    /// The read-only remap as `read_only::resolve_session_user` does it, with
-    /// the admin row from this backend's own accounts.
-    async fn resolve_session_user(&self, signed_user: Option<SignedUser>) -> Result<Option<(SignedUser, bool)>> {
-        let Some(signed_user) = signed_user else {
-            return Ok(None);
-        };
-        if signed_user.username != ADMIN_RO_USERNAME {
-            return Ok(Some((signed_user, false)));
-        }
+    async fn get_user_by_id(&self, id: &str) -> Result<Option<User>> {
+        self.record(FakeAuthCall::GetUserById(id.to_string()));
+        Ok(self.users.values().find(|user| user.id.as_deref() == Some(id)).cloned())
+    }
+
+    async fn owned_domain_names(&self, user_id: &str) -> Result<Vec<String>> {
         Ok(self
-            .users
-            .get(ADMIN_USERNAME)
-            .and_then(User::get_signed)
-            .map(|admin| (remap_read_only_session(&admin, ADMIN_RO_USERNAME), true)))
+            .domains
+            .iter()
+            .filter(|(holder, access)| holder == user_id && access.role == DomainRole::Owner)
+            .map(|(_, access)| access.name.clone())
+            .collect())
+    }
+
+    async fn get_domain_access(&self, user_id: &str, domain: &str) -> Result<Option<DomainAccess>> {
+        self.record(FakeAuthCall::DomainAccess(user_id.to_string(), domain.to_string()));
+        Ok(self.domains.iter().find(|(holder, access)| holder == user_id && access.name == domain).map(|(_, access)| access.clone()))
     }
 
     async fn check_app_password(

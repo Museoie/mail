@@ -7,6 +7,7 @@ import {
   REPO_ROOT,
   bootExpectingExit,
   createUser,
+  seedAdmin,
   waitFor,
   type ApiClient,
   type ServerOptions,
@@ -119,179 +120,76 @@ describe("SECRET in production", () => {
   }, BOOT_TIMEOUT);
 });
 
-describe("the admin account at boot", () => {
-  test("is created on the first boot with ADMIN_PASSWORD", async () => {
-    await withServer({}, async (server) => {
-      const admin = (await userRow(server, "admin"))!;
-      expect(admin.user_id).toMatch(UUID);
-      expect(admin.password).toMatch(/^\$2b\$10\$[./A-Za-z0-9]{53}$/);
-      expect(admin).toMatchObject({
-        username: "admin",
-        email: "admin@mail.test",
-        password_version: 1,
-        token: null,
-        expiry: null,
-        is_deleted: false,
-        imap_uid_validity: null,
-        auth_sub: null,
-      });
-      expect((await server.db.query("SELECT username FROM users")).map((row) => row.username)).toEqual(["admin"]);
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-      expect(await canLogin(server, "admin", "inbox")).toBe(false);
-    });
+describe("accounts at boot", () => {
+  // An operator creates accounts with `bun run user` (or single sign-on does);
+  // the server itself seeds none, and ADMIN_PASSWORD, ADMIN_PASSWORD_RESET and
+  // ADMIN_RO_PASSWORD are not read.
+  test("a first boot creates no account, whatever ADMIN_* say", async () => {
+    await withServer(
+      { seedAdmin: false, env: { ADMIN_PASSWORD: "boot-admin", ADMIN_PASSWORD_RESET: "1", ADMIN_RO_PASSWORD: "boot-ro" } },
+      async (server) => {
+        expect(await server.db.query("SELECT username FROM users")).toEqual([]);
+        expect(await server.db.query("SELECT name FROM domains")).toEqual([]);
+        expect(await canLogin(server, "admin", "boot-admin")).toBe(false);
+        expect(await canLogin(server, "admin-ro", "boot-ro")).toBe(false);
+      }
+    );
   }, BOOT_TIMEOUT);
 
-  test("is created with the password 'inbox' when ADMIN_PASSWORD is unset or empty", async () => {
-    for (const password of [undefined, ""]) {
-      await withServer({ env: { ADMIN_PASSWORD: password } }, async (server) => {
-        expect(await canLogin(server, "admin", "inbox")).toBe(true);
-        expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(false);
-      });
-    }
-  }, BOOT_TIMEOUT);
-
-  test("only the first 72 bytes of ADMIN_PASSWORD count", async () => {
-    const long = `${"p".repeat(72)}-and-more`;
-    await withServer({ env: { ADMIN_PASSWORD: long } }, async (server) => {
-      expect(await canLogin(server, "admin", long)).toBe(true);
-      expect(await canLogin(server, "admin", "p".repeat(72))).toBe(true);
-      expect(await canLogin(server, "admin", "p".repeat(71))).toBe(false);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("keeps its stored password on a later boot with another ADMIN_PASSWORD", async () => {
-    await withServer({}, async (server) => {
-      const before = (await userRow(server, "admin"))!;
-      const client = server.client();
-      await client.login("admin", ADMIN_PASSWORD);
-
-      await server.restart({ ADMIN_PASSWORD: "a-different-password" });
-      const after = (await userRow(server, "admin"))!;
-      expect(after).toMatchObject({
-        user_id: before.user_id,
-        password: before.password,
-        password_version: 1,
-        email: "admin@mail.test",
-      });
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-      expect(await canLogin(server, "admin", "a-different-password")).toBe(false);
-      // Nobody was signed out.
-      expect(await whoIs(client)).toBe("admin");
-
-      await server.restart({ ADMIN_PASSWORD: undefined });
-      expect((await userRow(server, "admin"))!.password).toBe(before.password);
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-      expect(await canLogin(server, "admin", "inbox")).toBe(false);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("takes ADMIN_PASSWORD again with ADMIN_PASSWORD_RESET=1, which signs admin out everywhere", async () => {
-    await withServer({}, async (server) => {
-      const before = (await userRow(server, "admin"))!;
-      const alice = await createUser(server, "alice");
-      const adminOne = server.client();
-      const adminTwo = server.client();
-      const aliceClient = server.client();
-      await adminOne.login("admin", ADMIN_PASSWORD);
-      await adminTwo.login("admin", ADMIN_PASSWORD);
-      await aliceClient.login(alice.username, alice.password);
-      const adminSessions = [sessionIdOf(adminOne), sessionIdOf(adminTwo)];
-
-      await server.restart({ ADMIN_PASSWORD: "the-new-password", ADMIN_PASSWORD_RESET: "1" });
-      const after = (await userRow(server, "admin"))!;
-      expect(after.user_id).toBe(before.user_id);
-      expect(after.password).not.toBe(before.password);
-      expect(after.password).toMatch(/^\$2b\$10\$/);
-      expect(after.password_version).toBe(2);
-      expect(await canLogin(server, "admin", "the-new-password")).toBe(true);
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(false);
-
-      for (const id of adminSessions) expect(await sessionRow(server, id)).toBeUndefined();
-      expect(await whoIs(adminOne)).toBeUndefined();
-      expect(await whoIs(aliceClient)).toBe("alice");
-
-      // While the variable stays set, every boot applies it again.
-      const again = server.client();
-      await again.login("admin", "the-new-password");
+  test("warns at each boot while no account owns EMAIL_DOMAIN, and stops once one does", async () => {
+    const WARNING = "No account owns mail.test, so mail to *@mail.test is refused.";
+    await withServer({ seedAdmin: false }, async (server) => {
+      const count = () => server.logs().split(WARNING).length - 1;
+      expect(count()).toBe(1);
       await server.restart();
-      expect((await userRow(server, "admin"))!.password_version).toBe(3);
-      expect(await whoIs(again)).toBeUndefined();
-      expect(await canLogin(server, "admin", "the-new-password")).toBe(true);
-
-      // Without it the stored password stays, and so do the sessions.
-      const kept = server.client();
-      await kept.login("admin", "the-new-password");
-      await server.restart({ ADMIN_PASSWORD_RESET: undefined, ADMIN_PASSWORD: "ignored-now" });
-      expect((await userRow(server, "admin"))!.password_version).toBe(3);
-      expect(await whoIs(kept)).toBe("admin");
-      expect(await canLogin(server, "admin", "the-new-password")).toBe(true);
+      expect(count()).toBe(2);
+      await seedAdmin(server, ADMIN_PASSWORD);
+      await server.restart();
+      expect(count()).toBe(2);
     });
   }, BOOT_TIMEOUT);
 
-  test("a session stamped before the reset is refused even if its row comes back", async () => {
+  test("gives an account with no domain its own name under EMAIL_DOMAIN, and leaves a taken name alone", async () => {
     await withServer({}, async (server) => {
-      const client = server.client();
-      await client.login("admin", ADMIN_PASSWORD);
-      const id = sessionIdOf(client);
-      const [saved] = await server.db.query("SELECT * FROM sessions WHERE session_id = $1", [id]);
-
-      await server.restart({ ADMIN_PASSWORD: "rotated", ADMIN_PASSWORD_RESET: "1" });
-      expect(await sessionRow(server, id)).toBeUndefined();
-      // The row restored as it was, generation 1 against the account's 2.
-      const columns = Object.keys(saved!);
-      await server.db.query(
-        `INSERT INTO sessions (${columns.join(", ")}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(", ")})`,
-        columns.map((column) => saved![column])
+      const bare = async (username: string) =>
+        (
+          await server.db.query<{ user_id: string }>(
+            "INSERT INTO users (username, password, email) VALUES ($1, 'x', $2) RETURNING user_id",
+            [username, `${username}@elsewhere.example`]
+          )
+        )[0]!.user_id;
+      const bob = await bare("bob");
+      const carol = await bare("carol");
+      // Someone else holds carol's name already.
+      await server.db.query("INSERT INTO domains (name, user_id) VALUES ('carol.mail.test', $1)", [bob]);
+      // A sign-up that never set a password gets nothing.
+      await server.db.query("INSERT INTO users (username, email, token) VALUES ('user_pending1', 'p@elsewhere.example', 't')");
+      await server.restart();
+      const owners = await server.db.query<{ name: string; user_id: string }>(
+        "SELECT name, user_id FROM domains WHERE name IN ('bob.mail.test', 'carol.mail.test', 'user_pending1.mail.test') ORDER BY name"
       );
-      expect((await client.get("/api/users/login")).text).toBe(ANONYMOUS_LOGIN_TEXT);
-      expect(await sessionRow(server, id)).toBeUndefined();
+      expect(owners).toEqual([
+        { name: "bob.mail.test", user_id: bob },
+        { name: "carol.mail.test", user_id: bob },
+      ]);
+      expect(carol).not.toBe(bob);
+      // Idempotent: another boot changes nothing.
+      await server.restart();
+      expect(
+        await server.db.query("SELECT name FROM domains WHERE name IN ('bob.mail.test', 'carol.mail.test') ORDER BY name")
+      ).toHaveLength(2);
     });
   }, BOOT_TIMEOUT);
 
-  test("ADMIN_PASSWORD_RESET=1 without a password changes nothing", async () => {
+  test("an account keeps its password and sessions across restarts with any ADMIN_*", async () => {
     await withServer({}, async (server) => {
-      const before = (await userRow(server, "admin"))!;
       const client = server.client();
       await client.login("admin", ADMIN_PASSWORD);
-      for (const password of [undefined, ""]) {
-        await server.restart({ ADMIN_PASSWORD: password, ADMIN_PASSWORD_RESET: "1" });
-        expect(await userRow(server, "admin")).toMatchObject({ password: before.password, password_version: 1 });
-        expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-        expect(await canLogin(server, "admin", "inbox")).toBe(false);
-        expect(await whoIs(client)).toBe("admin");
-      }
-    });
-  }, BOOT_TIMEOUT);
-
-  test("any other value of ADMIN_PASSWORD_RESET changes nothing", async () => {
-    await withServer({}, async (server) => {
-      const before = (await userRow(server, "admin"))!;
-      const client = server.client();
-      await client.login("admin", ADMIN_PASSWORD);
-      for (const value of ["true", "yes", "0", "2", "01", "1 ", " 1", "one", ""]) {
-        await server.restart({ ADMIN_PASSWORD: "would-be-new", ADMIN_PASSWORD_RESET: value });
-        expect({ value, row: await userRow(server, "admin") }).toMatchObject({
-          value,
-          row: { password: before.password, password_version: 1 },
-        });
-        expect(await whoIs(client)).toBe("admin");
-      }
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("ADMIN_PASSWORD_RESET=1 on the very first boot just creates the account", async () => {
-    await withServer({ env: { ADMIN_PASSWORD_RESET: "1" } }, async (server) => {
-      expect((await userRow(server, "admin"))!.password_version).toBe(1);
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("a reset of a row that predates credential generations moves it to 2", async () => {
-    await withServer({}, async (server) => {
-      await server.db.query("UPDATE users SET password_version = NULL WHERE username = 'admin'");
       await server.restart({ ADMIN_PASSWORD: "rotated", ADMIN_PASSWORD_RESET: "1" });
-      expect((await userRow(server, "admin"))!.password_version).toBe(2);
+      expect(await whoIs(client)).toBe("admin");
+      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
+      expect(await canLogin(server, "admin", "rotated")).toBe(false);
+      expect((await userRow(server, "admin"))!.password_version).toBe(1);
     });
   }, BOOT_TIMEOUT);
 
@@ -309,154 +207,6 @@ describe("the admin account at boot", () => {
       await server.restart();
       expect(await canLogin(server, "alice", "set-by-the-user")).toBe(true);
       expect((await userRow(server, "alice"))!.password_version).toBe(2);
-    });
-  }, BOOT_TIMEOUT);
-});
-
-describe("admin's address", () => {
-  test("is admin@EMAIL_DOMAIN, and follows the domain on a later boot", async () => {
-    await withServer({ env: { EMAIL_DOMAIN: "first.example" } }, async (server) => {
-      expect((await userRow(server, "admin"))!.email).toBe("admin@first.example");
-      const id = (await userRow(server, "admin"))!.user_id;
-      await server.restart({ EMAIL_DOMAIN: "Second.Example" });
-      expect(await userRow(server, "admin")).toMatchObject({ user_id: id, email: "admin@Second.Example", password_version: 1 });
-      expect(await canLogin(server, "admin", ADMIN_PASSWORD)).toBe(true);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("is admin@localhost when EMAIL_DOMAIN is unset or empty", async () => {
-    for (const EMAIL_DOMAIN of [undefined, ""]) {
-      await withServer({ env: { EMAIL_DOMAIN, ADMIN_RO_PASSWORD: "read-only-password" } }, async (server) => {
-        expect((await userRow(server, "admin"))!.email).toBe("admin@localhost");
-        expect((await userRow(server, "admin-ro"))!.email).toBe("admin-ro@localhost");
-        const { body } = await server.client().post("/api/users/login", { username: "admin", password: ADMIN_PASSWORD });
-        expect(body.body.email).toBe("admin@localhost");
-      });
-    }
-  }, BOOT_TIMEOUT);
-
-  test("a signed-in admin keeps the address the session was issued with", async () => {
-    await withServer({ env: { EMAIL_DOMAIN: "first.example" } }, async (server) => {
-      const client = server.client();
-      await client.login("admin", ADMIN_PASSWORD);
-      await server.restart({ EMAIL_DOMAIN: "second.example" });
-      expect((await client.get("/api/users/login")).body.body.user.email).toBe("admin@first.example");
-      const fresh = await server.client().post("/api/users/login", { username: "admin", password: ADMIN_PASSWORD });
-      expect(fresh.body.body.email).toBe("admin@second.example");
-    });
-  }, BOOT_TIMEOUT);
-});
-
-describe("the read-only account at boot", () => {
-  const RO = "read-only-password-one";
-
-  test("does not exist unless ADMIN_RO_PASSWORD is set", async () => {
-    for (const ADMIN_RO_PASSWORD of [undefined, ""]) {
-      await withServer({ env: { ADMIN_RO_PASSWORD } }, async (server) => {
-        expect(await userRow(server, "admin-ro")).toBeUndefined();
-        await server.restart();
-        expect(await userRow(server, "admin-ro")).toBeUndefined();
-      });
-    }
-  }, BOOT_TIMEOUT);
-
-  test("is created with ADMIN_RO_PASSWORD", async () => {
-    await withServer({ env: { ADMIN_RO_PASSWORD: RO } }, async (server) => {
-      const row = (await userRow(server, "admin-ro"))!;
-      expect(row.user_id).toMatch(UUID);
-      expect(row.password).toMatch(/^\$2b\$10\$[./A-Za-z0-9]{53}$/);
-      expect(row).toMatchObject({ email: "admin-ro@mail.test", password_version: 1, token: null, is_deleted: false });
-      const { body } = await server.client().post("/api/users/login", { username: "admin-ro", password: RO });
-      expect(body.body).toMatchObject({ username: "admin", isReadOnly: true, authenticatedAs: "admin-ro" });
-    });
-  }, BOOT_TIMEOUT);
-
-  test("a restart with the same password signs nobody out", async () => {
-    await withServer({ env: { ADMIN_RO_PASSWORD: RO } }, async (server) => {
-      const before = (await userRow(server, "admin-ro"))!;
-      const readOnly = server.client();
-      await readOnly.login("admin-ro", RO);
-      await server.restart();
-      const after = (await userRow(server, "admin-ro"))!;
-      expect(after).toMatchObject({ user_id: before.user_id, password_version: 1, email: "admin-ro@mail.test" });
-      expect((await readOnly.get("/api/users/login")).body.body.user).toMatchObject({ isReadOnly: true, authenticatedAs: "admin-ro" });
-      expect(await canLogin(server, "admin-ro", RO)).toBe(true);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("a changed password withdraws the sessions the old one issued, and only those", async () => {
-    await withServer({ env: { ADMIN_RO_PASSWORD: RO } }, async (server) => {
-      const before = (await userRow(server, "admin-ro"))!;
-      const alice = await createUser(server, "alice");
-      const readOnlyOne = server.client();
-      const readOnlyTwo = server.client();
-      const admin = server.client();
-      const aliceClient = server.client();
-      await readOnlyOne.login("admin-ro", RO);
-      await readOnlyTwo.login("admin-ro", RO);
-      await admin.login("admin", ADMIN_PASSWORD);
-      await aliceClient.login(alice.username, alice.password);
-      const readOnlySessions = [sessionIdOf(readOnlyOne), sessionIdOf(readOnlyTwo)];
-
-      await server.restart({ ADMIN_RO_PASSWORD: "read-only-password-two" });
-      const after = (await userRow(server, "admin-ro"))!;
-      expect(after.user_id).toBe(before.user_id);
-      expect(after.password).not.toBe(before.password);
-      expect(after.password_version).toBe(2);
-      for (const id of readOnlySessions) expect(await sessionRow(server, id)).toBeUndefined();
-      expect(await whoIs(readOnlyOne)).toBeUndefined();
-      // The read-only sessions were admin's identity; admin's own are untouched.
-      expect(await whoIs(admin)).toBe("admin");
-      expect((await userRow(server, "admin"))!.password_version).toBe(1);
-      expect(await whoIs(aliceClient)).toBe("alice");
-
-      expect(await canLogin(server, "admin-ro", "read-only-password-two")).toBe(true);
-      expect(await canLogin(server, "admin-ro", RO)).toBe(false);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("removing ADMIN_RO_PASSWORD revokes the account and its sessions, and keeps the row", async () => {
-    await withServer({ env: { ADMIN_RO_PASSWORD: RO } }, async (server) => {
-      const before = (await userRow(server, "admin-ro"))!;
-      const readOnly = server.client();
-      const admin = server.client();
-      await readOnly.login("admin-ro", RO);
-      await admin.login("admin", ADMIN_PASSWORD);
-      const readOnlySession = sessionIdOf(readOnly);
-
-      await server.restart({ ADMIN_RO_PASSWORD: undefined });
-      const revoked = (await userRow(server, "admin-ro"))!;
-      expect(revoked).toMatchObject({ user_id: before.user_id, email: "admin-ro@mail.test", password_version: 2, is_deleted: false });
-      expect(revoked.password).toMatch(/^\$2b\$10\$[./A-Za-z0-9]{53}$/);
-      expect(revoked.password).not.toBe(before.password);
-      expect(await canLogin(server, "admin-ro", RO)).toBe(false);
-      expect(await sessionRow(server, readOnlySession)).toBeUndefined();
-      expect(await whoIs(readOnly)).toBeUndefined();
-      expect(await whoIs(admin)).toBe("admin");
-
-      // Every boot without it revokes again.
-      await server.restart({ ADMIN_RO_PASSWORD: "" });
-      const again = (await userRow(server, "admin-ro"))!;
-      expect(again.password_version).toBe(3);
-      expect(again.password).not.toBe(revoked.password);
-
-      // Setting it again brings the same account back.
-      await server.restart({ ADMIN_RO_PASSWORD: RO });
-      const restored = (await userRow(server, "admin-ro"))!;
-      expect(restored).toMatchObject({ user_id: before.user_id, password_version: 4 });
-      expect(await canLogin(server, "admin-ro", RO)).toBe(true);
-    });
-  }, BOOT_TIMEOUT);
-
-  test("its address follows EMAIL_DOMAIN while it is enabled", async () => {
-    await withServer({ env: { ADMIN_RO_PASSWORD: RO, EMAIL_DOMAIN: "first.example" } }, async (server) => {
-      expect((await userRow(server, "admin-ro"))!.email).toBe("admin-ro@first.example");
-      await server.restart({ EMAIL_DOMAIN: "second.example" });
-      expect(await userRow(server, "admin-ro")).toMatchObject({ email: "admin-ro@second.example", password_version: 1 });
-      // Revoked, it keeps the address it had.
-      await server.restart({ EMAIL_DOMAIN: "third.example", ADMIN_RO_PASSWORD: undefined });
-      expect((await userRow(server, "admin-ro"))!.email).toBe("admin-ro@second.example");
-      expect((await userRow(server, "admin"))!.email).toBe("admin@third.example");
     });
   }, BOOT_TIMEOUT);
 });

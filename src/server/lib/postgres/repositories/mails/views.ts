@@ -1,4 +1,5 @@
 import { IS_SPAM, DRAFT } from "../../models";
+import { mailInDomainsExpression, domainsArrayLiteral } from "./domain-scope";
 
 /**
  * Which rows each IMAP mailbox contains, and which UID space it enumerates.
@@ -130,14 +131,25 @@ export const membershipFilter = (
   return {};
 };
 
+/**
+ * The membership rule as SQL over the `mails` columns under `prefix`. With
+ * `domains`, the box additionally shows only the mail of those of the owner's
+ * domains (`mailInDomainsExpression`): an IMAP login scoped to one domain sees
+ * that domain's mail in every box. The names are validated and inlined, so
+ * the fragment stays free of placeholders and appends to any query.
+ */
 export const membershipExpression = (
   mailbox: string | null,
   sent: boolean,
-  prefix: string = ""
+  prefix: string = "",
+  domains?: string[]
 ): string => {
   const terms = Object.entries(membershipFilter(mailbox, sent)).map(
     ([column, value]) => `${prefix}${column} = ${value ? "TRUE" : "FALSE"}`
   );
+  if (domains !== undefined) {
+    terms.push(mailInDomainsExpression(domainsArrayLiteral(domains), prefix));
+  }
   return terms.length > 0 ? terms.join(" AND ") : "TRUE";
 };
 
@@ -148,8 +160,9 @@ export const membershipExpression = (
 export const membershipCondition = (
   mailbox: string | null,
   sent: boolean,
-  prefix: string = ""
+  prefix: string = "",
+  domains?: string[]
 ): string => {
-  const expression = membershipExpression(mailbox, sent, prefix);
+  const expression = membershipExpression(mailbox, sent, prefix, domains);
   return expression === "TRUE" ? "" : ` AND ${expression}`;
 };

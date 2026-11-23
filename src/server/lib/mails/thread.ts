@@ -5,8 +5,8 @@ import {
   getThreadSubjectCandidates,
   ThreadRow
 } from "../postgres/repositories/mails/thread";
-import { getUserDomain } from "../util";
 import { toMailHeaderData } from "./headers";
+import { addressOnDomains } from "../domains";
 import {
   collectThread,
   hasThreadHeaders,
@@ -35,14 +35,10 @@ const defaultRepository: ThreadRepository = {
 };
 
 /**
- * The user's own addresses: those on the domain their mail arrives at
- * (`*@user.domain`, or `*@domain` for admin). Another user's address on this
- * server is a correspondent like any other.
+ * The user's own addresses: those on the domains they own. Another user's
+ * address on this server is a correspondent like any other.
  */
-export const ownAddressesOf = (username: string): IsOwnAddress => {
-  const domain = getUserDomain(username).toLowerCase();
-  return (address) => address.toLowerCase().split("@").pop() === domain;
-};
+export const ownAddressesOf = (domains: string[]): IsOwnAddress => addressOnDomains(domains);
 
 /**
  * Every message in the conversation `mailId` belongs to, oldest first, the
@@ -55,8 +51,8 @@ export const ownAddressesOf = (username: string): IsOwnAddress => {
 export const getThread = async (
   user: MaskedUser | SignedUser,
   mailId: string,
-  repository: ThreadRepository = defaultRepository,
-  isOwnAddress: IsOwnAddress = ownAddressesOf(user.username ?? "")
+  isOwnAddress: IsOwnAddress,
+  repository: ThreadRepository = defaultRepository
 ): Promise<MailHeaderData[]> => {
   const userId = resolveUserId(user);
   if (!userId) return [];
@@ -108,7 +104,7 @@ export const getThread = async (
   return thread
     .sort((a, b) => +new Date(a.date) - +new Date(b.date))
     .map((row) => {
-      const header = toMailHeaderData({ ...row, user_id: userId }, user.username ?? "");
+      const header = toMailHeaderData({ ...row, user_id: userId }, isOwnAddress);
       if (row.is_spam) header.spam = true;
       return header;
     });

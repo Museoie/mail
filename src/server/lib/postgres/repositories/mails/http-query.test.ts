@@ -457,8 +457,8 @@ const topLevelItems = (selectList: string): string[] => {
 };
 
 describe("buildAccountStatsQuery", () => {
-  const statsSql = (sent: boolean, spamOnly = false, domain?: string) =>
-    buildAccountStatsQuery(USER, sent, domain, spamOnly).sql;
+  const statsSql = (sent: boolean, spamOnly = false, domains?: string[]) =>
+    buildAccountStatsQuery(USER, sent, domains, spamOnly).sql;
 
   it("unions envelope_to into the received address expansion", () => {
     const sql = statsSql(false);
@@ -505,14 +505,31 @@ describe("buildAccountStatsQuery", () => {
     }
   });
 
-  it("binds the domain filter only when one is supplied", () => {
-    const withDomain = buildAccountStatsQuery(USER, false, "example.com", false);
-    expect(withDomain.sql).toContain("AND address ILIKE '%@' || $2");
-    expect(withDomain.values).toEqual([USER, "example.com"]);
+  it("binds the domain filter only when one is supplied, matching the whole domain part", () => {
+    const withDomain = buildAccountStatsQuery(USER, false, ["example.com", "example.org"], false);
+    expect(withDomain.sql).toContain(
+      "AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])"
+    );
+    expect(withDomain.values).toEqual([USER, ["example.com", "example.org"]]);
 
     const without = buildAccountStatsQuery(USER, false, undefined, false);
-    expect(without.sql).not.toContain("ILIKE");
+    expect(without.sql).not.toContain("ANY(");
     expect(without.values).toEqual([USER]);
+  });
+
+  it("scopes a viewer's count to the mail of the domain, after the address filter", () => {
+    const { sql, values } = buildAccountStatsQuery(
+      USER,
+      false,
+      ["example.com"],
+      false,
+      ["example.com"]
+    );
+    expect(values).toEqual([USER, ["example.com"], ["example.com"]]);
+    // The mail-level predicate sits inside the expansion's WHERE, on $3.
+    const cte = sql.slice(0, sql.indexOf("SELECT\n        address"));
+    expect(cte).toContain("ANY($3::text[])");
+    expect(cte).toContain("envelope_to");
   });
 });
 
@@ -543,13 +560,9 @@ describe("buildSearchAccountStatsQuery", () => {
   });
 
   it("binds the domain filter after the search term", () => {
-    const { sql, values } = buildSearchAccountStatsQuery(
-      USER,
-      "needle",
-      "example.com"
-    );
-    expect(sql).toContain("AND address ILIKE '%@' || $3");
-    expect(values).toEqual([USER, "needle", "example.com"]);
+    const { sql, values } = buildSearchAccountStatsQuery(USER, "needle", ["example.com"]);
+    expect(sql).toContain("AND lower(regexp_replace(address, '^.*@', '')) = ANY($3::text[])");
+    expect(values).toEqual([USER, "needle", ["example.com"]]);
   });
 });
 

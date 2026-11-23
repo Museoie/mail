@@ -25,7 +25,6 @@ import {
   userRowByEmail,
 } from "./core-helpers";
 
-const RO_PASSWORD = "read-only-password-e2e";
 const HOUR = 3_600_000;
 const INVALID_EMAIL = { status: "failed", message: "Signup failed because email is invalid." };
 const SUCCESS = { status: "success" };
@@ -35,7 +34,7 @@ let server: TestServer;
 let admin: { id: string; email: string };
 
 beforeAll(async () => {
-  server = await startServer({ production: true, env: { ADMIN_RO_PASSWORD: RO_PASSWORD } });
+  server = await startServer({ production: true });
   admin = await adminUser(server);
 }, 90_000);
 
@@ -155,29 +154,19 @@ describe("POST /api/users/token — addresses that get a success and no mail", (
     expect(server.mailgun.requests.length).toBe(sent);
   };
 
-  test("admin's own address", async () => {
-    await expectSilentSuccess(admin.email);
-    expect(await userRow(server, "admin")).toMatchObject({ token: null, expiry: null });
-  });
-
-  test("admin, even at an address outside the served domain", async () => {
-    await server.db.query("UPDATE users SET email = 'owner@elsewhere.example' WHERE username = 'admin'");
+  test("an account's address on a domain someone else reads", async () => {
+    // admin owns mail.test; a viewer of it would read the token mailed there.
+    const viewer = await createUser(server, "watcher");
+    await server.db.query(
+      `INSERT INTO domain_roles (domain_id, user_id, role)
+       SELECT domain_id, $1, 'viewer' FROM domains WHERE name = 'mail.test'`,
+      [viewer.id]
+    );
     try {
-      await expectSilentSuccess("owner@elsewhere.example");
+      await expectSilentSuccess(admin.email);
       expect(await userRow(server, "admin")).toMatchObject({ token: null, expiry: null });
     } finally {
-      await server.db.query("UPDATE users SET email = $1 WHERE username = 'admin'", [admin.email]);
-    }
-  });
-
-  test("the read-only account, at its own address and at an outside one", async () => {
-    await expectSilentSuccess("admin-ro@mail.test");
-    await server.db.query("UPDATE users SET email = 'auditor@elsewhere.example' WHERE username = 'admin-ro'");
-    try {
-      await expectSilentSuccess("auditor@elsewhere.example");
-      expect(await userRow(server, "admin-ro")).toMatchObject({ token: null, expiry: null });
-    } finally {
-      await server.db.query("UPDATE users SET email = 'admin-ro@mail.test' WHERE username = 'admin-ro'");
+      await server.db.query("DELETE FROM domain_roles WHERE user_id = $1", [viewer.id]);
     }
   });
 
@@ -196,12 +185,43 @@ describe("POST /api/users/token — addresses that get a success and no mail", (
     await expectSilentSuccess(email);
   });
 
-  // NOTE: the mailbox owner is whatever precedes the first ".<domain>" in the
-  // address's domain, so a foreign domain that merely contains
-  // "admin.<domain>" is taken for admin's mailbox and silently dropped.
-  test("a foreign domain that starts with admin.<domain> is taken for admin's mailbox", async () => {
-    await expectSilentSuccess("x@admin.mail.test.evil.example");
-    await expectSilentSuccess("x@admin.mail.testing.example");
+  // Who reads an address is decided by the domain rows, not by how its name reads.
+  test("a domain that only starts with admin.<domain> is an outside address, and signs up", async () => {
+    for (const email of ["x@admin.mail.test.evil.example", "x@admin.mail.testing.example"]) {
+      const users = await userCount();
+      expect((await requestToken(email)).body).toEqual(SUCCESS);
+      expect(await userCount()).toBe(users + 1);
+      expect(mailsTo(email)).toHaveLength(1);
+    }
+  });
+});
+
+describe("POST /api/users/token — admin is an account like any other", () => {
+  // NOTE: the link is never sent. A send whose every recipient is on the
+  // served zone itself skips Mailgun, and a system mail is stored nowhere, so
+  // admin@<EMAIL_DOMAIN> gets a token it cannot read. An address elsewhere
+  // (below) works.
+  test("its own address gets a reset token while nobody else reads its domain", async () => {
+    const sent = server.mailgun.requests.length;
+    expect((await requestToken(admin.email)).body).toEqual(SUCCESS);
+    try {
+      const row = (await userRow(server, "admin"))!;
+      expect(row.token).toMatch(/^[0-9a-f]{64}$/);
+      expect(server.mailgun.requests.length).toBe(sent);
+    } finally {
+      await server.db.query("UPDATE users SET token = NULL, expiry = NULL WHERE username = 'admin'");
+    }
+  });
+
+  test("so does an address outside the served domain", async () => {
+    await server.db.query("UPDATE users SET email = 'owner@elsewhere.example' WHERE username = 'admin'");
+    try {
+      expect((await requestToken("owner@elsewhere.example")).body).toEqual(SUCCESS);
+      expect((await userRow(server, "admin"))!.token).toMatch(/^[0-9a-f]{64}$/);
+      expect(mailsTo("owner@elsewhere.example")).toHaveLength(1);
+    } finally {
+      await server.db.query("UPDATE users SET email = $1, token = NULL, expiry = NULL WHERE username = 'admin'", [admin.email]);
+    }
   });
 });
 
@@ -242,7 +262,7 @@ describe("POST /api/users/token — a registered user's address (password reset)
       contentType: expect.stringMatching(/^multipart\/form-data; boundary=\S+$/),
       fieldOrder: ["from", "to", "subject", "html", "text"],
       fields: {
-        from: ["Administrator <admin@mail.test>"],
+        from: ["Mail <no-reply@mail.test>"],
         to: [alice.email],
         subject: ["Please set your password for Mail"],
         html: [authenticationHtml(`https://app.mail.test/set-info/${alice.email}?t=${row.token}&u=alice`)],
@@ -317,7 +337,7 @@ describe("POST /api/users/token — a new address (sign-up)", () => {
       authorization: `Basic ${Buffer.from(`api:${MAILGUN_KEY}`).toString("base64")}`,
       fieldOrder: ["from", "to", "subject", "html", "text"],
       fields: {
-        from: ["Administrator <admin@mail.test>"],
+        from: ["Mail <no-reply@mail.test>"],
         to: [email],
         subject: ["Please set your password for Mail"],
         html: [authenticationHtml(`https://app.mail.test/set-info/${email}?t=${row.token}`)],
@@ -480,33 +500,31 @@ describe("POST /api/users/set-info — what it refuses", () => {
     expect(await userRowByEmail(server, "stranger@elsewhere.example")).toBeUndefined();
   });
 
-  test("the boot-seeded accounts, before anything is written", async () => {
+  test("an account whose address someone else reads, before anything is written", async () => {
+    // A viewer of mail.test could have read the token mailed to admin.
+    const viewer = await createUser(server, "onlooker");
     await server.db.query(
-      "UPDATE users SET token = 'seeded-token', expiry = NOW() + INTERVAL '1 hour' WHERE username IN ('admin', 'admin-ro')"
+      `INSERT INTO domain_roles (domain_id, user_id, role)
+       SELECT domain_id, $1, 'viewer' FROM domains WHERE name = 'mail.test'`,
+      [viewer.id]
     );
+    await server.db.query("UPDATE users SET token = 'seeded-token', expiry = NOW() + INTERVAL '1 hour' WHERE username = 'admin'");
     try {
-      for (const username of ["admin", "admin-ro"]) {
-        const before = (await userRow(server, username))!;
-        const result = await setInfo({
-          email: before.email,
-          username,
-          password: "taken-over",
-          token: "seeded-token",
-        });
-        expect(result.status).toBe(200);
-        expect(result.body).toEqual(INVALID_CREDENTIALS);
-        expect(result.setCookies).toEqual([]);
-        const after = (await userRow(server, username))!;
-        expect(after).toMatchObject({
-          password: before.password,
-          password_version: before.password_version,
-          token: "seeded-token",
-        });
-      }
+      const before = (await userRow(server, "admin"))!;
+      const result = await setInfo({ email: before.email, username: "admin", password: "taken-over", token: "seeded-token" });
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual(INVALID_CREDENTIALS);
+      expect(result.setCookies).toEqual([]);
+      expect((await userRow(server, "admin"))!).toMatchObject({
+        password: before.password,
+        password_version: before.password_version,
+        token: "seeded-token",
+      });
       const login = await server.client().post("/api/users/login", { username: "admin", password: ADMIN_PASSWORD });
       expect(login.body.status).toBe("success");
     } finally {
-      await server.db.query("UPDATE users SET token = NULL, expiry = NULL WHERE username IN ('admin', 'admin-ro')");
+      await server.db.query("DELETE FROM domain_roles WHERE user_id = $1", [viewer.id]);
+      await server.db.query("UPDATE users SET token = NULL, expiry = NULL WHERE username = 'admin'");
     }
   });
 });
@@ -940,8 +958,8 @@ describe("POST /api/users/set-info — completing a new sign-up", () => {
     const placeholder = await signUp(email);
     const body = { email, password: "a-first-password", token: placeholder.token };
 
-    // `admin` and `admin-ro` have rows on this server, so they are taken too.
-    for (const username of ["claimed", "admin", "admin-ro"]) {
+    // `admin` has a row on this server, so it is taken too.
+    for (const username of ["claimed", "admin"]) {
       const result = await server.client().post("/api/users/set-info", { ...body, username });
       expect({ username, status: result.status, body: result.body }).toEqual({ username, status: 500, body: INTERNAL_ERROR });
       expect(result.setCookies).toEqual([]);
@@ -959,28 +977,24 @@ describe("POST /api/users/set-info — completing a new sign-up", () => {
     expect(result.body.body.username).toBe("second-comer");
   });
 
-  test("a reserved name is refused even where no account holds it yet", async () => {
-    // Without ADMIN_RO_PASSWORD no `admin-ro` row exists. A sign-up by that
-    // name would sign in as the read-only view of admin's mail.
+  test("admin-ro is an ordinary name: a sign-up takes it, and it reads only its own mail", async () => {
     const bare = await startServer({ production: true });
     try {
       const email = "grabber@elsewhere.example";
       expect((await bare.client().post("/api/users/token", { email })).body).toEqual(SUCCESS);
       const placeholder = (await userRowByEmail(bare, email))!;
-      expect(await userRow(bare, "admin-ro")).toBeUndefined();
-
       const result = await bare.client().post("/api/users/set-info", {
         email,
         username: "admin-ro",
         password: "a-first-password",
         token: placeholder.token,
       });
-      expect(result.status).toBe(500);
-      expect(result.body).toEqual(INTERNAL_ERROR);
-      expect(await userRow(bare, "admin-ro")).toBeUndefined();
-      expect((await userRowByEmail(bare, email))!).toMatchObject({ username: placeholder.username, password: null });
+      expect(result.body.body).toMatchObject({ id: placeholder.user_id, username: "admin-ro" });
+      const admin = await adminUser(bare);
       const login = await bare.client().post("/api/users/login", { username: "admin-ro", password: "a-first-password" });
-      expect(login.body).toEqual(INVALID_CREDENTIALS);
+      expect(login.body.body.id).toBe(placeholder.user_id);
+      expect(login.body.body.id).not.toBe(admin.id);
+      expect(Object.keys(login.body.body)).not.toContain("isReadOnly");
     } finally {
       await bare.stop();
     }

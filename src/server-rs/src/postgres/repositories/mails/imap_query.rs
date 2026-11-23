@@ -12,6 +12,7 @@
 //! let rows = run(&query.sql, &query.values).await?;
 //! ```
 
+use super::domain_scope::{domains_array_literal, mail_in_domains_expression};
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt;
@@ -45,9 +46,9 @@ fn mapped_box(mailbox: Option<&str>) -> Option<&str> {
 /// `total` and `unread` describe what the mailbox contains, so they honour
 /// its membership rule. UIDNEXT is not computed here: it comes from
 /// `get_uid_next`, which reads the counter that assigns UIDs.
-pub fn build_count_messages_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+pub fn build_count_messages_query(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> PreparedQuery {
     let Some(mapped) = mapped_box(mailbox) else {
-        let membership = membership_expression(mailbox, sent, "");
+        let membership = membership_expression(mailbox, sent, "", domains);
         return PreparedQuery {
             sql: format!(
                 "\n        SELECT\n          COUNT(*) FILTER (WHERE {membership}) as total,\n          COUNT(*) FILTER (WHERE read = FALSE AND {membership}) as unread\n        FROM mails\n        WHERE user_id = $1 AND sent = $2 AND expunged = FALSE\n      "
@@ -57,7 +58,7 @@ pub fn build_count_messages_query(user_id: &str, mailbox: Option<&str>, sent: bo
     };
     // The mapping row is the membership: a row exists exactly when the mail
     // is in this mailbox, so the INNER JOIN encodes it.
-    let membership = membership_expression(Some(mapped), sent, "m.");
+    let membership = membership_expression(Some(mapped), sent, "m.", domains);
     PreparedQuery {
         sql: format!(
             "\n        SELECT\n          COUNT(*) FILTER (WHERE {membership}) as total,\n          COUNT(*) FILTER (WHERE m.read = FALSE AND {membership}) as unread\n        FROM mails m\n        JOIN {MAIL_MAILBOX_UID} x\n          ON x.{USER_ID} = m.{USER_ID}\n          AND x.{MAILBOX} = $3\n          AND x.{MAIL_ID} = m.{MAIL_ID}\n        WHERE m.{USER_ID} = $1 AND m.{SENT} = $2 AND m.{EXPUNGED} = FALSE\n      "
@@ -109,6 +110,7 @@ pub fn build_mails_by_range_query<S: AsRef<str>>(
     use_uid: bool,
     fields: &[S],
     changed_since: Option<f64>,
+    domains: Option<&[String]>,
 ) -> MailsByRangeQuery {
     let is_select_all = fields.len() == 1 && fields[0].as_ref() == "*";
     let resolved_fields: Vec<String> = if is_select_all {
@@ -161,7 +163,7 @@ pub fn build_mails_by_range_query<S: AsRef<str>>(
             let uid_mailbox_alias =
                 if wants_uid_mailbox { format!(", {UID_DOMAIN} AS uid_mailbox") } else { String::new() };
             let field_list = format!("{projection}{uid_mailbox_alias}{}", octet_projections(""));
-            let membership = membership_condition(mailbox, sent, "");
+            let membership = membership_condition(mailbox, sent, "", domains);
             if use_uid {
                 (
                     format!(
@@ -195,7 +197,7 @@ pub fn build_mails_by_range_query<S: AsRef<str>>(
             } else {
                 "m.*".to_string()
             };
-            let membership = membership_condition(Some(mapped), sent, "m.");
+            let membership = membership_condition(Some(mapped), sent, "m.", domains);
             if use_uid {
                 (
                     format!(
@@ -681,6 +683,7 @@ pub fn build_search_mails_by_uid_query(
     mailbox: Option<&str>,
     sent: bool,
     criteria: &[SimplifiedCriterion],
+    domains: Option<&[String]>,
 ) -> Result<PreparedQuery, InvalidDateParam> {
     let mapped = mapped_box(mailbox);
     // The column a criterion's UID comparison reads.
@@ -692,7 +695,7 @@ pub fn build_search_mails_by_uid_query(
         "m.user_id = $1".to_string(),
         "m.sent = $2".to_string(),
         "m.expunged = FALSE".to_string(),
-        membership_expression(mailbox, sent, "m."),
+        membership_expression(mailbox, sent, "m.", domains),
     ];
     let mut values = params![user_id, sent];
 
@@ -732,19 +735,19 @@ pub fn build_search_mails_by_uid_query(
 
 /// The statement behind the sequence-number map: every UID the mailbox
 /// shows, ascending.
-pub fn build_all_uids_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+pub fn build_all_uids_query(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> PreparedQuery {
     match mapped_box(mailbox) {
         None => PreparedQuery {
             sql: format!(
                 "\n        SELECT {UID_DOMAIN} as uid FROM mails\n        WHERE user_id = $1 AND sent = $2 AND expunged = FALSE{}\n        ORDER BY {UID_DOMAIN} ASC\n      ",
-                membership_condition(mailbox, sent, "")
+                membership_condition(mailbox, sent, "", domains)
             ),
             values: params![user_id, sent],
         },
         Some(mapped) => PreparedQuery {
             sql: format!(
                 "\n        SELECT x.{UID} as uid FROM mails m\n        JOIN {MAIL_MAILBOX_UID} x\n          ON x.{USER_ID} = m.{USER_ID}\n          AND x.{MAILBOX} = $3\n          AND x.{MAIL_ID} = m.{MAIL_ID}\n        WHERE m.{USER_ID} = $1 AND m.{SENT} = $2 AND m.{EXPUNGED} = FALSE{}\n        ORDER BY x.{UID} ASC\n      ",
-                membership_condition(Some(mapped), sent, "m.")
+                membership_condition(Some(mapped), sent, "m.", domains)
             ),
             values: params![user_id, sent, mapped],
         },
@@ -753,19 +756,19 @@ pub fn build_all_uids_query(user_id: &str, mailbox: Option<&str>, sent: bool) ->
 
 /// The statement behind `[UNSEEN <seq>]`: the lowest UID among the
 /// mailbox's unread messages.
-pub fn build_first_unseen_uid_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+pub fn build_first_unseen_uid_query(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> PreparedQuery {
     match mapped_box(mailbox) {
         None => PreparedQuery {
             sql: format!(
                 "\n        SELECT {UID_DOMAIN} as uid FROM mails\n        WHERE user_id = $1 AND sent = $2 AND expunged = FALSE AND read = FALSE{}\n        ORDER BY {UID_DOMAIN} ASC\n        LIMIT 1\n      ",
-                membership_condition(mailbox, sent, "")
+                membership_condition(mailbox, sent, "", domains)
             ),
             values: params![user_id, sent],
         },
         Some(mapped) => PreparedQuery {
             sql: format!(
                 "\n        SELECT x.{UID} as uid FROM mails m\n        JOIN {MAIL_MAILBOX_UID} x\n          ON x.{USER_ID} = m.{USER_ID}\n          AND x.{MAILBOX} = $3\n          AND x.{MAIL_ID} = m.{MAIL_ID}\n        WHERE m.{USER_ID} = $1 AND m.{SENT} = $2 AND m.{EXPUNGED} = FALSE AND m.read = FALSE{}\n        ORDER BY x.{UID} ASC\n        LIMIT 1\n      ",
-                membership_condition(Some(mapped), sent, "m.")
+                membership_condition(Some(mapped), sent, "m.", domains)
             ),
             values: params![user_id, sent, mapped],
         },
@@ -807,6 +810,50 @@ pub fn build_expunge_deleted_filters(user_id: &str, mailbox: Option<&str>, sent:
     )
 }
 
+/// The domain predicate as a `WHERE` suffix, empty when unscoped.
+fn domain_condition(domains: Option<&[String]>, prefix: &str) -> String {
+    match domains {
+        None => String::new(),
+        Some(domains) => format!(" AND {}", mail_in_domains_expression(&domains_array_literal(domains), prefix)),
+    }
+}
+
+/// The domain-view EXPUNGE for a login scoped to some domains: the filter bag
+/// above cannot carry the domain predicate, so the rows are selected here and
+/// expunged by id, like the mapped boxes.
+pub fn build_scoped_expunge_deleted_select_query(
+    user_id: &str,
+    mailbox: Option<&str>,
+    sent: bool,
+    domains: &[String],
+) -> PreparedQuery {
+    PreparedQuery {
+        sql: format!(
+            "\n      SELECT {MAIL_ID} as mail_id, {UID_DOMAIN} as uid FROM mails\n      WHERE {USER_ID} = $1 AND {SENT} = $2\n        AND {DELETED} = TRUE AND {EXPUNGED} = FALSE{}\n    ",
+            membership_condition(mailbox, sent, "", Some(domains))
+        ),
+        values: params![user_id, sent],
+    }
+}
+
+/// The scoped twin of `build_expunge_uids_filters`, for the same reason.
+pub fn build_scoped_expunge_uids_select_query(
+    user_id: &str,
+    mailbox: Option<&str>,
+    sent: bool,
+    uids: &[i64],
+    domains: &[String],
+) -> PreparedQuery {
+    let uids: Vec<String> = uids.iter().map(i64::to_string).collect();
+    PreparedQuery {
+        sql: format!(
+            "\n      SELECT {MAIL_ID} as mail_id, {UID_DOMAIN} as uid FROM mails\n      WHERE {USER_ID} = $1 AND {SENT} = $2\n        AND {UID_DOMAIN} = ANY($3::bigint[])\n        AND {EXPUNGED} = FALSE{}\n    ",
+            membership_condition(mailbox, sent, "", Some(domains))
+        ),
+        values: vec![Param::from(user_id), Param::from(sent), Param::array(&uids)],
+    }
+}
+
 /// The rows an EXPUNGE addresses on INBOX or a utility view of the received
 /// lane, with the `uid_domain` the view numbers them by: its `\Deleted`
 /// mails, less those filed somewhere else.
@@ -826,11 +873,11 @@ pub fn build_expunge_deleted_filters(user_id: &str, mailbox: Option<&str>, sent:
 /// into a user mailbox, with no row in the INBOX tree. A mail APPENDed into
 /// Trash or Starred holds only that row, like old mail flagged in INBOX, and
 /// the two cannot be told apart, so it stays in reach.
-pub fn build_expunge_deleted_inbox_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+pub fn build_expunge_deleted_inbox_query(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> PreparedQuery {
     PreparedQuery {
         sql: format!(
             "\n      SELECT m.{MAIL_ID} as mail_id, m.{UID_DOMAIN} as uid FROM mails m\n      WHERE m.{USER_ID} = $1 AND m.{SENT} = $2\n        AND m.{DELETED} = TRUE AND m.{EXPUNGED} = FALSE{}\n        AND (\n          EXISTS (\n            SELECT 1 FROM {MAIL_MAILBOX_UID} x\n            WHERE x.{USER_ID} = m.{USER_ID} AND x.{MAIL_ID} = m.{MAIL_ID}\n              AND (x.{MAILBOX} = $3 OR x.{MAILBOX} LIKE $4)\n          )\n          OR (\n            m.{MESSAGE_ID} NOT LIKE $5\n            AND NOT EXISTS (\n              SELECT 1 FROM {MAIL_MAILBOX_UID} x\n              WHERE x.{USER_ID} = m.{USER_ID} AND x.{MAIL_ID} = m.{MAIL_ID}\n                AND x.{MAILBOX} NOT IN ($6, $7)\n            )\n          )\n        )\n    ",
-            membership_condition(mailbox, sent, "m.")
+            membership_condition(mailbox, sent, "m.", domains)
         ),
         values: params![
             user_id,
@@ -846,11 +893,11 @@ pub fn build_expunge_deleted_inbox_query(user_id: &str, mailbox: Option<&str>, s
 
 /// The mapped-box twin: the `\Deleted` mails of the box and the UID each
 /// holds there.
-pub fn build_expunge_deleted_select_query(user_id: &str, mailbox: Option<&str>, sent: bool) -> PreparedQuery {
+pub fn build_expunge_deleted_select_query(user_id: &str, mailbox: Option<&str>, sent: bool, domains: Option<&[String]>) -> PreparedQuery {
     PreparedQuery {
         sql: format!(
             "\n      SELECT m.{MAIL_ID} as mail_id, x.{UID} as uid FROM mails m\n      JOIN {MAIL_MAILBOX_UID} x\n        ON x.{USER_ID} = m.{USER_ID}\n        AND x.{MAILBOX} = $3\n        AND x.{MAIL_ID} = m.{MAIL_ID}\n      WHERE m.{USER_ID} = $1 AND m.{SENT} = $2\n        AND m.{DELETED} = TRUE AND m.{EXPUNGED} = FALSE{}\n    ",
-            membership_condition(mailbox, sent, "m.")
+            membership_condition(mailbox, sent, "m.", domains)
         ),
         values: params![user_id, sent, mailbox],
     }
@@ -882,6 +929,7 @@ pub fn build_expunge_uids_select_query(
     mailbox: Option<&str>,
     sent: bool,
     uids: &[i64],
+    domains: Option<&[String]>,
 ) -> PreparedQuery {
     let uid_placeholders = (0..uids.len()).map(|index| format!("${}", index + 4)).collect::<Vec<_>>().join(",");
     let mut values = params![user_id, sent, mailbox];
@@ -889,7 +937,7 @@ pub fn build_expunge_uids_select_query(
     PreparedQuery {
         sql: format!(
             "\n      SELECT m.{MAIL_ID} as mail_id, x.{UID} as uid FROM mails m\n      JOIN {MAIL_MAILBOX_UID} x\n        ON x.{USER_ID} = m.{USER_ID}\n        AND x.{MAILBOX} = $3\n        AND x.{MAIL_ID} = m.{MAIL_ID}\n      WHERE m.{USER_ID} = $1\n        AND m.{SENT} = $2\n        AND x.{UID} IN ({uid_placeholders})\n        AND m.{EXPUNGED} = FALSE{}\n    ",
-            membership_condition(mailbox, sent, "m.")
+            membership_condition(mailbox, sent, "m.", domains)
         ),
         values,
     }
@@ -908,18 +956,21 @@ pub fn build_mail_flag_updates_query<S: AsRef<str>>(
     mailbox: Option<&str>,
     sent: bool,
     mail_ids: &[S],
+    domains: Option<&[String]>,
 ) -> PreparedQuery {
     let ids = Param::array(mail_ids);
     match mapped_box(mailbox) {
         None => PreparedQuery {
             sql: format!(
-                "\n        SELECT {MAIL_ID} AS mail_id, {UID_DOMAIN} AS uid, {READ}, {SAVED}, {DELETED}, {DRAFT}, {ANSWERED} FROM mails\n        WHERE {USER_ID} = $1 AND {SENT} = $2 AND {EXPUNGED} = FALSE\n          AND {MAIL_ID} = ANY($3)\n      "
+                "\n        SELECT {MAIL_ID} AS mail_id, {UID_DOMAIN} AS uid, {READ}, {SAVED}, {DELETED}, {DRAFT}, {ANSWERED} FROM mails\n        WHERE {USER_ID} = $1 AND {SENT} = $2 AND {EXPUNGED} = FALSE\n          AND {MAIL_ID} = ANY($3){}\n      ",
+                domain_condition(domains, "")
             ),
             values: vec![Param::from(user_id), Param::from(sent), ids],
         },
         Some(mapped) => PreparedQuery {
             sql: format!(
-                "\n        SELECT m.{MAIL_ID} AS mail_id, x.{UID} AS uid,\n               m.{READ}, m.{SAVED}, m.{DELETED}, m.{DRAFT}, m.{ANSWERED}\n        FROM mails m\n        JOIN {MAIL_MAILBOX_UID} x\n          ON x.{USER_ID} = m.{USER_ID}\n          AND x.{MAILBOX} = $3\n          AND x.{MAIL_ID} = m.{MAIL_ID}\n        WHERE m.{USER_ID} = $1 AND m.{SENT} = $2 AND m.{EXPUNGED} = FALSE\n          AND m.{MAIL_ID} = ANY($4)\n      "
+                "\n        SELECT m.{MAIL_ID} AS mail_id, x.{UID} AS uid,\n               m.{READ}, m.{SAVED}, m.{DELETED}, m.{DRAFT}, m.{ANSWERED}\n        FROM mails m\n        JOIN {MAIL_MAILBOX_UID} x\n          ON x.{USER_ID} = m.{USER_ID}\n          AND x.{MAILBOX} = $3\n          AND x.{MAIL_ID} = m.{MAIL_ID}\n        WHERE m.{USER_ID} = $1 AND m.{SENT} = $2 AND m.{EXPUNGED} = FALSE\n          AND m.{MAIL_ID} = ANY($4){}\n      ",
+                domain_condition(domains, "m.")
             ),
             values: vec![Param::from(user_id), Param::from(sent), Param::from(mapped), ids],
         },
@@ -967,6 +1018,7 @@ mod tests {
             options.use_uid,
             &options.fields,
             options.changed_since,
+            None,
         )
     }
 
@@ -975,9 +1027,9 @@ mod tests {
     #[test]
     fn counts_only_rows_the_mailbox_contains_in_both_branches() {
         for mailbox in BOXES {
-            let sql = build_count_messages_query(USER, mailbox, false).sql;
+            let sql = build_count_messages_query(USER, mailbox, false, None).sql;
             let prefix = prefix_of(mailbox);
-            let membership = membership_expression(mailbox, false, prefix);
+            let membership = membership_expression(mailbox, false, prefix, None);
             assert!(sql.contains(&format!("COUNT(*) FILTER (WHERE {membership}) as total")));
             assert!(sql.contains(&format!("COUNT(*) FILTER (WHERE {prefix}read = FALSE AND {membership}) as unread")));
         }
@@ -985,20 +1037,20 @@ mod tests {
 
     #[test]
     fn applies_the_inbox_predicate_so_quarantined_mail_is_not_counted() {
-        let sql = build_count_messages_query(USER, None, false).sql;
+        let sql = build_count_messages_query(USER, None, false, None).sql;
         assert!(sql.contains("is_spam = FALSE AND draft = FALSE"));
     }
 
     #[test]
     fn selects_the_utility_views_by_their_own_flag() {
-        assert!(build_count_messages_query(USER, Some("Drafts"), false).sql.contains("FILTER (WHERE draft = TRUE)"));
-        assert!(build_count_messages_query(USER, Some("Junk"), false).sql.contains("FILTER (WHERE is_spam = TRUE)"));
+        assert!(build_count_messages_query(USER, Some("Drafts"), false, None).sql.contains("FILTER (WHERE draft = TRUE)"));
+        assert!(build_count_messages_query(USER, Some("Junk"), false, None).sql.contains("FILTER (WHERE is_spam = TRUE)"));
     }
 
     #[test]
     fn does_not_derive_uidnext_from_a_max_over_the_surviving_rows() {
         for mailbox in [None, Some(ACCOUNT_BOX)] {
-            let sql = build_count_messages_query(USER, mailbox, false).sql;
+            let sql = build_count_messages_query(USER, mailbox, false, None).sql;
             assert!(!sql.contains("MAX("));
             assert!(!sql.contains("max_uid"));
         }
@@ -1006,13 +1058,13 @@ mod tests {
 
     #[test]
     fn count_hides_expunged_rows_from_both_branches() {
-        assert!(build_count_messages_query(USER, None, false).sql.contains("expunged = FALSE"));
-        assert!(build_count_messages_query(USER, Some(ACCOUNT_BOX), false).sql.contains("m.expunged = FALSE"));
+        assert!(build_count_messages_query(USER, None, false, None).sql.contains("expunged = FALSE"));
+        assert!(build_count_messages_query(USER, Some(ACCOUNT_BOX), false, None).sql.contains("m.expunged = FALSE"));
     }
 
     #[test]
     fn count_joins_the_mapping_table_on_the_mailbox_path_the_caller_passed() {
-        let query = build_count_messages_query(USER, Some(USER_BOX), false);
+        let query = build_count_messages_query(USER, Some(USER_BOX), false, None);
         assert!(query.sql.contains("JOIN mail_mailbox_uid x"));
         assert!(query.sql.contains("AND x.mailbox = $3"));
         assert_eq!(query.values, params![USER, false, USER_BOX]);
@@ -1020,7 +1072,7 @@ mod tests {
 
     #[test]
     fn count_binds_no_mailbox_on_the_domain_branch() {
-        assert_eq!(build_count_messages_query(USER, None, true).values, params![USER, true]);
+        assert_eq!(build_count_messages_query(USER, None, true, None).values, params![USER, true]);
     }
 
     // imap-query.test.ts — "buildMailsByRangeQuery — synthetic projections"
@@ -1145,7 +1197,7 @@ mod tests {
     fn range_applies_the_membership_rule_in_every_branch() {
         for mailbox in BOXES {
             for use_uid in [false, true] {
-                let expression = membership_expression(mailbox, false, prefix_of(mailbox));
+                let expression = membership_expression(mailbox, false, prefix_of(mailbox), None);
                 if expression == "TRUE" {
                     continue;
                 }
@@ -1197,18 +1249,18 @@ mod tests {
     fn binds_range_ends_as_javascript_prints_them() {
         // `*` on an empty mailbox resolves to -1, and a UID past the ceiling
         // is clamped; a number PostgreSQL cannot read is bound as written.
-        let query = build_mails_by_range_query(USER, None, false, -1.0, 1e21, true, &["mail_id"], None);
+        let query = build_mails_by_range_query(USER, None, false, -1.0, 1e21, true, &["mail_id"], None, None);
         assert_eq!(query.values, params![USER, false, "-1", "999999999"]);
-        let query = build_mails_by_range_query(USER, None, false, 1e21, f64::NAN, true, &["mail_id"], Some(1e21));
+        let query = build_mails_by_range_query(USER, None, false, 1e21, f64::NAN, true, &["mail_id"], Some(1e21), None);
         assert_eq!(query.values, params![USER, false, "1e+21", "NaN", "1e+21"]);
-        let query = build_mails_by_range_query(USER, None, false, 5.0, f64::INFINITY, false, &["mail_id"], None);
+        let query = build_mails_by_range_query(USER, None, false, 5.0, f64::INFINITY, false, &["mail_id"], None, None);
         assert_eq!(query.values, params![USER, false, "4", "Infinity"]);
     }
 
     // imap-query.test.ts — "buildSearchMailsByUidQuery"
 
     fn search(mailbox: Option<&str>) -> PreparedQuery {
-        build_search_mails_by_uid_query(USER, mailbox, false, &[SimplifiedCriterion::bare("SEEN")]).unwrap()
+        build_search_mails_by_uid_query(USER, mailbox, false, &[SimplifiedCriterion::bare("SEEN")], None).unwrap()
     }
 
     #[test]
@@ -1223,7 +1275,7 @@ mod tests {
         for mailbox in [None, Some("Drafts"), Some("Junk"), Some(ACCOUNT_BOX)] {
             let sql = search(mailbox).sql;
             assert!(sql.contains("m.expunged = FALSE"));
-            assert!(sql.contains(&membership_expression(mailbox, false, "m.")));
+            assert!(sql.contains(&membership_expression(mailbox, false, "m.", None)));
         }
     }
 
@@ -1251,6 +1303,7 @@ mod tests {
             Some(USER_BOX),
             false,
             &[SimplifiedCriterion::text(TextKey::Body, "needle")],
+            None,
         )
         .unwrap();
         assert_eq!(query.values, params![USER, false, USER_BOX, "%needle%"]);
@@ -1261,11 +1314,11 @@ mod tests {
     fn a_search_on_an_invalid_date_builds_no_statement() {
         for key in [DateKey::Before, DateKey::On, DateKey::Since, DateKey::SentBefore, DateKey::SentOn, DateKey::SentSince] {
             let criteria = [SimplifiedCriterion::Date { key, value: JsDate::invalid() }];
-            assert_eq!(build_search_mails_by_uid_query(USER, None, false, &criteria), Err(InvalidDateParam));
+            assert_eq!(build_search_mails_by_uid_query(USER, None, false, &criteria, None), Err(InvalidDateParam));
         }
         // The last day JavaScript can represent has no day after.
         let last = SimplifiedCriterion::Date { key: DateKey::On, value: JsDate::from_ms(8_640_000_000_000_000) };
-        assert_eq!(build_search_mails_by_uid_query(USER, None, false, &[last]), Err(InvalidDateParam));
+        assert_eq!(build_search_mails_by_uid_query(USER, None, false, &[last], None), Err(InvalidDateParam));
     }
 
     // imap-query.test.ts — "buildAllUidsQuery / buildFirstUnseenUidQuery"
@@ -1274,32 +1327,32 @@ mod tests {
     fn applies_the_membership_rule_on_both_branches_of_both_queries() {
         for mailbox in BOXES {
             for sent in [false, true] {
-                let expression = membership_expression(mailbox, sent, prefix_of(mailbox));
+                let expression = membership_expression(mailbox, sent, prefix_of(mailbox), None);
                 if expression == "TRUE" {
                     continue;
                 }
-                assert!(build_all_uids_query(USER, mailbox, sent).sql.contains(&expression));
-                assert!(build_first_unseen_uid_query(USER, mailbox, sent).sql.contains(&expression));
+                assert!(build_all_uids_query(USER, mailbox, sent, None).sql.contains(&expression));
+                assert!(build_first_unseen_uid_query(USER, mailbox, sent, None).sql.contains(&expression));
             }
         }
     }
 
     #[test]
     fn hides_expunged_rows_from_the_sequence_map() {
-        assert!(build_all_uids_query(USER, None, false).sql.contains("expunged = FALSE"));
-        assert!(build_all_uids_query(USER, Some(ACCOUNT_BOX), false).sql.contains("m.expunged = FALSE"));
+        assert!(build_all_uids_query(USER, None, false, None).sql.contains("expunged = FALSE"));
+        assert!(build_all_uids_query(USER, Some(ACCOUNT_BOX), false, None).sql.contains("m.expunged = FALSE"));
     }
 
     #[test]
     fn orders_the_sequence_map_by_the_uid_space_the_branch_enumerates() {
-        assert!(build_all_uids_query(USER, None, false).sql.contains("ORDER BY uid_domain ASC"));
-        assert!(build_all_uids_query(USER, Some(ACCOUNT_BOX), false).sql.contains("ORDER BY x.uid ASC"));
+        assert!(build_all_uids_query(USER, None, false, None).sql.contains("ORDER BY uid_domain ASC"));
+        assert!(build_all_uids_query(USER, Some(ACCOUNT_BOX), false, None).sql.contains("ORDER BY x.uid ASC"));
     }
 
     #[test]
     fn takes_the_lowest_uid_unread_row_not_the_unread_count() {
         for mailbox in [None, Some(ACCOUNT_BOX)] {
-            let sql = build_first_unseen_uid_query(USER, mailbox, false).sql;
+            let sql = build_first_unseen_uid_query(USER, mailbox, false, None).sql;
             assert!(sql.contains(&format!("{}read = FALSE", prefix_of(mailbox))));
             assert!(sql.contains("LIMIT 1"));
             assert!(!sql.contains("COUNT("));
@@ -1308,8 +1361,8 @@ mod tests {
 
     #[test]
     fn binds_the_mailbox_only_on_the_mapped_branch() {
-        assert_eq!(build_all_uids_query(USER, None, true).values, params![USER, true]);
-        assert_eq!(build_all_uids_query(USER, Some(USER_BOX), true).values, params![USER, true, USER_BOX]);
+        assert_eq!(build_all_uids_query(USER, None, true, None).values, params![USER, true]);
+        assert_eq!(build_all_uids_query(USER, Some(USER_BOX), true, None).values, params![USER, true, USER_BOX]);
     }
 
     // imap-query.test.ts — "expunge filters and lookups"
@@ -1347,8 +1400,8 @@ mod tests {
     #[test]
     fn carries_the_membership_rule_into_the_mapped_expunge_lookup() {
         for mailbox in [ACCOUNT_BOX, USER_BOX] {
-            let query = build_expunge_deleted_select_query(USER, Some(mailbox), false);
-            let expression = membership_expression(Some(mailbox), false, "m.");
+            let query = build_expunge_deleted_select_query(USER, Some(mailbox), false, None);
+            let expression = membership_expression(Some(mailbox), false, "m.", None);
             if expression != "TRUE" {
                 assert!(query.sql.contains(&expression));
             }
@@ -1366,8 +1419,8 @@ mod tests {
     #[test]
     fn an_inbox_expunge_keeps_the_views_own_rule_and_numbers_by_uid_domain() {
         for mailbox in RECEIVED_VIEWS {
-            let query = build_expunge_deleted_inbox_query(USER, mailbox, false);
-            assert!(query.sql.contains(&membership_expression(mailbox, false, "m.")));
+            let query = build_expunge_deleted_inbox_query(USER, mailbox, false, None);
+            assert!(query.sql.contains(&membership_expression(mailbox, false, "m.", None)));
             assert!(query.sql.contains("m.deleted = TRUE AND m.expunged = FALSE"));
             assert!(query.sql.contains("m.uid_domain as uid"));
             // No JOIN: a mail with no mapping row at all must still be found.
@@ -1377,7 +1430,7 @@ mod tests {
 
     #[test]
     fn an_inbox_expunge_takes_a_mail_holding_a_row_in_the_inbox_tree() {
-        let query = build_expunge_deleted_inbox_query(USER, None, false);
+        let query = build_expunge_deleted_inbox_query(USER, None, false, None);
         assert!(query.sql.contains("AND (x.mailbox = $3 OR x.mailbox LIKE $4)"));
         assert_eq!(query.values[2..4], params!["INBOX", "INBOX/accounts/%"]);
     }
@@ -1386,7 +1439,7 @@ mod tests {
     fn an_inbox_expunge_takes_mail_with_no_row_but_the_pivots_unless_it_is_a_copy() {
         // Old mail has no row, and the STORE that flags it files it into
         // Trash; a COPY / MOVE copy into Trash differs only by its Message-ID.
-        let query = build_expunge_deleted_inbox_query(USER, None, false);
+        let query = build_expunge_deleted_inbox_query(USER, None, false, None);
         assert!(query.sql.contains("m.message_id NOT LIKE $5"));
         assert!(query.sql.contains("AND NOT EXISTS ("));
         assert!(query.sql.contains("x.mailbox NOT IN ($6, $7)"));
@@ -1396,7 +1449,7 @@ mod tests {
     #[test]
     fn an_inbox_expunge_binds_every_placeholder_it_uses() {
         for mailbox in RECEIVED_VIEWS {
-            let query = build_expunge_deleted_inbox_query(USER, mailbox, false);
+            let query = build_expunge_deleted_inbox_query(USER, mailbox, false, None);
             assert!(query.sql.contains("$7") && !query.sql.contains("$8"));
             assert_eq!(query.values.len(), 7);
             assert_eq!(query.values[..2], params![USER, false]);
@@ -1422,7 +1475,7 @@ mod tests {
 
     #[test]
     fn numbers_the_mapped_move_lookups_uid_placeholders_after_its_fixed_args() {
-        let query = build_expunge_uids_select_query(USER, Some(USER_BOX), false, &[4, 9, 11]);
+        let query = build_expunge_uids_select_query(USER, Some(USER_BOX), false, &[4, 9, 11], None);
         assert!(query.sql.contains("x.uid IN ($4,$5,$6)"));
         assert_eq!(query.values, params![USER, false, USER_BOX, 4, 9, 11]);
         assert!(query.sql.contains("m.expunged = FALSE"));
@@ -1434,7 +1487,7 @@ mod tests {
 
     #[test]
     fn uses_the_domain_uid_column_with_no_mapping_join_in_the_domain_branch() {
-        let query = build_mail_flag_updates_query(USER, None, false, &IDS);
+        let query = build_mail_flag_updates_query(USER, None, false, &IDS, None);
         assert!(query.sql.contains("uid_domain AS uid"));
         assert!(!query.sql.contains("JOIN"));
         assert!(query.sql.contains("mail_id = ANY($3)"));
@@ -1443,7 +1496,7 @@ mod tests {
 
     #[test]
     fn joins_the_per_mailbox_mapping_with_mailbox_at_3_and_ids_at_any_4() {
-        let query = build_mail_flag_updates_query(USER, Some(ACCOUNT_BOX), false, &IDS);
+        let query = build_mail_flag_updates_query(USER, Some(ACCOUNT_BOX), false, &IDS, None);
         assert!(query.sql.contains("JOIN mail_mailbox_uid x"));
         assert!(query.sql.contains("x.mailbox = $3"));
         assert!(query.sql.contains("m.mail_id = ANY($4)"));
@@ -1456,7 +1509,7 @@ mod tests {
     #[test]
     fn projects_the_five_flag_columns_and_hides_expunged_rows_on_both_branches() {
         for mailbox in [None, Some(ACCOUNT_BOX)] {
-            let sql = build_mail_flag_updates_query(USER, mailbox, false, &IDS).sql;
+            let sql = build_mail_flag_updates_query(USER, mailbox, false, &IDS, None).sql;
             for column in ["read", "saved", "deleted", "draft", "answered"] {
                 assert!(sql.contains(column));
             }
@@ -1694,7 +1747,7 @@ mod tests {
     #[test]
     fn match_none_is_a_sql_fragment_the_search_keeps_in_the_and() {
         assert_eq!(MATCH_NONE, "FALSE");
-        let query = build_search_mails_by_uid_query(USER, None, false, &[bare("SEEN"), bare("KEYWORD")]).unwrap();
+        let query = build_search_mails_by_uid_query(USER, None, false, &[bare("SEEN"), bare("KEYWORD")], None).unwrap();
         assert!(query.sql.contains(" AND read = TRUE AND FALSE\n"));
     }
 

@@ -88,8 +88,10 @@ pub async fn update_session(session_id: &str, session: &RuntimeSession) -> Resul
         ("session_user_id", Param::from(&user.id)),
         ("session_username", Param::from(&user.username)),
         ("session_email", Param::from(&user.email)),
-        ("session_is_read_only", Param::from(user.is_read_only)),
-        ("session_authenticated_as", Param::from(user.authenticated_as.clone())),
+        // Kept for a previous version still reading these rows; this version
+        // issues no read-only session.
+        ("session_is_read_only", Param::Null),
+        ("session_authenticated_as", Param::Null),
         // The generation the caller authenticated against, never a fresh read
         // of the user row: a login that straddled a rotation must stamp the
         // stale generation and fail its next comparison.
@@ -151,12 +153,6 @@ pub async fn purge_sessions() -> Result<u64, DbError> {
     delete_where("cookie_expires IS NOT NULL AND cookie_expires <= $1", &params![js::now_iso()]).await
 }
 
-/// Deletes every session a given credential issued: revoking a credential
-/// has to reach the sessions already minted from it.
-pub async fn delete_sessions_authenticated_as(authenticated_as: &str) -> Result<u64, DbError> {
-    delete_where("session_authenticated_as = $1", &params![authenticated_as]).await
-}
-
 /// Deletes every session issued to a user, whichever credential minted it.
 pub async fn delete_sessions_for_user(user_id: &str) -> Result<u64, DbError> {
     delete_where("session_user_id = $1", &params![user_id]).await
@@ -205,6 +201,18 @@ impl PostgresSessionStore {
             return Ok(None);
         }
 
+        // A session the retired read-only admin login issued carries admin's
+        // user id. This version has no read-only session, so serving it would
+        // hand that login admin's whole account: it ends here instead. A
+        // previous version still running during a rolling deploy may write one.
+        if model.session_is_read_only == Some(true) {
+            logger::info("Session rejected: issued by the retired read-only login", json!({ "session_id": session_id }));
+            if let Err(error) = delete_session(session_id).await {
+                logger::error_with("Failed to delete session", json!({ "session_id": session_id }), &error);
+            }
+            return Ok(None);
+        }
+
         // The revocation fence: a grant proves itself current on every read.
         let stamped_version = model.session_password_version.unwrap_or(1);
         // A session ends with its account; the read leaves out a soft-deleted
@@ -241,10 +249,6 @@ impl PostgresSessionStore {
         user.username = model.session_username;
         user.email = model.session_email;
         user.password_version = Some(stamped_version);
-        if model.session_is_read_only == Some(true) {
-            user.is_read_only = Some(true);
-            user.authenticated_as = model.session_authenticated_as;
-        }
 
         let cookie = RuntimeCookie {
             original_max_age: model.cookie_original_max_age.filter(|age| *age != 0),

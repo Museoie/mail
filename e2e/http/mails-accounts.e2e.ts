@@ -16,7 +16,7 @@ const accounts = async (box: Mailbox) => {
   const { status, body } = await box.client.get("/api/mails/accounts");
   expect(status).toBe(200);
   expect(body.status).toBe("success");
-  return body.body as Record<"received" | "sent" | "spam", Record<string, unknown>[]>;
+  return body.body as Record<"received" | "sent" | "spam" | "shared", Record<string, unknown>[]>;
 };
 
 const account = (key: string, doc: number, unread: number, saved: number, updated: string) => ({
@@ -52,7 +52,7 @@ describe("GET /api/mails/domain", () => {
       expect(status).toBe(200);
       expect(text).toBe('{"status":"success","body":"post.example"}');
 
-      // The account rules follow the domain too: bob owns *@bob.post.example.
+      // The account list follows the domain too: bob owns *@bob.post.example.
       const bob = await createUser(other, "bob");
       await insertMail(other, bob.id, { to: [addr("x@bob.post.example"), addr("y@bob.mail.test")] });
       const client = other.client();
@@ -62,10 +62,9 @@ describe("GET /api/mails/domain", () => {
       const admin = other.client();
       await admin.login("admin", ADMIN_PASSWORD);
       expect((await admin.get("/api/mails/headers/x@bob.mail.test")).body.status).toBe("success");
-      expect((await client.get("/api/mails/headers/y@bob.mail.test")).body).toEqual({
-        status: "failed",
-        message: "Invalid request. You may not look at other users' emails.",
-      });
+      // Naming another address reads bob's own rows for it, and nobody else's.
+      expect((await client.get("/api/mails/headers/y@bob.mail.test")).body.body).toHaveLength(1);
+      expect((await admin.get("/api/mails/headers/y@bob.mail.test")).body).toEqual({ status: "success", body: [] });
     } finally {
       await other.stop();
     }
@@ -77,10 +76,10 @@ describe("GET /api/mails/accounts", () => {
     const box = await newMailbox(server);
     const { status, text, headers } = await box.client.get("/api/mails/accounts");
     expect(status).toBe(200);
-    expect(text).toBe('{"status":"success","body":{"received":[],"sent":[],"spam":[]}}');
+    expect(text).toBe('{"status":"success","body":{"received":[],"sent":[],"spam":[],"shared":[]}}');
     expect(headers.get("content-type")).toBe(JSON_TYPE);
-    expect(headers.get("etag")).toBe('W/"3f-G1l8f0Xdqb2mIBBARvV0sVNjMwg"');
-    expect(headers.get("content-length")).toBe("63");
+    expect(headers.get("etag")).toBe('W/"4b-L76WzPuP2aW6Uso9NmaEMB1Hl+8"');
+    expect(headers.get("content-length")).toBe("75");
   });
 
   test("lists one received account with its key order", async () => {
@@ -89,7 +88,7 @@ describe("GET /api/mails/accounts", () => {
     const { text } = await box.client.get("/api/mails/accounts");
     expect(text).toBe(
       `{"status":"success","body":{"received":[{"key":"${box.address()}","doc_count":1,"unread_doc_count":1,` +
-        `"saved_doc_count":0,"updated":"2026-03-04T05:06:07.891Z"}],"sent":[],"spam":[]}}`
+        `"saved_doc_count":0,"updated":"2026-03-04T05:06:07.891Z"}],"sent":[],"spam":[],"shared":[]}}`
     );
   });
 
@@ -114,6 +113,7 @@ describe("GET /api/mails/accounts", () => {
       received: [account(a, 4, 2, 2, "2026-01-03T00:00:00.000Z"), account(b, 1, 0, 0, "2026-01-02T12:00:00.000Z")],
       sent: [],
       spam: [],
+      shared: [],
     });
   });
 
@@ -221,6 +221,7 @@ describe("GET /api/mails/accounts", () => {
       received: [account(box.address("in"), 1, 0, 0, "2026-03-03T00:00:00.000Z")],
       sent: [account(me, 2, 1, 1, "2026-03-02T00:00:00.000Z")],
       spam: [],
+      shared: [],
     });
   });
 
@@ -232,6 +233,7 @@ describe("GET /api/mails/accounts", () => {
       received: [account(me, 1, 0, 0, "2026-03-01T00:00:00.000Z")],
       sent: [account(me, 1, 0, 0, "2026-03-01T00:00:00.000Z")],
       spam: [],
+      shared: [],
     });
   });
 
@@ -247,6 +249,7 @@ describe("GET /api/mails/accounts", () => {
       received: [account(me, 1, 1, 0, "2026-04-01T00:00:00.000Z")],
       sent: [],
       spam: [account(me, 2, 1, 1, "2026-04-03T00:00:00.000Z")],
+      shared: [],
     });
   });
 
@@ -259,7 +262,7 @@ describe("GET /api/mails/accounts", () => {
     await box.mail({ from: [addr(me)], to: [addr("x@remote.example")], envelope_to: [], sent: true, expunged: true });
     await box.mail({ is_spam: true, expunged: true });
     await box.mail({ is_spam: true, draft: true });
-    expect(await accounts(box)).toEqual({ received: [], sent: [], spam: [] });
+    expect(await accounts(box)).toEqual({ received: [], sent: [], spam: [], shared: [] });
     await box.mail({ deleted: true, answered: true, date: "2026-04-01T00:00:00Z" });
     expect((await accounts(box)).received).toEqual([account(me, 1, 1, 0, "2026-04-01T00:00:00.000Z")]);
   });
@@ -279,6 +282,7 @@ describe("GET /api/mails/accounts", () => {
       received: [account(box.address("ok"), 1, 1, 0, "2026-04-01T00:00:00.000Z")],
       sent: [],
       spam: [],
+      shared: [],
     });
   });
 
@@ -299,7 +303,7 @@ describe("GET /api/mails/accounts", () => {
     const second = await newMailbox(server);
     // Stored under the second user, but naming the first user's address.
     await second.mail({ to: [addr(first.address()), addr(second.address())], date: "2026-04-01T00:00:00Z" });
-    expect(await accounts(first)).toEqual({ received: [], sent: [], spam: [] });
+    expect(await accounts(first)).toEqual({ received: [], sent: [], spam: [], shared: [] });
     expect((await accounts(second)).received).toEqual([account(second.address(), 1, 1, 0, "2026-04-01T00:00:00.000Z")]);
   });
 
@@ -311,12 +315,9 @@ describe("GET /api/mails/accounts", () => {
 });
 
 describe("GET /api/mails/accounts for admin", () => {
-  // NOTE: admin receives mail for `anything@mail.test` and for
-  // `anything@admin.mail.test`, but the accounts list only keeps addresses
-  // ending in `@mail.test`. Mail delivered to an `@admin.mail.test` address is
-  // stored for admin and reachable through /headers/<address>, yet the sidebar
-  // list never names that account (and /unified, built on this list, omits it).
-  test("lists @mail.test addresses only: not @admin.mail.test, not users' subdomains", async () => {
+  // admin owns `mail.test` and its own `admin.mail.test`, so both are its
+  // accounts; another user's name under the zone, or any other domain, is not.
+  test("lists the addresses of both its domains: not users' subdomains, not others", async () => {
     const admin = await adminMailbox(server);
     await admin.mail({
       to: [
@@ -329,7 +330,10 @@ describe("GET /api/mails/accounts for admin", () => {
       date: "2026-04-01T00:00:00Z",
     });
     const body = await accounts(admin);
-    expect(body.received).toEqual([account("hello@mail.test", 1, 1, 0, "2026-04-01T00:00:00.000Z")]);
+    expect(body.received).toEqual([
+      account("hello@mail.test", 1, 1, 0, "2026-04-01T00:00:00.000Z"),
+      account("x@admin.mail.test", 1, 1, 0, "2026-04-01T00:00:00.000Z"),
+    ]);
     const direct = await admin.client.get("/api/mails/headers/x@admin.mail.test");
     expect(direct.body.body).toHaveLength(1);
     const unified = await admin.client.get("/api/mails/unified");

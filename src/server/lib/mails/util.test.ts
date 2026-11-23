@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { describe, it, expect, afterAll } from "bun:test";
 import fs from "node:fs";
 import {
   TO_ADDRESS_FIELD,
@@ -9,7 +9,7 @@ import {
   getAttachmentFile,
   getText,
 } from "./util";
-import { getDomain, getUserDomain } from "../util";
+import { getDomain } from "../util";
 
 describe("field constants", () => {
   it("should have correct TO_ADDRESS_FIELD", () => {
@@ -61,31 +61,6 @@ describe("getDomain", () => {
   it("should return 'mydomain' as default", () => {
     delete process.env.EMAIL_DOMAIN;
     expect(getDomain()).toBe("mydomain");
-  });
-});
-
-describe("getUserDomain", () => {
-  const originalEnv = process.env.EMAIL_DOMAIN;
-
-  beforeAll(() => {
-    process.env.EMAIL_DOMAIN = "example.com";
-  });
-
-  afterAll(() => {
-    if (originalEnv !== undefined) {
-      process.env.EMAIL_DOMAIN = originalEnv;
-    } else {
-      delete process.env.EMAIL_DOMAIN;
-    }
-  });
-
-  it("should return base domain for admin user", () => {
-    expect(getUserDomain("admin")).toBe("example.com");
-  });
-
-  it("should return subdomain for regular users", () => {
-    expect(getUserDomain("john")).toBe("john.example.com");
-    expect(getUserDomain("support")).toBe("support.example.com");
   });
 });
 

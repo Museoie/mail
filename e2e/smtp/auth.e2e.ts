@@ -11,10 +11,9 @@ let server: TestServer;
 let bare: TestServer;
 let alice: TestUser;
 
-const RO_PASSWORD = "read-only-password-e2e";
 
 beforeAll(async () => {
-  [server, bare] = (await bootAll({ tls: true, env: { PROXY_PROTOCOL: "true", ADMIN_RO_PASSWORD: RO_PASSWORD } }, {})) as [TestServer, TestServer];
+  [server, bare] = (await bootAll({ tls: true, env: { PROXY_PROTOCOL: "true" } }, {})) as [TestServer, TestServer];
   alice = await createUser(server, "alice");
   await createUser(bare, "alice");
 }, 180_000);
@@ -259,9 +258,11 @@ describe("credentials", () => {
     expect((await smtp.send("")).raw).toBe(INVALID);
   });
 
-  test("the username is the account name only: no e-mail address, no other letter case", async () => {
+  // `<account>@<domain>` is a login scoped to a domain the account owns; an
+  // address on a domain it doesn't own is no login at all.
+  test("the username is the account name, or the account at a domain it owns: no other letter case", async () => {
     const smtp = await connect("smtps");
-    for (const username of [alice.email, "alice@alice.mail.test", "alice@mail.test", "Alice", "ALICE", " alice"]) {
+    for (const username of [alice.email, "alice@mail.test", "Alice", "ALICE", " alice", "Alice@alice.mail.test"]) {
       expect({ username, reply: (await smtp.authPlain(username, alice.password)).raw }).toEqual({ username, reply: INVALID });
     }
   });
@@ -334,16 +335,22 @@ describe("once authenticated", () => {
     expect((await smtp.send("RCPT TO:<someone@remote.example>")).raw).toBe("250 Accepted");
   });
 
-  test("the read-only account signs in, and is refused at MAIL FROM", async () => {
-    const smtp = await connect("smtps");
-    expect((await smtp.authPlain("admin-ro", RO_PASSWORD)).raw).toBe(SUCCESS);
-    const refused = "550 READ-ONLY user cannot send";
-    expect((await smtp.send("MAIL FROM:<x@mail.test>")).raw).toBe(refused);
-    expect((await smtp.send("MAIL FROM:<>")).raw).toBe(refused);
-    expect((await smtp.send("MAIL FROM:<someone@remote.example>")).raw).toBe(refused);
-    // Nothing else is open to it either: there is no envelope to add to.
-    expect((await smtp.send("RCPT TO:<hello@mail.test>")).raw).toBe("503 Error: need MAIL command");
-    expect((await smtp.send("NOOP")).raw).toBe("250 OK");
+  test("a login scoped to a domain the account only views is refused like a wrong password", async () => {
+    // A viewer reads a domain and never sends as it.
+    await server.db.query(
+      `INSERT INTO domain_roles (domain_id, user_id, role)
+       SELECT domain_id, $1, 'viewer' FROM domains WHERE name = 'mail.test'
+       ON CONFLICT DO NOTHING`,
+      [alice.id]
+    );
+    try {
+      const smtp = await connect("smtps");
+      expect((await smtp.authPlain("alice@mail.test", alice.password)).raw).toBe(INVALID);
+      // Her own domain, scoped or not, still signs her in.
+      expect((await smtp.authPlain("alice@alice.mail.test", alice.password)).raw).toBe(SUCCESS);
+    } finally {
+      await server.db.query("DELETE FROM domain_roles WHERE user_id = $1", [alice.id]);
+    }
   });
 });
 

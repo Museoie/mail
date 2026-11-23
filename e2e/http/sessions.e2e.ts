@@ -188,29 +188,28 @@ describe("a live session is renewed on every request", () => {
     }
   });
 
-  test("the read-only flag and its attribution come from the row", async () => {
+  test("a row a previous version marked read-only is refused and deleted; the flag is never written", async () => {
+    // Without the flag the attribution is not read at all, and the renewal
+    // writes both columns back as null.
+    const plain = await signedIn();
+    await dev.db.query(
+      "UPDATE sessions SET session_is_read_only = FALSE, session_authenticated_as = 'someone' WHERE session_id = $1",
+      [plain.id]
+    );
+    expect((await whoAmI(plain.client)).user).toEqual({ id: alice.id, email: alice.email, username: "alice", passwordVersion: 1 });
+    const row = (await sessionRow(dev, plain.id))!;
+    expect(row.session_is_read_only).toBeNull();
+    expect(row.session_authenticated_as).toBeNull();
+
+    // A read-only row was a view onto admin that this version no longer
+    // grants: it ends at its next request.
     const { client, id } = await signedIn();
     await dev.db.query(
       "UPDATE sessions SET session_is_read_only = TRUE, session_authenticated_as = 'someone' WHERE session_id = $1",
       [id]
     );
-    expect((await whoAmI(client)).result.text).toContain(
-      `"username":"alice","passwordVersion":1,"isReadOnly":true,"authenticatedAs":"someone"}`
-    );
-
-    await dev.db.query("UPDATE sessions SET session_authenticated_as = NULL WHERE session_id = $1", [id]);
-    expect((await whoAmI(client)).result.text).toContain(`"username":"alice","passwordVersion":1,"isReadOnly":true}`);
-
-    // Without the flag the attribution is not read at all.
-    await dev.db.query(
-      "UPDATE sessions SET session_is_read_only = FALSE, session_authenticated_as = 'someone' WHERE session_id = $1",
-      [id]
-    );
-    expect((await whoAmI(client)).user).toEqual({ id: alice.id, email: alice.email, username: "alice", passwordVersion: 1 });
-    // The renewal writes the row's flags back as they were read.
-    const row = (await sessionRow(dev, id))!;
-    expect(row.session_is_read_only).toBeNull();
-    expect(row.session_authenticated_as).toBeNull();
+    expect((await whoAmI(client)).user).toBeUndefined();
+    expect(await sessionRow(dev, id)).toBeUndefined();
   });
 });
 
@@ -584,22 +583,6 @@ describe("a session row that no longer counts", () => {
     const again = await signedIn(dev, "frank");
     expect((await whoAmI(again.client)).user?.username).toBe("frank");
   });
-
-  test("a read-only session ends with admin's row, which it is a view onto", async () => {
-    const ro = await startServer({ env: { ADMIN_RO_PASSWORD: "read-only-password-e2e" } });
-    try {
-      const client = ro.client();
-      await client.login("admin-ro", "read-only-password-e2e");
-      const id = sessionIdOf(client);
-      expect((await whoAmI(client)).user?.username).toBe("admin");
-
-      await ro.db.query("UPDATE users SET is_deleted = TRUE WHERE username = 'admin'");
-      expect((await whoAmI(client)).user).toBeUndefined();
-      expect(await sessionRow(ro, id)).toBeUndefined();
-    } finally {
-      await ro.stop();
-    }
-  }, 90_000);
 });
 
 describe("a request without a session", () => {

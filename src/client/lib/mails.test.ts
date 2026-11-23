@@ -10,31 +10,32 @@ const makeMail = (fromAddress: string | undefined, sent = false) =>
   });
 
 describe("isSentMail", () => {
-  it("returns true when sender address ends with @<userDomain>", () => {
-    expect(isSentMail(makeMail("hoie@hoie.kim"), "hoie.kim")).toBe(true);
-    expect(isSentMail(makeMail("career@hoie.kim"), "hoie.kim")).toBe(true);
+  it("is true for a sender on one of the user's domains", () => {
+    expect(isSentMail(makeMail("me@example.com"), ["example.com"])).toBe(true);
+    expect(isSentMail(makeMail("sales@example.org"), ["example.com", "example.org"])).toBe(true);
   });
 
-  it("returns false when sender address is on a different domain", () => {
-    expect(isSentMail(makeMail("eric.cole@salesforce.com"), "hoie.kim")).toBe(false);
-    expect(isSentMail(makeMail("noreply@github.com"), "hoie.kim")).toBe(false);
+  it("is false for a sender on another domain", () => {
+    expect(isSentMail(makeMail("someone@elsewhere.test"), ["example.com"])).toBe(false);
+    expect(isSentMail(makeMail("noreply@github.com"), ["example.com"])).toBe(false);
   });
 
-  it("is case-insensitive on both sender address and domain", () => {
-    expect(isSentMail(makeMail("Hoie@Hoie.Kim"), "hoie.kim")).toBe(true);
-    expect(isSentMail(makeMail("hoie@hoie.kim"), "HOIE.KIM")).toBe(true);
+  it("is case-insensitive on both the address and the domain", () => {
+    expect(isSentMail(makeMail("Me@Example.Com"), ["example.com"])).toBe(true);
+    expect(isSentMail(makeMail("me@example.com"), ["EXAMPLE.COM"])).toBe(true);
   });
 
-  it("does not substring-match a domain that merely contains the user domain", () => {
-    expect(isSentMail(makeMail("phish@hoie.kim.attacker.com"), "hoie.kim")).toBe(false);
-    // …and must not match "fakehoie.kim" (no @ boundary)
-    expect(isSentMail(makeMail("phish@fakehoie.kim"), "hoie.kim")).toBe(false);
+  it("matches the whole domain, never one that merely contains it", () => {
+    expect(isSentMail(makeMail("phish@example.com.attacker.test"), ["example.com"])).toBe(false);
+    expect(isSentMail(makeMail("phish@fakeexample.com"), ["example.com"])).toBe(false);
+    // A name under the domain is a different domain.
+    expect(isSentMail(makeMail("bob@bob.example.com"), ["example.com"])).toBe(false);
   });
 
-  it("returns false when from address or user domain is missing", () => {
-    expect(isSentMail(makeMail(undefined), "hoie.kim")).toBe(false);
-    expect(isSentMail(makeMail("hoie@hoie.kim"), "")).toBe(false);
-    expect(isSentMail({ from: { value: [], text: "" } }, "hoie.kim")).toBe(false);
+  it("is false when the from address or the domains are missing", () => {
+    expect(isSentMail(makeMail(undefined), ["example.com"])).toBe(false);
+    expect(isSentMail(makeMail("me@example.com"), [])).toBe(false);
+    expect(isSentMail({ from: { value: [], text: "" } }, ["example.com"])).toBe(false);
   });
 });
 

@@ -21,6 +21,8 @@ import {
   Context,
   Category,
   useLocalStorage,
+  defaultDomainOf,
+  domainOf,
   processHtmlToSendMail,
   call,
   useIsOnline,
@@ -58,6 +60,8 @@ import "./index.scss";
 const Writer = () => {
   const {
     domainName,
+    domains = [],
+    userInfo,
     isWriterOpen,
     setIsWriterOpen,
     replyData,
@@ -95,6 +99,11 @@ const Writer = () => {
   const [bcc, setBcc] = useLocalStorage("bcc", "");
   const [subject, setSubject] = useLocalStorage("subject", "");
   const [sender, setSender] = useLocalStorage("sender", "");
+  // The domain the mail goes out from: one the user owns. Pre-filled with the
+  // domain of the mailbox (or reply address) the local part came from.
+  const [senderDomain, setSenderDomain] = useLocalStorage("senderDomain", "");
+  const fallbackDomain = defaultDomainOf(domains, userInfo?.username, domainName);
+  const fromDomain = domains.includes(senderDomain) ? senderDomain : fallbackDomain;
   // The mailbox the From pre-fill last wrote, so the draft dot can tell
   // pre-filled values from typed ones even after the selection moves on
   // (entering search, picking another account) — judging against the
@@ -219,6 +228,7 @@ const Writer = () => {
     if (!account) return;
     setName(displayNameFor(account));
     setSender(account.split("@")[0] || "");
+    setSenderDomain(domainOf(account));
     setPrefilledFrom(account);
   }, [
     isWriterOpen,
@@ -229,6 +239,7 @@ const Writer = () => {
     prefillAccount,
     setName,
     setSender,
+    setSenderDomain,
     setPrefilledFrom
   ]);
 
@@ -286,6 +297,7 @@ const Writer = () => {
         setName((current) => (current === defaultName ? "" : current));
       }
       setSender(replyData.to?.address?.split("@")[0] || "");
+      if (replyData.to?.address) setSenderDomain(domainOf(replyData.to.address));
       setTo(replyData.from?.value?.[0]?.address || "");
       setCc(replyData.cc?.value?.map((e) => e.address).join(", ") || "");
       setBcc(replyData.bcc?.value?.map((e) => e.address).join(", ") || "");
@@ -533,6 +545,7 @@ const Writer = () => {
     const mailData: SendMailPostBody = {
       senderFullName: name,
       sender,
+      senderDomain: fromDomain,
       to,
       // A closed Cc/Bcc field is not part of the message the user sees.
       cc: isCcOpen ? cc : "",
@@ -635,7 +648,22 @@ const Writer = () => {
               value={sender}
               onChange={(e) => setSender(e.target.value)}
             />
-            <span className="helper-text">@{domainName}</span>
+            {domains.length > 1 ? (
+              <select
+                className="writer-domain"
+                aria-label="Sender domain"
+                value={fromDomain}
+                onChange={(e) => setSenderDomain(e.target.value)}
+              >
+                {domains.map((domain) => (
+                  <option key={domain} value={domain}>
+                    @{domain}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="helper-text">@{fromDomain}</span>
+            )}
           </div>
         </div>
       </div>

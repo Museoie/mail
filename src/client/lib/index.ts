@@ -14,3 +14,4 @@ export * from "./serviceWorker";
 export * from "./online";
 export * from "./feedback";
 export * from "./theme";
+export * from "./domains";

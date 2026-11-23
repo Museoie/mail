@@ -1,4 +1,5 @@
 import { MailHeaderData } from "common";
+import { isOnDomains } from "client";
 import {
   IsOwnAddress,
   ThreadCandidate,
@@ -36,19 +37,9 @@ const asCandidate = (mail: MailHeaderData): ThreadCandidate => ({
   cc_address: mail.cc?.value
 });
 
-/**
- * The user's own addresses as the client knows them: those on the domain
- * their mail arrives at (`*@user.domain`, or `*@domain` for admin).
- */
-export const ownAddressesFor = (
-  username: string | undefined,
-  domainName: string
-): IsOwnAddress => {
-  const domain = (
-    !username || username === "admin" ? domainName : `${username}.${domainName}`
-  ).toLowerCase();
-  return (address) => address.toLowerCase().split("@").pop() === domain;
-};
+/** The user's own addresses as the client knows them: those on the domains they own. */
+export const ownAddressesFor = (domains: string[]): IsOwnAddress => (address) =>
+  isOnDomains(address, domains);
 
 /**
  * Groups a list into conversations by the same rules as the conversation

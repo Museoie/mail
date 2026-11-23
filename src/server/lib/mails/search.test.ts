@@ -1,4 +1,5 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, spyOn, beforeEach, afterAll } from "bun:test";
+import * as domainsModule from "../domains";
 
 // Mock the postgres repository
 const mockSearchMails = mock(() => Promise.resolve([]));
@@ -10,6 +11,12 @@ mock.module("../postgres/repositories/mails", () => ({
 import { searchMail } from "./search";
 import { getDomain } from "../util";
 import { SignedUser } from "common";
+
+// The user's own domains, read per search; no database here.
+const mockOwnAddressDomains = spyOn(domainsModule, "ownAddressDomains").mockResolvedValue([
+  `testuser.${getDomain()}`,
+]);
+afterAll(() => mockOwnAddressDomains.mockRestore());
 
 const mockUser = new SignedUser({
   id: "user-123",

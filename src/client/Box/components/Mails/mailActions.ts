@@ -7,6 +7,7 @@ import {
   Context,
   Theme,
   call,
+  isOnDomains,
   isSentMail,
   processHtmlForViewer
 } from "client";
@@ -41,14 +42,10 @@ const addressesOf = (mail: MailHeaderData): string[] =>
  */
 export const ownAddressFor = (
   mail: MailHeaderData,
-  domainName: string,
+  domains: string[],
   fallback: string
 ): string => {
-  const domain = domainName.toLowerCase();
-  const own = addressesOf(mail).find((address) => {
-    const host = address.toLowerCase().split("@")[1] ?? "";
-    return !!domain && (host === domain || host.endsWith("." + domain));
-  });
+  const own = addressesOf(mail).find((address) => isOnDomains(address, domains));
   return own ?? fallback;
 };
 
@@ -59,17 +56,17 @@ export const ownAddressFor = (
 export const buildReplyData = (
   mail: MailHeaderData,
   kind: "reply" | "forward",
-  domainName: string,
+  domains: string[],
   fallbackAccount: string
 ): ReplyData => {
   if (kind === "forward") return { ...mail, to: { address: "" } };
-  if (isSentMail(mail, domainName)) {
+  if (isSentMail(mail, domains)) {
     const ownAddress = mail.from?.value?.[0]?.address || fallbackAccount;
     return { ...mail, from: mail.to, to: { address: ownAddress } };
   }
   return {
     ...mail,
-    to: { address: ownAddressFor(mail, domainName, fallbackAccount) }
+    to: { address: ownAddressFor(mail, domains, fallbackAccount) }
   };
 };
 
@@ -80,7 +77,7 @@ export const buildReplyData = (
 export const useStartReply = () => {
   const queryClient = useQueryClient();
   const {
-    domainName,
+    domains = [],
     selectedAccount,
     selectedCategory,
     setReplyData,
@@ -94,13 +91,13 @@ export const useStartReply = () => {
     async (mail: MailHeaderData, kind: "reply" | "forward") => {
       const body = await fetchMailBody(queryClient, mail.id);
       setReplyData({
-        ...buildReplyData(mail, kind, domainName, fallbackAccount),
+        ...buildReplyData(mail, kind, domains, fallbackAccount),
         html: body.html,
         messageId: body.messageId
       });
       setIsWriterOpen(true);
     },
-    [queryClient, domainName, fallbackAccount, setReplyData, setIsWriterOpen]
+    [queryClient, domains, fallbackAccount, setReplyData, setIsWriterOpen]
   );
 };
 

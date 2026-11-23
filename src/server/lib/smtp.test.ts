@@ -29,11 +29,8 @@ const mockLogger = {
   error: mock(() => {}),
 };
 
-// Import the real constant so the barrel-mock value stays in lock-step with
-// the source of truth — duplicating the literal would let prod's smtp.ts
-// compare against a new value while this mock still yielded the old one, and
-// the guard would go silently inert in this file while tests stayed green.
-import { ADMIN_RO_USERNAME } from "./read-only";
+import * as domains from "./domains";
+import * as domainRepo from "./postgres/repositories/domains";
 
 // Only mock what smtp.ts actually imports from "server": getUser, saveMailHandler, sendMail, logger.
 // Do NOT add getDomain/getUserDomain/etc here — Bun's mock.module is global and persists across
@@ -44,11 +41,31 @@ mock.module("server", () => ({
   saveMailHandler: mockSaveMailHandler,
   sendMail: mockSendMail,
   logger: mockLogger,
-  // Required, not optional — onMailFrom checks against this constant, and
-  // omitting it here would leave the comparison against `undefined` and the
-  // guard inert in this file while still passing every test.
-  ADMIN_RO_USERNAME,
 }));
+
+/**
+ * The domain lookups, spied (restored in afterAll) so nothing reaches a
+ * database. The default delivery rule is the served zone's own: an account's
+ * name under EMAIL_DOMAIN is delivered when `getUser` finds the account, and
+ * nothing else is, so the recipient tests below drive it through `getUser`.
+ */
+const zoneDelivery = async (address: string): Promise<domains.DeliveryDomain | null> => {
+  const domain = address.split("@").pop()!.toLowerCase();
+  const zone = process.env.EMAIL_DOMAIN?.toLowerCase();
+  if (!zone || !domain.endsWith(`.${zone}`)) return null;
+  const username = domain.slice(0, -(zone.length + 1));
+  const user = await mockGetUser({ username });
+  return user ? { domain, ownerId: `owner-${username}` } : null;
+};
+const mockResolveDeliveryDomain = spyOn(domains, "resolveDeliveryDomain").mockImplementation(
+  zoneDelivery
+);
+/** A user owns their own name under the zone, as the boot backfill gives them. */
+const mockOwnedDomainNames = spyOn(domains, "ownedDomainNames").mockImplementation(
+  async () => [`${process.env.EMAIL_DOMAIN ?? "test.com"}`]
+);
+const mockFindDomain = spyOn(domainRepo, "findDomain").mockResolvedValue(null);
+const mockGetDomainAccess = spyOn(domainRepo, "getDomainAccess").mockResolvedValue(null);
 
 // spyOn rather than mock.module: the parser has its own test files, and a
 // process-global module mock would hand them this stub. Restored in afterAll.
@@ -131,6 +148,10 @@ const mockCheckAppPassword = spyOn(appPassword, "checkAppPassword");
 
 afterAll(() => {
   verifySpy.mockRestore();
+  mockResolveDeliveryDomain.mockRestore();
+  mockOwnedDomainNames.mockRestore();
+  mockFindDomain.mockRestore();
+  mockGetDomainAccess.mockRestore();
   mockCheckAppPassword.mockRestore();
   resetSso();
   mockParseMessage.mockRestore();
@@ -368,37 +389,72 @@ describe("onAuth handler", () => {
     expect(mockResetAuthFailures).not.toHaveBeenCalled();
   });
 
-  it("authenticates the read-only credential (mutation-refusal is at MAIL FROM)", async () => {
-    // SMTP has only mutating gates, but authenticating admin-ro is
-    // permitted so the session shape stays symmetric with HTTP/IMAP —
-    // the refusal lives at MAIL FROM (below).
-    const hashedPw = await Bun.password.hash("readonlypass", { algorithm: "bcrypt", cost: 10 });
+  const ownerAccess = (role: "owner" | "viewer"): domainRepo.DomainAccess => ({
+    domainId: "d-1",
+    name: "example.org",
+    ownerId: role === "owner" ? "user-alice" : "user-owner",
+    ownerUsername: role === "owner" ? "alice" : "owner",
+    role,
+    verifiedAt: null,
+  });
+
+  const authAs = async (login: string) => {
+    const hashedPw = await Bun.password.hash("secret", { algorithm: "bcrypt", cost: 4 });
     const session = { remoteAddress: "10.0.0.1" } as SmtpSession;
-    const auth = {
-      username: ADMIN_RO_USERNAME,
-      password: "readonlypass",
-    } as SmtpAuthRequest;
     mockGetUser.mockResolvedValue({
       password: hashedPw,
-      getSigned: () => ({ username: ADMIN_RO_USERNAME }),
+      getSigned: () => ({ id: "user-alice", username: "alice" }),
     });
-
     const result = await new Promise<{ user?: string }>((resolve) => {
-      onAuth!(auth, session, (_err, data) => resolve(data || {}));
+      onAuth!({ username: login, password: "secret" } as SmtpAuthRequest, session, (_err, data) =>
+        resolve(data || {})
+      );
     });
+    return { result, session: session as SmtpSession & { scopeDomain?: string } };
+  };
 
-    // Session.user carries the original credential so downstream gates
-    // (onMailFrom) can distinguish it. Audit line names the original
-    // credential.
-    expect(result.user).toBe(ADMIN_RO_USERNAME);
-    expect(mockResetAuthFailures).toHaveBeenCalledTimes(1);
-    const readOnlyLog = mockLogger.info.mock.calls.find(
-      (call) => (call[0] as string) === "SMTP AUTH success (read-only)"
-    );
-    expect(readOnlyLog).toBeDefined();
-    expect((readOnlyLog?.[1] as Record<string, unknown>).authenticatedAs).toBe(
-      ADMIN_RO_USERNAME
-    );
+  it("scopes a user@domain login to a domain the person owns", async () => {
+    mockGetDomainAccess.mockResolvedValueOnce(ownerAccess("owner"));
+
+    const { result, session } = await authAs("alice@example.org");
+
+    // The session names the person; the domain rides alongside it.
+    expect(result.user).toBe("alice");
+    expect(session.scopeDomain).toBe("example.org");
+    expect(mockGetDomainAccess).toHaveBeenCalledWith("user-alice", "example.org");
+    expect(mockGetUser).toHaveBeenCalledWith({ username: "alice" });
+  });
+
+  it("refuses a user@domain login for a domain the person only views", async () => {
+    // A viewer reads a domain and never sends as it; refused like a wrong
+    // password, so the answer says nothing about which half was wrong.
+    mockGetDomainAccess.mockResolvedValueOnce(ownerAccess("viewer"));
+    mockRecordAuthFailure.mockClear();
+    mockResetAuthFailures.mockClear();
+
+    const { result } = await authAs("alice@example.org");
+
+    expect(result.user).toBeUndefined();
+    expect(mockRecordAuthFailure).toHaveBeenCalledWith("10.0.0.1", "alice");
+    expect(mockResetAuthFailures).not.toHaveBeenCalled();
+  });
+
+  it("refuses a user@domain login for a domain the person holds no role on", async () => {
+    mockGetDomainAccess.mockResolvedValueOnce(null);
+
+    const { result } = await authAs("alice@example.org");
+
+    expect(result.user).toBeUndefined();
+  });
+
+  it("reads no role for a plain login", async () => {
+    mockGetDomainAccess.mockClear();
+
+    const { result, session } = await authAs("alice");
+
+    expect(result.user).toBe("alice");
+    expect(session.scopeDomain).toBeUndefined();
+    expect(mockGetDomainAccess).not.toHaveBeenCalled();
   });
 });
 
@@ -482,32 +538,41 @@ describe("onAuth username enumeration resistance", () => {
 });
 
 describe("onMailFrom handler", () => {
-  it("refuses MAIL FROM with 550 for the read-only session", async () => {
-    // SMTP submission is a mutating action (writes a sent row, hands the
-    // message to Mailgun). The read-only session's single mutating gate is
-    // MAIL FROM; refuse there rather than intercepting at every command.
-    const session = {
-      user: ADMIN_RO_USERNAME,
-      remoteAddress: "10.0.0.1",
-    } as unknown as SmtpSession;
-    const address = { address: "sender@test.com" } as never;
+  it("records whether an authenticated sender names a domain this host serves", async () => {
+    // `onData` is synchronous, so the lookup is made here and read there.
+    mockFindDomain.mockResolvedValueOnce({ domainId: "d-1", name: "example.org", ownerId: "u" });
+    const session = { user: "alice", remoteAddress: "10.0.0.2" } as unknown as SmtpSession & {
+      mailFromServed?: boolean;
+      servedRecipients?: Set<string>;
+    };
+    session.servedRecipients = new Set(["stale@example.org"]);
 
     const err = await new Promise<Error | null>((resolve) => {
-      onMailFrom!(address, session, (e) => resolve(e || null));
+      onMailFrom!({ address: "alice@Example.org" } as never, session, (e) => resolve(e || null));
     });
 
-    expect(err).toBeInstanceOf(Error);
-    expect(err!.message).toBe("READ-ONLY user cannot send");
-    expect(
-      (err as Error & { responseCode?: number }).responseCode
-    ).toBe(550);
+    expect(err).toBeNull();
+    expect(mockFindDomain).toHaveBeenCalledWith("example.org");
+    expect(session.mailFromServed).toBe(true);
+    // A new transaction starts with no recipients of the last one.
+    expect(session.servedRecipients?.size).toBe(0);
   });
 
-  it("passes MAIL FROM for a non-read-only session", async () => {
-    // Mutation-test the guard's discriminator: replacing the read-only
-    // username with any other username must not trip it. `every(p)` on a
-    // list of one user would hide a `!==` typo; asserting the pass path
-    // with a distinct username is the discriminator.
+  it("never looks the sender's domain up for an unauthenticated session", async () => {
+    mockFindDomain.mockClear();
+    const session = { remoteAddress: "10.0.0.2" } as unknown as SmtpSession & {
+      mailFromServed?: boolean;
+    };
+
+    await new Promise<Error | null>((resolve) => {
+      onMailFrom!({ address: "spoof@example.org" } as never, session, (e) => resolve(e || null));
+    });
+
+    expect(mockFindDomain).not.toHaveBeenCalled();
+    expect(session.mailFromServed).toBe(false);
+  });
+
+  it("passes MAIL FROM for an authenticated session", async () => {
     mockGetUser.mockResolvedValueOnce({ passwordVersion: 1 } as never);
     const session = {
       user: "alice",
@@ -640,6 +705,20 @@ describe("onRcptTo handler", () => {
     expect(mockGetUser).not.toHaveBeenCalled();
   });
 
+  it("once an address's probe budget is spent, refuses names under the zone but still passes and delivers other domains", async () => {
+    mockIsRecipientProbeRateLimited.mockReturnValue(true);
+    mockResolveDeliveryDomain.mockClear();
+
+    expect((await rcpt("x@alice.test.com"))?.message).toMatch(/too many unknown recipients/);
+    expect(mockResolveDeliveryDomain).not.toHaveBeenCalled();
+    // A foreign domain is not this host's to judge, and an added domain is
+    // public in DNS anyway: neither is gated.
+    expect(await rcpt("someone@other.com")).toBeUndefined();
+    mockResolveDeliveryDomain.mockResolvedValueOnce({ domain: "example.org", ownerId: "owner-1" });
+    expect(await rcpt("info@example.org")).toBeUndefined();
+    expect(mockRecordRecipientProbe).not.toHaveBeenCalled();
+  });
+
   it("passes a domain that merely ends in the served one without looking a user up", async () => {
     mockGetUser.mockResolvedValue({ id: "u1" });
 
@@ -648,13 +727,32 @@ describe("onRcptTo handler", () => {
     expect(mockGetUser).not.toHaveBeenCalled();
   });
 
-  it("resolves the served apex to admin and passes it", async () => {
-    mockGetUser.mockResolvedValue({ id: "u1" });
+  it("passes the served apex when a domain row delivers it", async () => {
+    mockResolveDeliveryDomain.mockResolvedValueOnce({ domain: "test.com", ownerId: "owner-1" });
 
     const err = await rcpt("anything@test.com");
 
     expect(err).toBeUndefined();
-    expect(mockGetUser).toHaveBeenCalledWith({ username: "admin" });
+  });
+
+  it("refuses the served apex when no account owns it", async () => {
+    const err = await rcpt("anything@test.com");
+
+    expect((err as { responseCode?: number })?.responseCode).toBe(550);
+  });
+
+  it("passes a recipient on a domain someone verified, and records it for onData", async () => {
+    mockResolveDeliveryDomain.mockResolvedValueOnce({ domain: "example.org", ownerId: "owner-1" });
+    const session = { remoteAddress: "198.51.100.4" } as unknown as SmtpSession & {
+      servedRecipients?: Set<string>;
+    };
+
+    const err = await new Promise<Error | null | undefined>((resolve) => {
+      onRcptTo!({ address: "Info@Example.org" } as never, session, (e) => resolve(e));
+    });
+
+    expect(err).toBeUndefined();
+    expect(session.servedRecipients?.has("info@example.org")).toBe(true);
   });
 
   it("resolves a user subdomain to its own account and passes it", async () => {
@@ -747,11 +845,14 @@ describe("onRcptTo handler", () => {
     expect(mockRecordRecipientProbe).not.toHaveBeenCalled();
   });
 
-  it("does not consult the budget for a foreign recipient", async () => {
+  it("passes a foreign recipient without charging the budget", async () => {
+    // Only names under the served zone are gated and charged: they are
+    // account names, and which other domains a host serves is public in DNS.
     const err = await rcpt("someone@other.com");
 
     expect(err).toBeUndefined();
     expect(mockIsRecipientProbeRateLimited).not.toHaveBeenCalled();
+    expect(mockRecordRecipientProbe).not.toHaveBeenCalled();
   });
 });
 
@@ -850,6 +951,126 @@ describe("onData handler", () => {
     expect(err).toBeUndefined();
     expect(mockSendMail).toHaveBeenCalledTimes(1);
     expect(mockSaveMailHandler).not.toHaveBeenCalled();
+  });
+
+  it("routes mail for a verified domain to saveMailHandler by what onRcptTo recorded", async () => {
+    const session = {
+      envelope: {
+        mailFrom: { address: "external@other.com" },
+        rcptTo: [{ address: "Info@Example.org" }]
+      },
+      servedRecipients: new Set(["info@example.org"]),
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+
+    const err = await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    expect(err).toBeUndefined();
+    expect(mockSaveMailHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to relay to a domain no transaction step recorded as served", async () => {
+    const session = {
+      envelope: {
+        mailFrom: { address: "external@other.com" },
+        rcptTo: [{ address: "info@example.org" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+
+    const err = await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    expect((err as { responseCode?: number })?.responseCode).toBe(550);
+    expect(mockSaveMailHandler).not.toHaveBeenCalled();
+  });
+
+  it("sends from a verified domain the sender owns, by what onMailFrom recorded", async () => {
+    mockParseMessage.mockImplementation(() =>
+      Promise.resolve({
+        from: { text: "alice@example.org", value: [{ address: "alice@example.org" }] },
+        to: { text: "recipient@other.com", value: [{ address: "recipient@other.com" }] },
+        subject: "Hi",
+        text: "hi",
+        attachments: []
+      })
+    );
+    mockOwnedDomainNames.mockResolvedValueOnce(["alice.test.com", "example.org"]);
+    const session = {
+      user: "alice",
+      envelope: {
+        mailFrom: { address: "alice@example.org" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      mailFromServed: true,
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+    mockGetUser.mockResolvedValue({ getSigned: () => ({ id: "user-alice", username: "alice" }) });
+
+    const err = await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    expect(err).toBeUndefined();
+    const sent = (mockSendMail.mock.calls[0] as unknown[])[1] as {
+      sender: string;
+      senderDomain: string;
+    };
+    expect(sent.sender).toBe("alice");
+    expect(sent.senderDomain).toBe("example.org");
+  });
+
+  it("sends only from the domain a user@domain login is scoped to", async () => {
+    mockParseMessage.mockImplementation(() =>
+      Promise.resolve({
+        from: { text: "alice@alice.test.com", value: [{ address: "alice@alice.test.com" }] },
+        to: { text: "recipient@other.com", value: [{ address: "recipient@other.com" }] },
+        subject: "Hi",
+        text: "hi",
+        attachments: []
+      })
+    );
+    mockOwnedDomainNames.mockResolvedValueOnce(["alice.test.com", "example.org"]);
+    const session = {
+      user: "alice",
+      scopeDomain: "example.org",
+      envelope: {
+        mailFrom: { address: "alice@alice.test.com" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+    mockGetUser.mockResolvedValue({ getSigned: () => ({ id: "user-alice", username: "alice" }) });
+
+    await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    const sent = (mockSendMail.mock.calls[0] as unknown[])[1] as { senderDomain: string };
+    expect(sent.senderDomain).toBe("example.org");
+  });
+
+  it("refuses an outgoing message from a user who owns no domain", async () => {
+    mockOwnedDomainNames.mockResolvedValueOnce([]);
+    const session = {
+      user: "alice",
+      envelope: {
+        mailFrom: { address: "alice@test.com" },
+        rcptTo: [{ address: "recipient@other.com" }]
+      },
+      remoteAddress: "1.2.3.4"
+    } as unknown as SmtpSession;
+    mockGetUser.mockResolvedValue({ getSigned: () => ({ id: "user-alice", username: "alice" }) });
+
+    const err = await new Promise<Error | null | undefined>((resolve) => {
+      onData(makeStream(), session, (e) => resolve(e));
+    });
+
+    expect((err as { responseCode?: number })?.responseCode).toBe(550);
+    expect(mockSendMail).not.toHaveBeenCalled();
   });
 
   it("sends a client's reply with its In-Reply-To and References", async () => {
@@ -2803,7 +3024,18 @@ describe("resolveOutgoingSender", () => {
     from: { header?: string; envelope?: string },
     recipients: string[],
     addressedTo: string[] = []
-  ) => resolveOutgoingSender("admin", "test.com", from, recipients, addressedTo);
+  ) => {
+    const { domain, ...rest } = resolveOutgoingSender(
+      "admin",
+      ["test.com"],
+      from,
+      recipients,
+      addressedTo
+    );
+    // One domain to send from: every address resolves onto it.
+    expect(domain).toBe("test.com");
+    return rest;
+  };
 
   it("promotes the first same-domain recipient to sender and drops it", () => {
     expect(
@@ -2931,19 +3163,56 @@ describe("resolveOutgoingSender", () => {
     });
   });
 
-  it("scopes selection to the caller's own domain, not the bare mail domain", () => {
+  it("scopes selection to the caller's own domains, not the bare mail domain", () => {
     expect(
       resolveOutgoingSender(
         "alice",
-        "alice.test.com",
+        ["alice.test.com"],
         { envelope: "alice@alice.test.com" },
         ["outside@other.com", "team@alice.test.com", "admin@test.com"],
         []
       )
     ).toEqual({
       sender: "team",
+      domain: "alice.test.com",
       recipients: ["outside@other.com", "admin@test.com"]
     });
+  });
+
+  it("sends from whichever of the caller's domains the From names", () => {
+    expect(
+      resolveOutgoingSender(
+        "alice",
+        ["alice.test.com", "example.org"],
+        { header: "Alice@Example.org" },
+        ["outside@other.com"],
+        ["outside@other.com"]
+      )
+    ).toEqual({ sender: "alice", domain: "example.org", recipients: ["outside@other.com"] });
+  });
+
+  it("falls back to the default domain for a From on a domain the caller does not own", () => {
+    expect(
+      resolveOutgoingSender(
+        "alice",
+        ["alice.test.com", "example.org"],
+        { header: "alice@example.net" },
+        ["outside@other.com"],
+        []
+      )
+    ).toEqual({ sender: "alice", domain: "alice.test.com", recipients: ["outside@other.com"] });
+  });
+
+  it("promotes a Cc address on another of the caller's domains, with its domain", () => {
+    expect(
+      resolveOutgoingSender(
+        "alice",
+        ["alice.test.com", "example.org"],
+        { envelope: "alice@alice.test.com" },
+        ["outside@other.com", "sales@example.org"],
+        ["outside@other.com"]
+      )
+    ).toEqual({ sender: "sales", domain: "example.org", recipients: ["outside@other.com"] });
   });
 });
 

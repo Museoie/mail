@@ -40,6 +40,8 @@ import {
   callUser,
   queryClient,
   registerServiceWorker,
+  fetchDomains,
+  ownedDomainsOf,
   FeedbackProvider,
   ThemeSetting,
   sanitizeThemeSetting,
@@ -64,7 +66,12 @@ export interface ContextType {
     width: number;
     height: number;
   };
+  /** The served zone (`EMAIL_DOMAIN`): accounts receive mail at `<username>.<zone>`. */
   domainName: string;
+  /** The domains the user owns: the ones they can send from. */
+  domains: string[];
+  /** Reads the user's domains again, after Settings changed them. */
+  refreshDomains: () => void;
   userInfo: SignedUser | undefined;
   setUserInfo: Dispatch<SetStateAction<ContextType["userInfo"]>>;
   /** Whether the accounts menu is open; never on widths that show the
@@ -169,6 +176,12 @@ const App = ({ user: session }: Props) => {
   });
   const [domainName, setDomainName] = useLocalStorage("domainName", "");
   const [userInfo, setUserInfo] = useState(session);
+  const [domains, setDomains] = useState<string[]>([]);
+  const refreshDomains = useCallback(() => {
+    fetchDomains().then((data) => {
+      if (data) setDomains(ownedDomainsOf(data));
+    });
+  }, []);
   // The accounts menu is a popover opened from the header; it starts closed.
   const [isAccountsOpen, setIsAccountsOpen] = useState(false);
   const isAccountsColumn = hasAccountsColumn(viewSize.width);
@@ -351,6 +364,11 @@ const App = ({ user: session }: Props) => {
   }, [domainName, setDomainName]);
 
   useEffect(() => {
+    if (userInfo) refreshDomains();
+    else setDomains([]);
+  }, [userInfo, refreshDomains]);
+
+  useEffect(() => {
     const noti = new Notifier();
     noti.clearBadge();
     noti.setBadge(newMailsTotal);
@@ -385,6 +403,8 @@ const App = ({ user: session }: Props) => {
     userInfo,
     setUserInfo,
     domainName,
+    domains,
+    refreshDomains,
     isAccountsOpen: isAccountsMenuOpen(viewSize.width, isAccountsOpen),
     setIsAccountsOpen,
     isWriterOpen,

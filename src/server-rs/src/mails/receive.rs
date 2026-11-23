@@ -31,7 +31,8 @@ use crate::postgres::repositories::mails::{
 use crate::spam::service::check_spam;
 use crate::spam::types::{EmailContext, SpamCheckResult};
 use crate::users::{get_user, UserQuery};
-use crate::util::{get_domain, get_random_id, is_local_address, recipient_username};
+use crate::domains::{resolve_delivery_domain, DeliveryDomain};
+use crate::util::get_random_id;
 use crate::{js, logger, push};
 
 /// One mailbox of an incoming address header or envelope, or a group with
@@ -233,10 +234,12 @@ pub struct SaveMailHandlerOptions {
     pub remote_address: Option<String>,
 }
 
-/// Stores an incoming message into the mailbox of every local recipient
-/// that resolves to an account, and answers how many it wrote. A local
-/// recipient without an account is skipped rather than failing the call;
-/// zero tells the caller the message landed nowhere.
+/// Stores an incoming message with the owner of every domain its envelope
+/// recipients are delivered into, once per owner, and answers how many it
+/// wrote. A recipient need not be delivered anywhere (a foreign address, or a
+/// name under the served zone with no account), and one that is not is
+/// skipped rather than failing the call; zero tells the caller the message
+/// landed nowhere.
 pub async fn save_mail_handler(data: &IncomingMail, options: &SaveMailHandlerOptions) -> anyhow::Result<usize> {
     let envelope_to = data.envelope_to.as_deref().and_then(convert_address_value).map(|values| values_json(&values));
     let from = data.from.as_deref().and_then(convert_mail_address).map(|address| values_json(&address.value));
@@ -249,21 +252,21 @@ pub async fn save_mail_handler(data: &IncomingMail, options: &SaveMailHandlerOpt
         }),
     );
 
-    let domain = get_domain();
-    let Some(valid) = validate_incoming_mail(Some(data), Some(&domain)) else {
+    let deliveries = resolve_deliveries(data).await?;
+    if deliveries.is_empty() {
         logger::warn("Recipient is not valid. Mails is not saved.", json!({}));
         return Ok(0);
-    };
+    }
 
-    let usernames = usernames_of(valid, &domain);
-    let saves = usernames.iter().map(|username| save_incoming_mail(username, valid, options));
+    let saves = deliveries.iter().map(|delivery| save_incoming_mail(&delivery.owner_id, data, options));
     let saved = futures_util::future::join_all(saves).await;
-    let mut stored_count = 0;
+    let mut usernames = Vec::new();
     for result in saved {
-        if result?.is_some() {
-            stored_count += 1;
+        if let Some(username) = result? {
+            usernames.push(username);
         }
     }
+    let stored_count = usernames.len();
     if stored_count == 0 {
         logger::warn(
             "No recipient resolved to a mailbox. Mail is not saved.",
@@ -273,19 +276,25 @@ pub async fn save_mail_handler(data: &IncomingMail, options: &SaveMailHandlerOpt
     }
     logger::info("Successfully saved an email", json!({}));
 
-    let mailboxes = mailboxes_of(valid, &domain);
+    let mailboxes: Vec<String> =
+        deliveries.iter().flat_map(|delivery| delivery.addresses.iter().map(|address| account_to_box(address))).collect();
     push::notify_new_mails(&usernames, Some(&mailboxes)).await;
     logger::info(format!("Sent push notifications to users: [{}]", usernames.join(",")), json!({}));
     Ok(stored_count)
 }
 
+/// Stores the message with `owner_id`, answering the owner's username when
+/// it was stored.
 async fn save_incoming_mail(
-    username: &str,
+    owner_id: &str,
     incoming: &IncomingMail,
     options: &SaveMailHandlerOptions,
-) -> anyhow::Result<Option<SavedMail>> {
-    let Some(user) = get_user(&UserQuery::username(username)).await? else {
-        logger::warn(format!("User not found for username: {username}"), json!({}));
+) -> anyhow::Result<Option<String>> {
+    let user = get_user(&UserQuery { id: Some(owner_id.to_string()), ..Default::default() }).await?;
+    let Some((user, username)) =
+        user.and_then(|user| user.username.clone().filter(|name| !name.is_empty()).map(|name| (user, name)))
+    else {
+        logger::warn(format!("User not found for id: {owner_id}"), json!({}));
         logger::warn("Skipping saving mail", json!({ "incoming": incoming }));
         return Ok(None);
     };
@@ -316,7 +325,8 @@ async fn save_incoming_mail(
         None => None,
     };
 
-    save_mail(&mail, user.id.as_deref(), spam_result.as_ref()).await
+    let saved = save_mail(&mail, user.id.as_deref(), spam_result.as_ref()).await?;
+    Ok(saved.map(|_| username))
 }
 
 fn first_address(address: Option<&MailAddress>) -> Option<String> {
@@ -587,34 +597,41 @@ pub async fn save_buffer(bytes: &[u8]) -> anyhow::Result<String> {
     Ok(id)
 }
 
-fn envelope_addresses(data: &IncomingMail) -> impl Iterator<Item = &str> {
+/// An owner an incoming message is stored with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IncomingDelivery {
+    owner_id: String,
+    /// The envelope recipients delivered into this owner's domains.
+    addresses: Vec<String>,
+}
+
+/// The envelope recipients, trimmed and lower-cased, each once.
+fn envelope_addresses(data: &IncomingMail) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
     data.envelope_to
         .iter()
         .flatten()
         .filter_map(|entry| entry.address.as_deref())
-        .filter(|address| !address.is_empty())
+        .map(|address| js::trim(address).to_lowercase())
+        .filter(|address| !address.is_empty() && seen.insert(address.clone()))
+        .collect()
 }
 
-fn local_recipients<'a>(data: &'a IncomingMail, domain: &'a str) -> impl Iterator<Item = &'a str> + 'a {
-    envelope_addresses(data).filter(move |address| is_local_address(address, domain))
-}
-
-/// The usernames of the local envelope recipients, one per recipient.
-fn usernames_of(data: &IncomingMail, domain: &str) -> Vec<String> {
-    envelope_addresses(data).filter_map(|address| recipient_username(address, domain)).collect()
-}
-
-/// The per-account mailboxes of the local envelope recipients.
-fn mailboxes_of(data: &IncomingMail, domain: &str) -> Vec<String> {
-    local_recipients(data, domain).map(account_to_box).collect()
-}
-
-/// The mail when at least one envelope recipient is on `domain_name`.
-pub fn validate_incoming_mail<'a>(data: Option<&'a IncomingMail>, domain_name: Option<&str>) -> Option<&'a IncomingMail> {
-    let data = data?;
-    let domain = domain_name.filter(|domain| !domain.is_empty())?;
-    data.envelope_to.as_ref()?;
-    local_recipients(data, domain).next().map(|_| data)
+/// The owners an incoming message is stored with, one entry per owner however
+/// many of their domains or addresses it names, so a message to two of one
+/// person's domains is stored once.
+async fn resolve_deliveries(data: &IncomingMail) -> anyhow::Result<Vec<IncomingDelivery>> {
+    let addresses = envelope_addresses(data);
+    let resolved = futures_util::future::join_all(addresses.iter().map(|address| resolve_delivery_domain(address))).await;
+    let mut deliveries: Vec<IncomingDelivery> = Vec::new();
+    for (address, delivery) in addresses.into_iter().zip(resolved) {
+        let Some(DeliveryDomain { owner_id, .. }) = delivery? else { continue };
+        match deliveries.iter_mut().find(|existing| existing.owner_id == owner_id) {
+            Some(existing) => existing.addresses.push(address),
+            None => deliveries.push(IncomingDelivery { owner_id, addresses: vec![address] }),
+        }
+    }
+    Ok(deliveries)
 }
 
 #[cfg(test)]
@@ -716,19 +733,18 @@ mod tests {
     }
 
     #[test]
-    fn only_mail_with_a_local_envelope_recipient_is_valid() {
+    fn envelope_recipients_are_trimmed_lower_cased_and_taken_once() {
         let mail = IncomingMail {
             envelope_to: Some(vec![
-                IncomingMailAddressValue::address("x@remote.example"),
+                IncomingMailAddressValue::address(" Box@Bob.Mail.Test "),
                 IncomingMailAddressValue::address("box@bob.mail.test"),
+                IncomingMailAddressValue::address(""),
+                IncomingMailAddressValue::address("x@remote.example"),
             ]),
             ..Default::default()
         };
-        assert!(validate_incoming_mail(Some(&mail), Some("mail.test")).is_some());
-        assert!(validate_incoming_mail(Some(&mail), Some("other.test")).is_none());
-        assert!(validate_incoming_mail(Some(&mail), None).is_none());
-        assert!(validate_incoming_mail(Some(&IncomingMail::default()), Some("mail.test")).is_none());
-        assert_eq!(mailboxes_of(&mail, "mail.test"), vec![account_to_box("box@bob.mail.test")]);
+        assert_eq!(envelope_addresses(&mail), vec!["box@bob.mail.test", "x@remote.example"]);
+        assert!(envelope_addresses(&IncomingMail::default()).is_empty());
     }
 
     #[test]

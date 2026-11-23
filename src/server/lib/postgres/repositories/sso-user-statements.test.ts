@@ -50,10 +50,10 @@ describe("buildInsert onConflictDoNothing", () => {
 });
 
 describe("buildFindUnlinkedUsersByEmail", () => {
-  it("matches the address ignoring case, on signed-up accounts that are not linked, deleted or excluded", () => {
-    expect(buildFindUnlinkedUsersByEmail("Alice@Example.com", ["admin", "admin-ro"])).toEqual({
-      sql: "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND auth_sub IS NULL AND password IS NOT NULL AND username <> ALL($2::text[]) AND (is_deleted IS NULL OR is_deleted = FALSE) LIMIT 2",
-      values: ["Alice@Example.com", ["admin", "admin-ro"]],
+  it("matches the address ignoring case, on signed-up accounts that are not linked or deleted", () => {
+    expect(buildFindUnlinkedUsersByEmail("Alice@Example.com")).toEqual({
+      sql: "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND auth_sub IS NULL AND password IS NOT NULL AND (is_deleted IS NULL OR is_deleted = FALSE) LIMIT 2",
+      values: ["Alice@Example.com"],
     });
   });
 });

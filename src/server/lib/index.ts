@@ -33,7 +33,6 @@ export {
   saveMailHandler,
   saveMail,
   convertMail,
-  validateIncomingMail,
   saveBuffer,
   getAccounts,
   searchAccounts,
@@ -50,7 +49,7 @@ export {
   markSpam,
   getThread,
 } from "./mails";
-export type { AccountsGetResponse, GetMailsOptions, GetUnifiedMailsOptions, MailHeadersDelta, ValidationResult, SaveMailHandlerOptions } from "./mails";
+export type { AccountsGetResponse, SharedDomainAccounts, GetMailsOptions, GetUnifiedMailsOptions, MailHeadersDelta, ValidationResult, SaveMailHandlerOptions } from "./mails";
 
 // Spam filter
 export * from "./spam";
@@ -60,9 +59,6 @@ export { version } from "./postgres/initialize";
 
 // Users module
 export * from "./users";
-
-// Read-only role attribution
-export * from "./read-only";
 
 // Session store
 export { PostgresSessionStore } from "./session";

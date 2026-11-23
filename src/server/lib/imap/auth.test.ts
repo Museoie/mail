@@ -28,11 +28,11 @@ import { EventEmitter } from "events";
 import { Socket } from "net";
 import { SignedUser } from "common";
 import { restoreLeaves } from "test-helpers";
-import { ADMIN_RO_USERNAME, ADMIN_USERNAME } from "../read-only";
 import { encryptPassword } from "../users";
 import * as authRateLimit from "../auth-rate-limit";
 import * as appPassword from "../sso/app-password";
 import { initializeSso, resetSso } from "../sso";
+import * as domainRepo from "../postgres/repositories/domains";
 
 const realVerify = Bun.password.verify.bind(Bun.password);
 
@@ -83,6 +83,14 @@ const mockRecordAuthFailure = spyOn(authRateLimit, "recordAuthFailure").mockReso
 const mockResetAuthFailures = spyOn(authRateLimit, "resetAuthFailures").mockReturnValue(undefined);
 const mockCheckAppPassword = spyOn(appPassword, "checkAppPassword");
 
+/**
+ * The domain repository, spied for the same reason: a plain login lists the
+ * person's domains and a scoped one reads their role, and neither may reach a
+ * database here.
+ */
+const mockListDomainAccess = spyOn(domainRepo, "listDomainAccess").mockResolvedValue([]);
+const mockGetDomainAccess = spyOn(domainRepo, "getDomainAccess").mockResolvedValue(null);
+
 const { handleAuthenticate, handleLogin } = await import("./auth");
 const { ImapRequestHandler } = await import("./handler");
 
@@ -93,6 +101,8 @@ afterAll(() => {
   mockIsAuthRateLimited.mockRestore();
   mockRecordAuthFailure.mockRestore();
   mockResetAuthFailures.mockRestore();
+  mockListDomainAccess.mockRestore();
+  mockGetDomainAccess.mockRestore();
   mock.module("server", () => realServer);
   restoreLeaves();
 });
@@ -664,188 +674,199 @@ describe("username enumeration resistance", () => {
   });
 });
 
-describe("read-only credential session resolution", () => {
-  const RO_PASSWORD = "ro-secret";
-  const roSigned = new SignedUser({
-    id: "user-ro",
-    username: ADMIN_RO_USERNAME,
-    email: "admin-ro@test.com",
+describe("domain-scoped login", () => {
+  const PASSWORD = "auditor-secret";
+  const auditor = new SignedUser({
+    id: "user-auditor",
+    username: "auditor",
+    email: "auditor@test.com",
   });
-  const adminSigned = new SignedUser({
-    id: "user-admin",
-    username: ADMIN_USERNAME,
-    email: "admin@test.com",
-    token: "reset-token",
-    expiry: "2026-01-01",
+  const owner = new SignedUser({
+    id: "user-owner",
+    username: "owner",
+    email: "owner@test.com",
+  });
+  const access = (role: "owner" | "viewer"): domainRepo.DomainAccess => ({
+    domainId: "domain-1",
+    name: "example.com",
+    ownerId: role === "owner" ? auditor.id : owner.id,
+    ownerUsername: role === "owner" ? auditor.username : owner.username,
+    role,
+    verifiedAt: null,
   });
 
-  /**
-   * `resolveSessionUser` looks the effective account up by username alone, so
-   * the store answers the second call without a password.
-   */
-  const withAdminRow = (adminRow: unknown) => async (input: unknown) => {
-    const { username } = input as { username: string };
-    if (username === ADMIN_RO_USERNAME) {
-      return { password: await hashOf(RO_PASSWORD), getSigned: () => roSigned };
+  /** The person by username (with a password), the owner by id. */
+  const accounts = async (input: unknown) => {
+    const { username, id } = input as { username?: string; id?: string };
+    if (username === auditor.username) {
+      return { password: await hashOf(PASSWORD), getSigned: () => auditor };
     }
-    if (username === ADMIN_USERNAME) return adminRow;
+    if (id === owner.id) return { password: "unused", getSigned: () => owner };
     return null;
   };
 
-  const adminRow = { password: "unused", getSigned: () => adminSigned };
+  beforeEach(() => {
+    mockGetUser.mockImplementation(accounts);
+    mockGetDomainAccess.mockReset();
+    mockListDomainAccess.mockReset();
+    mockListDomainAccess.mockResolvedValue([]);
+  });
 
-  it("binds the store to the effective account while attributing the credential", async () => {
+  it("opens the owner's store read-only for a domain the person views", async () => {
     const { socket, args } = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(adminRow));
+    mockGetDomainAccess.mockResolvedValue(access("viewer"));
 
     const result = await handleAuthenticate(
       "E1",
       "PLAIN",
-      plainResponse(ADMIN_RO_USERNAME, RO_PASSWORD),
+      plainResponse("auditor@example.com", PASSWORD),
       ...args
     );
 
     expect(result).not.toBeNull();
     expect(result!.isReadOnly).toBe(true);
-    expect(result!.authenticatedAs).toBe(ADMIN_RO_USERNAME);
-    const sessionUser = result!.store.getUser();
-    expect(sessionUser.id).toBe(adminSigned.id);
-    expect(sessionUser.username).toBe(ADMIN_USERNAME);
-    expect(sessionUser.isReadOnly).toBe(true);
-    expect(sessionUser.authenticatedAs).toBe(ADMIN_RO_USERNAME);
-    // The remap must not carry the effective account's password-reset
-    // credential onto a session the read-only caller holds.
-    expect(sessionUser.token).toBeUndefined();
-    expect(sessionUser.expiry).toBeUndefined();
+    // The credential row, and the rate-limit bucket, are the person's.
+    expect(result!.authenticatedAs).toBe("auditor");
+    expect(mockGetDomainAccess).toHaveBeenCalledWith(auditor.id, "example.com");
+    expect(result!.store.getUser().id).toBe(owner.id);
+    expect(result!.store.getDomains()).toEqual(["example.com"]);
+    expect(result!.scope).toEqual({
+      userId: auditor.id,
+      domain: "example.com",
+      role: "viewer",
+      ownerId: owner.id,
+    });
     expect(socket.writes).toEqual([
       `E1 OK [CAPABILITY ${CAPABILITIES}] AUTHENTICATE completed\r\n`,
     ]);
+    expect(mockResetAuthFailures).toHaveBeenCalledWith(REMOTE_IP, "auditor");
   });
 
-  it("attributes the audit line to the credential, not the effective account", async () => {
+  it("attributes the audit line to the person and names the domain", async () => {
     const { args } = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(adminRow));
+    mockGetDomainAccess.mockResolvedValue(access("viewer"));
 
-    await handleAuthenticate("E2", "PLAIN", plainResponse(ADMIN_RO_USERNAME, RO_PASSWORD), ...args);
+    await handleAuthenticate("E2", "PLAIN", plainResponse("auditor@example.com", PASSWORD), ...args);
 
     expect(mockLoggerInfo).toHaveBeenCalledWith("IMAP AUTHENTICATE success", {
       component: "imap",
       tag: "E2",
-      authenticatedAs: ADMIN_RO_USERNAME,
-      effectiveUsername: ADMIN_USERNAME,
+      authenticatedAs: "auditor",
+      scopeDomain: "example.com",
+      effectiveUsername: owner.username,
       isReadOnly: true,
       remote: `${REMOTE_IP}:45678`,
       mechanism: "PLAIN",
     });
   });
 
-  it("refuses the read-only credential when the effective account does not exist", async () => {
-    const { socket, args } = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(null));
+  it("opens the person's own store, filtered to the domain, for a domain they own", async () => {
+    const { args } = makeHarness();
+    mockGetDomainAccess.mockResolvedValue(access("owner"));
 
     const result = await handleAuthenticate(
       "E3",
       "PLAIN",
-      plainResponse(ADMIN_RO_USERNAME, RO_PASSWORD),
+      plainResponse("auditor@example.com", PASSWORD),
+      ...args
+    );
+
+    expect(result!.isReadOnly).toBe(false);
+    expect(result!.store.getUser().id).toBe(auditor.id);
+    expect(result!.store.getDomains()).toEqual(["example.com"]);
+    expect(result!.store.getPrimaryDomain()).toBe("example.com");
+  });
+
+  it("refuses a domain the person holds no role on like a wrong password", async () => {
+    const { socket, args } = makeHarness();
+    mockGetDomainAccess.mockResolvedValue(null);
+
+    const result = await handleAuthenticate(
+      "E4",
+      "PLAIN",
+      plainResponse("auditor@example.com", PASSWORD),
       ...args
     );
 
     expect(result).toBeNull();
-    expect(socket.writes).toEqual([
-      "E3 NO [AUTHENTICATIONFAILED] Invalid credentials.\r\n",
-    ]);
-    expect(mockRecordAuthFailure).toHaveBeenCalledWith(REMOTE_IP, ADMIN_RO_USERNAME);
+    expect(socket.writes).toEqual(["E4 NO [AUTHENTICATIONFAILED] Invalid credentials.\r\n"]);
+    expect(mockRecordAuthFailure).toHaveBeenCalledWith(REMOTE_IP, "auditor");
     expect(mockResetAuthFailures).not.toHaveBeenCalled();
     expect(socket.destroyed).toBe(false);
   });
 
   it("closes the socket when that refusal crosses the threshold", async () => {
     const { socket, args } = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(null));
+    mockGetDomainAccess.mockResolvedValue(null);
     mockRecordAuthFailure.mockImplementation(() => Promise.resolve(true));
 
     const result = await handleAuthenticate(
-      "E4",
+      "E5",
       "PLAIN",
-      plainResponse(ADMIN_RO_USERNAME, RO_PASSWORD),
+      plainResponse("auditor@example.com", PASSWORD),
       ...args
     );
 
     expect(result).toBeNull();
-    expect(socket.writes).toEqual([
-      "E4 NO [AUTHENTICATIONFAILED] Too many failed attempts\r\n",
-    ]);
+    expect(socket.writes).toEqual(["E5 NO [AUTHENTICATIONFAILED] Too many failed attempts\r\n"]);
     expect(socket.destroyed).toBe(true);
   });
 
-  it("applies the same remap to LOGIN", async () => {
-    const harness = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(adminRow));
+  it("never reads the role when the password is wrong", async () => {
+    const { args } = makeHarness();
 
-    const result = await handleLogin(
-      "E5",
-      [ADMIN_RO_USERNAME, RO_PASSWORD],
-      harness.args[0],
-      harness.args[1],
-      harness.args[3]
-    );
-
-    expect(result).not.toBeNull();
-    expect(result!.isReadOnly).toBe(true);
-    expect(result!.authenticatedAs).toBe(ADMIN_RO_USERNAME);
-    expect(result!.store.getUser().id).toBe(adminSigned.id);
-    expect(harness.socket.writes).toEqual([
-      `E5 OK [CAPABILITY ${CAPABILITIES}] LOGIN completed\r\n`,
-    ]);
-    expect(mockLoggerInfo).toHaveBeenCalledWith("IMAP LOGIN success", {
-      component: "imap",
-      tag: "E5",
-      authenticatedAs: ADMIN_RO_USERNAME,
-      effectiveUsername: ADMIN_USERNAME,
-      isReadOnly: true,
-      remote: `${REMOTE_IP}:45678`,
-    });
-  });
-
-  it("closes the LOGIN socket when that refusal crosses the threshold", async () => {
-    const harness = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(null));
-    mockRecordAuthFailure.mockImplementation(() => Promise.resolve(true));
-
-    const result = await handleLogin(
-      "E7",
-      [ADMIN_RO_USERNAME, RO_PASSWORD],
-      harness.args[0],
-      harness.args[1],
-      harness.args[3]
-    );
-
-    expect(result).toBeNull();
-    expect(harness.socket.writes).toEqual([
-      "E7 NO [AUTHENTICATIONFAILED] Too many failed attempts\r\n",
-    ]);
-    expect(harness.socket.destroyed).toBe(true);
-  });
-
-  it("refuses the read-only credential on LOGIN when the effective account does not exist", async () => {
-    const harness = makeHarness();
-    mockGetUser.mockImplementation(withAdminRow(null));
-
-    const result = await handleLogin(
+    const result = await handleAuthenticate(
       "E6",
-      [ADMIN_RO_USERNAME, RO_PASSWORD],
+      "PLAIN",
+      plainResponse("auditor@example.com", "wrong"),
+      ...args
+    );
+
+    expect(result).toBeNull();
+    expect(mockGetDomainAccess).not.toHaveBeenCalled();
+  });
+
+  it("reads the whole store of a plain login, listing every domain the person owns", async () => {
+    const { args } = makeHarness();
+    const zone = (process.env.EMAIL_DOMAIN || "mydomain").toLowerCase();
+    mockListDomainAccess.mockResolvedValue([
+      { ...access("owner"), name: `auditor.${zone}` },
+      { ...access("owner"), name: "example.org" },
+      { ...access("viewer"), name: "example.net" },
+    ]);
+
+    const result = await handleAuthenticate("E7", "PLAIN", plainResponse("auditor", PASSWORD), ...args);
+
+    expect(result!.isReadOnly).toBe(false);
+    expect(result!.scope).toBeUndefined();
+    expect(result!.store.getUser().id).toBe(auditor.id);
+    expect(result!.store.getDomains()).toBeUndefined();
+    expect(mockGetDomainAccess).not.toHaveBeenCalled();
+    // Account folders are read back on the primary domain, so only its
+    // addresses are listed; a folder for another domain's address would open
+    // a different mailbox.
+    expect(result!.store.getPrimaryDomain()).toBe(`auditor.${zone}`);
+    expect((result!.store as unknown as { accountDomains: string[] }).accountDomains).toEqual([
+      `auditor.${zone}`,
+    ]);
+  });
+
+  it("applies the same scoping to LOGIN", async () => {
+    const harness = makeHarness();
+    mockGetDomainAccess.mockResolvedValue(access("viewer"));
+
+    const result = await handleLogin(
+      "E8",
+      ["auditor@example.com", PASSWORD],
       harness.args[0],
       harness.args[1],
       harness.args[3]
     );
 
-    expect(result).toBeNull();
-    expect(harness.socket.writes).toEqual([
-      "E6 NO [AUTHENTICATIONFAILED] Invalid credentials.\r\n",
-    ]);
-    expect(mockRecordAuthFailure).toHaveBeenCalledWith(REMOTE_IP, ADMIN_RO_USERNAME);
-    expect(mockResetAuthFailures).not.toHaveBeenCalled();
-    expect(harness.socket.destroyed).toBe(false);
+    expect(result!.isReadOnly).toBe(true);
+    expect(result!.authenticatedAs).toBe("auditor");
+    expect(result!.store.getUser().id).toBe(owner.id);
+    expect(harness.socket.writes).toEqual([`E8 OK [CAPABILITY ${CAPABILITIES}] LOGIN completed\r\n`]);
   });
 });
 
@@ -1097,29 +1118,36 @@ describe("with single sign-on", () => {
     socket.end();
   });
 
-  it("keeps the read-only credential's remap on the local path", async () => {
-    useSso(true);
-    const adminSigned = new SignedUser({ id: "user-admin", username: ADMIN_USERNAME, email: "a@test.com" });
-    mockGetUser.mockImplementation(async (input: unknown) => {
-      const { username } = input as { username: string };
-      if (username === ADMIN_RO_USERNAME) {
-        return {
-          password: await hashOf("ro-secret"),
-          getSigned: () => new SignedUser({ id: "user-ro", username: ADMIN_RO_USERNAME, email: "r@test.com" }),
-        };
-      }
-      return username === ADMIN_USERNAME ? { password: "unused", getSigned: () => adminSigned } : null;
+  it("checks the app password for the person and scopes it like a local password", async () => {
+    useSso(false);
+    accept();
+    mockGetDomainAccess.mockResolvedValue({
+      domainId: "domain-1",
+      name: "example.com",
+      ownerId: "user-owner",
+      ownerUsername: "owner",
+      role: "viewer",
+      verifiedAt: null,
     });
+    const owner = new SignedUser({ id: "user-owner", username: "owner", email: "o@test.com" });
+    mockGetUser.mockImplementation(async (input: unknown) =>
+      (input as { id?: string }).id === owner.id ? { getSigned: () => owner } : null
+    );
     const { args } = makeHarness();
 
     const result = await handleAuthenticate(
       "S6",
       "PLAIN",
-      plainResponse(ADMIN_RO_USERNAME, "ro-secret"),
+      plainResponse("alice@example.com", "app-password"),
       ...args
     );
 
+    // The provider is asked about the person, without the domain.
+    expect(mockCheckAppPassword.mock.calls[0]?.[1]).toBe("alice");
+    expect(mockGetDomainAccess).toHaveBeenCalledWith(aliceSigned.id, "example.com");
     expect(result!.isReadOnly).toBe(true);
-    expect(result!.store.getUser().id).toBe("user-admin");
+    expect(result!.store.getUser().id).toBe(owner.id);
+    expect(result!.passwordVersion).toBe(4);
+    mockGetDomainAccess.mockReset();
   });
 });

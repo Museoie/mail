@@ -258,15 +258,15 @@ describe("several recipients", () => {
     const rows = await mailsOf(server, user.username);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.envelope_to).toEqual([{ address: user.at("one") }, { address: user.at("two") }]);
-    // The two saves race for the row; each reserved a UID, and either may have won.
-    expect([1, 2]).toContain(rows[0]!.uid_domain);
+    // One owner, one save: the message is stored once, under one UID.
+    expect(rows[0]!.uid_domain).toBe(1);
     const mappings = await mappingsOf(server, rows[0]!.mail_id);
     expect(mappings.map((mapping) => mapping.mailbox)).toEqual(["INBOX", "INBOX/accounts/one"]);
     expect(mappings[0]!.uid).toBe(rows[0]!.uid_domain);
     expect(await countersOf(server, user.username)).toEqual([
-      { kind: "account", scope: user.at("one"), sent: false, last: 2 },
-      { kind: "domain", scope: "", sent: false, last: 2 },
-      { kind: "modseq", scope: "", sent: false, last: 2 },
+      { kind: "account", scope: user.at("one"), sent: false, last: 1 },
+      { kind: "domain", scope: "", sent: false, last: 1 },
+      { kind: "modseq", scope: "", sent: false, last: 1 },
     ]);
   });
 });
@@ -746,6 +746,7 @@ describe("what the HTTP API shows afterwards", () => {
         ],
         sent: [],
         spam: [],
+        shared: [],
       },
     });
 
@@ -775,10 +776,8 @@ describe("what the HTTP API shows afterwards", () => {
     const stranger = server.client();
     await stranger.login(other.username, other.password);
     expect((await stranger.get("/api/mails/accounts")).body.body.received).toEqual([]);
-    expect((await stranger.get(`/api/mails/headers/${user.at("news")}`)).body).toEqual({
-      status: "failed",
-      message: "Invalid request. You may not look at other users' emails.",
-    });
+    // Naming the address reads the stranger's own rows, which hold none of it.
+    expect((await stranger.get(`/api/mails/headers/${user.at("news")}`)).body).toEqual({ status: "success", body: [] });
   });
 
   test("mail for the bare domain shows up for admin", async () => {

@@ -482,7 +482,7 @@ for (const keys of SEARCH_KEYS) {
 
 for (const sent of SENT) {
   for (const domain of ["alice.mydomain", "mydomain", "", undefined]) {
-    const built = httpQuery.buildAccountStatsQuery(USER, sent, domain, false);
+    const built = httpQuery.buildAccountStatsQuery(USER, sent, domain ? [domain] : undefined, false);
     record("accountStats", { args: enc({ sent, domain }), sql: built.sql, ...(await bind(built.values)) });
   }
 }
@@ -875,7 +875,13 @@ const users = {
   admin: { id: USER, username: "admin", email: "admin@mydomain" },
 };
 type UserName = keyof typeof users;
-const storeOf = (user: UserName) => new Store(new SignedUser(users[user]));
+// A plain login on the user's own domain, as the session opens one.
+const ownDomainOf = (user: UserName) => (user === "admin" ? "mydomain" : `${user}.mydomain`);
+const storeOf = (user: UserName) =>
+  new Store(new SignedUser(users[user]), {
+    accountDomains: [ownDomainOf(user)],
+    primaryDomain: ownDomainOf(user),
+  });
 
 const mailboxRow = (name: string, overrides: Row = {}): Row => ({
   mailbox_id: `mailbox-${name}`,

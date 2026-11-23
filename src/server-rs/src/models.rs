@@ -38,8 +38,6 @@ impl User {
             token: self.token.clone(),
             expiry: self.expiry.clone(),
             password_version: self.password_version,
-            is_read_only: None,
-            authenticated_as: None,
         })
     }
 }
@@ -58,13 +56,6 @@ pub struct SignedUser {
     /// before a password rotation fails its next comparison.
     #[serde(rename = "passwordVersion", skip_serializing_if = "Option::is_none", default)]
     pub password_version: Option<i64>,
-    /// True when the session authenticated as the read-only account: every
-    /// read sees the owner's data, every mutating surface refuses.
-    #[serde(rename = "isReadOnly", skip_serializing_if = "Option::is_none", default)]
-    pub is_read_only: Option<bool>,
-    /// The username the caller authenticated as, before the read-only remap.
-    #[serde(rename = "authenticatedAs", skip_serializing_if = "Option::is_none", default)]
-    pub authenticated_as: Option<String>,
 }
 
 impl SignedUser {
@@ -79,13 +70,7 @@ impl SignedUser {
             token: None,
             expiry: None,
             password_version: None,
-            is_read_only: None,
-            authenticated_as: None,
         }
-    }
-
-    pub fn read_only(&self) -> bool {
-        self.is_read_only == Some(true)
     }
 }
 

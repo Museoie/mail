@@ -3,8 +3,7 @@ import "./config";
 import {
   initializePostgres,
   bootMaintenance,
-  initializeAdminUser,
-  initializeAdminReadOnlyUser,
+  initializeDomains,
   push,
   initializeImap,
   initializeSmtp,
@@ -61,8 +60,7 @@ const start = async () => {
   // binds, and the provider is first contacted by the first sign-in.
   initializeSso();
   await initializePostgres();
-  await initializeAdminUser();
-  await initializeAdminReadOnlyUser();
+  await initializeDomains();
   push.initPush();
   const httpServer = await initializeHttp();
   const smtpServers = await initializeSmtp();

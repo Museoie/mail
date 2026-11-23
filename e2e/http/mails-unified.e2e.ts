@@ -165,12 +165,12 @@ describe("GET /api/mails/unified — the full list", () => {
 });
 
 describe("GET /api/mails/unified for admin", () => {
-  test("covers @mail.test addresses, not @admin.mail.test ones", async () => {
+  test("covers the addresses of both its domains, not users' ones", async () => {
     const admin = await adminMailbox(server);
     const direct = await admin.mail({ subject: "bare domain", to: [addr("info@mail.test")], date: "2026-01-02T00:00:00Z" });
-    await admin.mail({ subject: "admin subdomain", to: [addr("info@admin.mail.test")], date: "2026-01-01T00:00:00Z" });
+    const sub = await admin.mail({ subject: "admin subdomain", to: [addr("info@admin.mail.test")], date: "2026-01-01T00:00:00Z" });
     await admin.mail({ subject: "a user's address", to: [addr("x@someone.mail.test")] });
-    expect(await unified(admin)).toEqual([headerOf(direct)]);
+    expect(await unified(admin)).toEqual([headerOf(direct), headerOf(sub)]);
   });
 });
 

@@ -4,20 +4,22 @@
 use serde_json::{json, Map, Value};
 
 use super::snippet::build_snippet;
+use crate::domains::AddressOnDomains;
 use crate::js;
 use crate::models::SignedUser;
 use crate::postgres::repositories::mails::http::{
     self as repository, GetMailHeadersOptions, ListCursor, MailHeaderResult, UnifiedMailHeadersOptions,
 };
 use crate::postgres::DbResult;
-use crate::util::{get_domain, recipient_username};
 
 /// Which per-account list to read.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GetMailsOptions {
     pub sent: bool,
     pub saved: bool,
     pub spam: bool,
+    /// Only the mail of these of the owner's domains: a viewer's read.
+    pub domains: Option<Vec<String>>,
 }
 
 /// What a delta answers: rows changed since, ids gone since, and when to ask from next.
@@ -94,15 +96,15 @@ fn snippet_of(row: &Map<String, Value>) -> Option<Value> {
     build_snippet(column(row, "text_prefix").as_str()).map(Value::String)
 }
 
-fn is_recipient_of(entry: &Value, username: &str, domain: &str) -> bool {
-    entry
-        .get("address")
-        .and_then(Value::as_str)
-        .is_some_and(|address| recipient_username(address, domain).as_deref() == Some(username))
+fn is_recipient_in(entry: &Value, readers: &AddressOnDomains) -> bool {
+    entry.get("address").and_then(Value::as_str).is_some_and(|address| readers.matches(address))
 }
 
-/// A row's `envelopeTo` as its owner may see it: a received row stores every recipient, Bcc included.
-fn envelope_to_of(row: &Map<String, Value>, username: &str) -> Option<Value> {
+/// A received row's `envelopeTo` as its reader may see it. Every owner a
+/// message is delivered to stores the whole envelope, Bcc recipients on other
+/// people's domains included, so only the recipients on the reader's domains
+/// are shown: the owner's own domains, or for a viewer the domain they view.
+pub fn envelope_to_of(row: &Map<String, Value>, readers: &AddressOnDomains) -> Option<Value> {
     let value = column(row, "envelope_to");
     if !js::is_truthy(value) {
         return None;
@@ -110,12 +112,11 @@ fn envelope_to_of(row: &Map<String, Value>, username: &str) -> Option<Value> {
     if js::is_truthy(column(row, "sent")) {
         return Some(json!({ "value": value, "text": "" }));
     }
-    let domain = get_domain();
     let entries = match value {
         Value::Array(entries) => entries.as_slice(),
         entry => std::slice::from_ref(entry),
     };
-    let own: Vec<&Value> = entries.iter().filter(|entry| is_recipient_of(entry, username, &domain)).collect();
+    let own: Vec<&Value> = entries.iter().filter(|entry| is_recipient_in(entry, readers)).collect();
     Some(json!({ "value": own, "text": "" }))
 }
 
@@ -128,11 +129,11 @@ fn has_length(value: &Value) -> bool {
     }
 }
 
-/// A list row as `username`, the row's owner, sees it, in the shape and key
+/// A list row as its reader sees it (`readers` as for [`envelope_to_of`]), in the shape and key
 /// order the client reads: `id, subject, date, from?, to?, cc?, bcc?,
 /// envelopeTo?, read, saved, sent, insight, snippet?, messageId?, inReplyTo?,
 /// references?`.
-pub fn to_mail_header_data(row: &MailHeaderResult, username: &str) -> Map<String, Value> {
+pub fn to_mail_header_data(row: &MailHeaderResult, readers: &AddressOnDomains) -> Map<String, Value> {
     let mut header = Map::new();
     header.insert("id".into(), column(row, "mail_id").clone());
     header.insert("subject".into(), subject_of(row));
@@ -141,7 +142,7 @@ pub fn to_mail_header_data(row: &MailHeaderResult, username: &str) -> Map<String
     insert_some(&mut header, "to", address_field(row, "to_address", "to_text"));
     insert_some(&mut header, "cc", address_field(row, "cc_address", "cc_text"));
     insert_some(&mut header, "bcc", address_field(row, "bcc_address", "bcc_text"));
-    insert_some(&mut header, "envelopeTo", envelope_to_of(row, username));
+    insert_some(&mut header, "envelopeTo", envelope_to_of(row, readers));
     header.insert("read".into(), bool_or_false(column(row, "read")));
     header.insert("saved".into(), bool_or_false(column(row, "saved")));
     header.insert("sent".into(), bool_or_false(column(row, "sent")));
@@ -162,10 +163,14 @@ pub fn to_mail_header_data(row: &MailHeaderResult, username: &str) -> Map<String
     header
 }
 
-/// A search row as `username`, its owner, sees it: `id, subject, date, from?,
+/// A search row as its owner sees it: `id, subject, date, from?,
 /// to?, read, saved, sent, insight, cc?, bcc?, envelopeTo?, highlight,
 /// snippet?, spam?`, with no thread ids.
-pub fn to_search_header_data(row: &MailHeaderResult, highlight: &Map<String, Value>, username: &str) -> Map<String, Value> {
+pub fn to_search_header_data(
+    row: &MailHeaderResult,
+    highlight: &Map<String, Value>,
+    readers: &AddressOnDomains,
+) -> Map<String, Value> {
     let mut header = Map::new();
     header.insert("id".into(), column(row, "mail_id").clone());
     header.insert("subject".into(), subject_of(row));
@@ -178,7 +183,7 @@ pub fn to_search_header_data(row: &MailHeaderResult, highlight: &Map<String, Val
     header.insert("insight".into(), column(row, "insight").clone());
     insert_some(&mut header, "cc", address_field(row, "cc_address", "cc_text"));
     insert_some(&mut header, "bcc", address_field(row, "bcc_address", "bcc_text"));
-    insert_some(&mut header, "envelopeTo", envelope_to_of(row, username));
+    insert_some(&mut header, "envelopeTo", envelope_to_of(row, readers));
     header.insert("highlight".into(), Value::Object(highlight.clone()));
     insert_some(&mut header, "snippet", snippet_of(row));
     if js::is_truthy(column(row, "is_spam")) {
@@ -188,13 +193,20 @@ pub fn to_search_header_data(row: &MailHeaderResult, highlight: &Map<String, Val
 }
 
 fn header_options(options: GetMailsOptions) -> GetMailHeadersOptions {
-    GetMailHeadersOptions { sent: options.sent, saved: options.saved, spam: options.spam, ..Default::default() }
+    GetMailHeadersOptions {
+        sent: options.sent,
+        saved: options.saved,
+        spam: options.spam,
+        domains: options.domains,
+        ..Default::default()
+    }
 }
 
-/// The ordered ids of a whole per-account list (newest first, at most 10000).
-pub async fn get_mail_header_ids(user: &SignedUser, address: &str, options: GetMailsOptions) -> DbResult<Vec<String>> {
+/// The ordered ids of a whole per-account list (newest first, at most 10000),
+/// from the rows of `store_id`: the user's own, or a viewed domain's owner's.
+pub async fn get_mail_header_ids(store_id: &str, address: &str, options: GetMailsOptions) -> DbResult<Vec<String>> {
     let options = GetMailHeadersOptions { from: Some(0), size: Some(FULL_LIST_SIZE), ..header_options(options) };
-    repository::get_mail_header_ids(&user.id, address, &options).await
+    repository::get_mail_header_ids(store_id, address, &options).await
 }
 
 /// One page of ids and where the next page starts.
@@ -206,14 +218,14 @@ pub struct MailHeaderPage {
 
 /// Up to `limit` ids of the list, starting after `after` (or at the top).
 pub async fn get_mail_header_page(
-    user: &SignedUser,
+    store_id: &str,
     address: &str,
     options: GetMailsOptions,
     limit: usize,
     after: Option<ListCursor>,
 ) -> DbResult<MailHeaderPage> {
     let options = GetMailHeadersOptions { after, ..header_options(options) };
-    let page = repository::get_mail_header_id_page(&user.id, address, &options, limit).await?;
+    let page = repository::get_mail_header_id_page(store_id, address, &options, limit).await?;
     Ok(MailHeaderPage { ids: page.ids, next: page.next })
 }
 
@@ -235,36 +247,47 @@ pub async fn get_unified_mail_header_ids(user: &SignedUser, addresses: &[String]
     repository::get_unified_mail_header_ids(&user.id, addresses, &options).await
 }
 
-/// The rows of `ids` in that order, a batch at a time, each mapped to its
-/// list row and handed to `sink`.
-pub async fn for_each_mail_header(user: &SignedUser, ids: &[String], mut sink: impl FnMut(Map<String, Value>)) -> DbResult<()> {
-    repository::get_mail_headers_by_ids(&user.id, ids, |rows| {
+/// The rows of `ids` in `store_id`'s rows, in that order, a batch at a time,
+/// each mapped to its list row and handed to `sink`.
+pub async fn for_each_mail_header(
+    store_id: &str,
+    ids: &[String],
+    readers: &AddressOnDomains,
+    mut sink: impl FnMut(Map<String, Value>),
+) -> DbResult<()> {
+    repository::get_mail_headers_by_ids(store_id, ids, |rows| {
         for row in &rows {
-            sink(to_mail_header_data(row, &user.username));
+            sink(to_mail_header_data(row, readers));
         }
     })
     .await
 }
 
 pub async fn get_mail_headers_delta(
-    user: &SignedUser,
+    store_id: &str,
     address: &str,
     options: GetMailsOptions,
     since: &str,
+    readers: &AddressOnDomains,
 ) -> MailHeadersDelta {
-    let delta = repository::get_mail_headers_delta(&user.id, address, &header_options(options), since).await;
+    let delta = repository::get_mail_headers_delta(store_id, address, &header_options(options), since).await;
     MailHeadersDelta {
         as_of: delta.as_of,
-        headers: delta.headers.iter().map(|row| Value::Object(to_mail_header_data(row, &user.username))).collect(),
+        headers: delta.headers.iter().map(|row| Value::Object(to_mail_header_data(row, readers))).collect(),
         expunged_ids: delta.expunged_ids,
     }
 }
 
-pub async fn get_unified_mail_headers_delta(user: &SignedUser, addresses: &[String], since: &str) -> MailHeadersDelta {
+pub async fn get_unified_mail_headers_delta(
+    user: &SignedUser,
+    addresses: &[String],
+    since: &str,
+    readers: &AddressOnDomains,
+) -> MailHeadersDelta {
     let delta = repository::get_unified_mail_headers_delta(&user.id, addresses, since).await;
     MailHeadersDelta {
         as_of: delta.as_of,
-        headers: delta.headers.iter().map(|row| Value::Object(to_mail_header_data(row, &user.username))).collect(),
+        headers: delta.headers.iter().map(|row| Value::Object(to_mail_header_data(row, readers))).collect(),
         expunged_ids: delta.expunged_ids,
     }
 }
@@ -291,7 +314,7 @@ mod tests {
                 "text_prefix": "Hello there\n> quoted",
                 "message_id": "<m@x>", "in_reply_to": null, "reference_ids": [],
             })),
-            "me",
+            &AddressOnDomains::new(&["x.test"]),
         );
         assert_eq!(
             serde_json::to_string(&header).unwrap(),
@@ -307,7 +330,7 @@ mod tests {
                 "insight": { "summary": ["s"] }, "text_prefix": "", "message_id": "",
                 "in_reply_to": "<p@x>", "reference_ids": ["<a>", "<b>"],
             })),
-            "me",
+            &AddressOnDomains::default(),
         );
         assert_eq!(
             serde_json::to_string(&header).unwrap(),
@@ -328,7 +351,7 @@ mod tests {
                 "text_prefix": "Body", "message_id": "<m@x>",
             })),
             &highlight,
-            "me",
+            &AddressOnDomains::default(),
         );
         let keys: Vec<&str> = header.keys().map(String::as_str).collect();
         assert_eq!(
@@ -342,19 +365,29 @@ mod tests {
     // other local recipient of the same delivery.
 
     fn at(local: &str, label: Option<&str>) -> Value {
-        let domain = get_domain();
+        let domain = crate::util::get_domain();
         match label {
             Some(label) => json!({ "address": format!("{local}@{label}.{domain}") }),
             None => json!({ "address": format!("{local}@{domain}") }),
         }
     }
 
+    /// The domains each user owns: their own name, and for admin the bare zone too.
+    fn own(username: &str) -> AddressOnDomains {
+        let domain = crate::util::get_domain();
+        if username == "admin" {
+            AddressOnDomains::new(&[domain.clone(), format!("admin.{domain}")])
+        } else {
+            AddressOnDomains::new(&[format!("{username}.{domain}")])
+        }
+    }
+
     fn envelope(envelope_to: Value, sent: bool, username: &str) -> Option<Value> {
-        envelope_to_of(&row(json!({ "envelope_to": envelope_to, "sent": sent })), username)
+        envelope_to_of(&row(json!({ "envelope_to": envelope_to, "sent": sent })), &own(username))
     }
 
     #[test]
-    fn a_received_envelope_keeps_only_the_addresses_delivered_to_its_owner() {
+    fn a_received_envelope_keeps_only_the_addresses_on_the_readers_domains() {
         let stored = json!([
             at("one", Some("alice")),
             at("hidden", Some("bob")),
@@ -369,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn admin_owns_the_bare_domain_and_its_own_label() {
+    fn every_domain_the_reader_owns_counts() {
         let stored = json!([at("hello", None), at("x", Some("admin")), at("y", Some("alice"))]);
         assert_eq!(
             envelope(stored, false, "admin"),

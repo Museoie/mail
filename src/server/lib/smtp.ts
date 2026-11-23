@@ -8,8 +8,7 @@ import type { ParsedAddress, ParsedAddressValue } from "./mime/address";
 import {
   saveMailHandler,
   sendMail,
-  getUser,
-  ADMIN_RO_USERNAME
+  getUser
 } from "server";
 import { IncomingMail, MailDataToSend } from "common";
 import {
@@ -24,7 +23,16 @@ import { verifyPassword } from "./verify-password";
 import { getSso } from "./sso";
 import { checkAppPassword } from "./sso/app-password";
 import { plainTextToHtml } from "./mails/text-to-html";
-import { addressToUsername, getUserDomain, isLocalAddress } from "./util";
+import { isLocalAddress } from "./util";
+import {
+  defaultDomain,
+  domainOfAddress,
+  isInServedZone,
+  ownedDomainNames,
+  parseScopedLogin,
+  resolveDeliveryDomain
+} from "./domains";
+import { findDomain, getDomainAccess } from "./postgres/repositories/domains";
 import { sendAlarm } from "./alarm";
 import { isPeerCertRejection } from "./peer-cert-rejection";
 import { logger } from "./logger";
@@ -169,7 +177,10 @@ export const onAuth: SmtpServerOptions["onAuth"] = async (auth, session, cb) => 
 
   const ip = session.remoteAddress ?? "unknown";
 
-  const { username, password } = auth;
+  // `bob@example.com` signs bob in to send only from example.com, which bob
+  // has to own; plain `bob` sends from any domain bob owns.
+  const { username, domain: scopeDomain } = parseScopedLogin(auth.username);
+  const { password } = auth;
   // The attempted identity: failures accumulate per (ip, account) and the
   // success below forgives only this account's own bucket. The per-IP
   // aggregate is never reset here, so alternating accounts from one IP
@@ -179,6 +190,30 @@ export const onAuth: SmtpServerOptions["onAuth"] = async (auth, session, cb) => 
   if (isAuthRateLimited(ip, account)) {
     return cb(new Error("Too many failed authentication attempts"));
   }
+
+  // A scope names a domain the person must own: a viewer reads a domain and
+  // never sends as it. Refused like a wrong password, so the answer says
+  // nothing about which half of the login was wrong.
+  const grant = async (userId: string, passwordVersion: number) => {
+    if (scopeDomain) {
+      const access = await getDomainAccess(userId, scopeDomain);
+      if (access?.role !== "owner") {
+        await recordAuthFailure(ip, account);
+        return cb(null, { user: undefined });
+      }
+      (session as DomainScopedSmtpSession).scopeDomain = access.name;
+    }
+    // Scoped reset: forgive only the authenticating account's own bucket. The
+    // per-IP aggregate keeps its count, so a success here cannot wipe another
+    // account's failures from the same IP.
+    resetAuthFailures(ip, account);
+    // Credential-revocation fence: stamp the credential row's current
+    // generation onto the connection. The server only copies `response.user`
+    // onto the session, so the stamp goes on the session object directly;
+    // the per-command gates below re-check it.
+    (session as VersionStampedSmtpSession).passwordVersion = passwordVersion;
+    return cb(null, { user: username });
+  };
 
   const sso = getSso();
   // While single sign-on and local passwords are both on (a migration), the
@@ -199,24 +234,12 @@ export const onAuth: SmtpServerOptions["onAuth"] = async (auth, session, cb) => 
 
     const signedUser = user?.getSigned();
     if (user && signedUser && pwMatches) {
-      // Scoped reset: forgive only the authenticating account's own bucket. The
-      // per-IP aggregate keeps its count, so a success here cannot wipe another
-      // account's failures from the same IP.
-      resetAuthFailures(ip, account);
-      // Credential-revocation fence: stamp the credential row's
-      // current generation onto the connection. The server only copies
-      // `response.user` onto the session, so the stamp goes on the session
-      // object directly; the per-command gates below re-check it.
-      (session as VersionStampedSmtpSession).passwordVersion =
-        user.passwordVersion ?? 1;
-      // Audit line names the original credential. Read-only sessions pass this
-      // gate and are refused later at the single mutating gate this surface
-      // has, `onMailFrom` (below) — matching HTTP and IMAP where the read-only
-      // credential logs in but is refused at every write.
-      if (username === ADMIN_RO_USERNAME) {
-        logger.info("SMTP AUTH success (read-only)", { authenticatedAs: username, ip });
+      try {
+        return await grant(signedUser.id, user.passwordVersion ?? 1);
+      } catch (err) {
+        logger.error("SMTP: authentication lookup failed", { remoteAddress: ip }, err);
+        return cb(new LookupFailedError());
       }
-      return cb(null, { user: username });
     }
     if (!sso) {
       await recordAuthFailure(ip, account);
@@ -236,40 +259,43 @@ export const onAuth: SmtpServerOptions["onAuth"] = async (auth, session, cb) => 
     await recordAuthFailure(ip, account);
     return cb(null, { user: undefined });
   }
-  resetAuthFailures(ip, account);
-  (session as VersionStampedSmtpSession).passwordVersion = appPassword.passwordVersion;
-  cb(null, { user: username });
+  try {
+    return await grant(appPassword.user.id, appPassword.passwordVersion);
+  } catch (err) {
+    logger.error("SMTP: authentication lookup failed", { remoteAddress: ip }, err);
+    return cb(new LookupFailedError());
+  }
 };
 
 /**
- * Refuses MAIL FROM for a session authenticated with the read-only credential
- * — SMTP submission is a mutating action (writes a sent-mail row and hands the
- * message to Mailgun for non-local recipients). 550 keeps this in the "policy
- * denied" family rather than the "server error" family that would train
- * clients to retry.
+ * Starts a transaction: re-checks the credential, and for an authenticated
+ * session records whether the sender names a domain this host serves, which
+ * `onData` (synchronous, so it cannot look it up itself) reads to choose the
+ * submission lane.
  */
 export const onMailFrom: SmtpServerOptions["onMailFrom"] = async (
-  _address: SmtpAddress,
+  address: SmtpAddress,
   session: SmtpSession,
   cb: (err?: Error | null) => void
 ) => {
-  if (session.user === ADMIN_RO_USERNAME) {
-    const err = new Error("READ-ONLY user cannot send") as Error & {
-      responseCode?: number;
-    };
-    err.responseCode = 550;
-    return cb(err);
-  }
+  const scoped = session as DomainScopedSmtpSession;
+  scoped.servedRecipients = new Set();
+  scoped.mailFromServed = false;
   // Credential-revocation fence: an authenticated connection
   // whose credential rotated after AUTH loses its grant at this command.
   // The server discards the returned promise, so every path ends in `cb`.
   try {
     await checkSmtpCredentialVersion(session);
+    if (session.user) scoped.mailFromServed = await isServedDomain(domainOfAddress(address.address));
   } catch (err) {
     return cb(err instanceof Error ? err : new Error(String(err)));
   }
   return cb();
 };
+
+/** Whether this host receives mail for `domain`: the served zone or a domain row. */
+const isServedDomain = async (domain: string): Promise<boolean> =>
+  !!domain && (isInServedZone(domain) || !!(await findDomain(domain)));
 
 /**
  * RFC 5321 §3.6.1 gives 550 to a message this host will not relay — neither
@@ -277,6 +303,18 @@ export const onMailFrom: SmtpServerOptions["onMailFrom"] = async (
  * family rather than the "server error" family that would train a client to
  * retry, matching `onMailFrom`'s refusal above.
  */
+/**
+ * An authenticated user who owns no domain (or not the one their login is
+ * scoped to) has nothing to send from. Permanent, like a relay refusal.
+ */
+class NoSendingDomainError extends Error {
+  responseCode = 550;
+
+  constructor() {
+    super("5.7.1 No domain to send from");
+  }
+}
+
 class RelayDeniedError extends Error {
   responseCode = 550;
 
@@ -364,6 +402,19 @@ interface VersionStampedSmtpSession extends SmtpSession {
 }
 
 /**
+ * What `onAuth`, `onMailFrom` and `onRcptTo` learn about a session's domains,
+ * for the handlers after them: `onData` is synchronous and cannot look it up.
+ */
+interface DomainScopedSmtpSession extends SmtpSession {
+  /** The one domain a `user@domain` login sends from. */
+  scopeDomain?: string;
+  /** Whether this transaction's MAIL FROM names a domain this host serves. */
+  mailFromServed?: boolean;
+  /** This transaction's envelope recipients this host delivers into, lower-cased. */
+  servedRecipients?: Set<string>;
+}
+
+/**
  * Credential-revocation fence for SMTP: the generation stamped
  * at AUTH time is compared against the credential row's current version on
  * every authenticated command, so a connection a sweep could not reach —
@@ -445,14 +496,17 @@ class AbandonedTransactionError extends Error {
 }
 
 /**
- * Refuses a recipient inside the served zone that maps onto no account.
+ * Accepts a recipient this host delivers into (a domain row, or an account's
+ * own name under the served zone) and refuses one inside the served zone that
+ * maps onto no account.
  *
  * `isLocalAddress` answers by label, so every `<anything>.$EMAIL_DOMAIN` is
- * this host's to answer for, while only the labels {@link addressToUsername}
- * maps onto a real account have a mailbox behind them. Deciding that here is
- * what keeps the set of recipients answered `250` equal to the set stored for:
- * at DATA the message would already have been transferred, and the save path
- * skips an unresolvable username silently.
+ * this host's to answer for, while only the names {@link resolveDeliveryDomain}
+ * finds have a mailbox behind them. Deciding that here is what keeps the set
+ * of recipients answered `250` equal to the set stored for: at DATA the
+ * message would already have been transferred, and the save path skips an
+ * unresolvable recipient silently. The accepted ones are recorded on the
+ * session for {@link onData}, which cannot look them up itself.
  *
  * A foreign recipient is not this host's to judge and passes — the relay
  * decision belongs to {@link onData}, which needs the envelope complete.
@@ -481,14 +535,24 @@ export const onRcptTo: SmtpServerOptions["onRcptTo"] = async (
 
     const { EMAIL_DOMAIN } = process.env;
     if (!EMAIL_DOMAIN) return cb();
-    if (!isLocalAddress(address.address, EMAIL_DOMAIN)) return cb();
 
-    if (isRecipientProbeRateLimited(ip)) return cb(new TooManyProbesError());
+    // The budget guards the names under the served zone, the only addresses a
+    // refusal charges to it: they are account names. Any other domain is
+    // looked up freely, since which domains a host serves is public in DNS.
+    const local = isLocalAddress(address.address, EMAIL_DOMAIN);
+    if (local && isRecipientProbeRateLimited(ip)) return cb(new TooManyProbesError());
 
-    const username = addressToUsername(address.address);
-    const user = username ? await getUser({ username }) : undefined;
-    if (user) return cb();
+    const delivery = await resolveDeliveryDomain(address.address);
+    if (delivery) {
+      const scoped = session as DomainScopedSmtpSession;
+      (scoped.servedRecipients ??= new Set()).add(address.address.trim().toLowerCase());
+      return cb();
+    }
+    // A foreign recipient is not this host's to judge: the relay decision
+    // belongs to `onData`, which needs the envelope complete.
+    if (!local) return cb();
 
+    const username = domainOfAddress(address.address);
     logger.warn("SMTP: refused a recipient with no mailbox", {
       remoteAddress: ip,
       username
@@ -675,8 +739,14 @@ export const onData = (
     return cb(new Error("Email service not configured"));
   }
 
+  // A recipient under the served zone, or one `onRcptTo` found a domain row
+  // for (a domain someone added and verified).
+  const { servedRecipients, mailFromServed } = session as DomainScopedSmtpSession;
   const isIncomingEmail = session.envelope.rcptTo.some((addr) => {
-    return isLocalAddress(addr.address, EMAIL_DOMAIN);
+    return (
+      isLocalAddress(addr.address, EMAIL_DOMAIN) ||
+      !!servedRecipients?.has(addr.address.trim().toLowerCase())
+    );
   });
 
   // `mailFrom` is a value any sender chooses freely, so a local one selects
@@ -689,7 +759,7 @@ export const onData = (
   const isOutgoingEmail =
     !!session.user &&
     typeof from !== "boolean" &&
-    isLocalAddress(from.address, EMAIL_DOMAIN);
+    (isLocalAddress(from.address, EMAIL_DOMAIN) || !!mailFromServed);
 
   if (!isIncomingEmail && !isOutgoingEmail) {
     logger.warn("SMTP: refused to relay a message with no local party", {
@@ -797,12 +867,20 @@ const addressList = (
 
 interface OutgoingSender {
   sender: string;
+  /** The domain the sender's address is on: one of the domains it may send from. */
+  domain: string;
   recipients: string[];
 }
 
 /**
- * Resolves which of the user's accounts an SMTP submission is sent as, given
- * the parsed `To:` addresses in `addressedTo`.
+ * Resolves which of the user's addresses an SMTP submission is sent as, given
+ * the domains it may send from (`domains`, the default first) and the parsed
+ * `To:` addresses in `addressedTo`.
+ *
+ * The default identity is `<username>@<default domain>`. A `From` on any of
+ * the domains picks that address; a client that can only send as the default
+ * identity picks another one by adding it as a Cc or Bcc recipient, which is
+ * then dropped from the delivery.
  *
  * Clients strip `Bcc:` before DATA and carry those addresses only in the
  * envelope, so a Cc and a Bcc cannot be told apart here and both select. `To:`
@@ -811,42 +889,49 @@ interface OutgoingSender {
  */
 export const resolveOutgoingSender = (
   username: string,
-  userDomain: string,
+  domains: string[],
   from: { header?: string; envelope?: string },
   recipients: string[],
   addressedTo: string[]
 ): OutgoingSender => {
   const normalize = (address: string | undefined) =>
     address?.trim().toLowerCase();
+  const sendable = new Set(domains.map((domain) => domain.toLowerCase()));
+  const defaultDomain = domains[0]?.toLowerCase() ?? "";
   const accountOf = (address: string | undefined) => {
     const parts = splitAddress(normalize(address) ?? "");
-    if (!parts || parts.domain !== userDomain.toLowerCase()) return undefined;
-    return parts.local;
+    if (!parts || !sendable.has(parts.domain)) return undefined;
+    return parts;
   };
+  const isDefaultIdentity = (account: { local: string; domain: string }) =>
+    account.local === username && account.domain === defaultDomain;
 
   const fromAccount = accountOf(from.header) || accountOf(from.envelope);
-  if (fromAccount && fromAccount !== username) {
-    return { sender: fromAccount, recipients };
+  if (fromAccount && !isDefaultIdentity(fromAccount)) {
+    return { sender: fromAccount.local, domain: fromAccount.domain, recipients };
   }
 
   const addressed = new Set(addressedTo.map(normalize));
   const selected = recipients.findIndex((address) => {
     const account = accountOf(address);
     return (
-      !!account && account !== username && !addressed.has(normalize(address))
+      !!account && !isDefaultIdentity(account) && !addressed.has(normalize(address))
     );
   });
 
   if (selected === -1 || recipients.length === 1) {
-    const envelopeAccount = splitAddress(normalize(from.envelope) ?? "")?.local;
+    const envelopeLocal = splitAddress(normalize(from.envelope) ?? "")?.local;
     return {
-      sender: fromAccount || envelopeAccount || username,
+      sender: fromAccount?.local || envelopeLocal || username,
+      domain: fromAccount?.domain || defaultDomain,
       recipients
     };
   }
 
+  const chosen = accountOf(recipients[selected])!;
   return {
-    sender: accountOf(recipients[selected])!,
+    sender: chosen.local,
+    domain: chosen.domain,
     recipients: recipients.filter((_, index) => index !== selected)
   };
 };
@@ -927,9 +1012,26 @@ const onDataOutgoing = async (
     const mailFrom = session.envelope.mailFrom;
     const envelopeFrom =
       mailFrom && typeof mailFrom !== "boolean" ? mailFrom.address : undefined;
-    const { sender, recipients } = resolveOutgoingSender(
+    // A `user@domain` login sends from that one domain; a plain login from any
+    // domain the user owns, the default first.
+    const { scopeDomain } = session as DomainScopedSmtpSession;
+    const owned = await ownedDomainNames(signedUser.id);
+    if (message.refused) return;
+    const fallback = defaultDomain(owned, username);
+    const domains = scopeDomain
+      ? owned.filter((domain) => domain === scopeDomain)
+      : [...(fallback ? [fallback] : []), ...owned.filter((domain) => domain !== fallback)];
+    if (domains.length === 0) {
+      logger.info("SMTP: refused an outgoing message from a user with no domain", {
+        authenticatedAs: username,
+      });
+      message.drain();
+      return cb(new NoSendingDomainError());
+    }
+
+    const { sender, domain, recipients } = resolveOutgoingSender(
       username,
-      getUserDomain(username),
+      domains,
       { header: parsed.from?.value?.[0]?.address, envelope: envelopeFrom },
       session.envelope.rcptTo.map((addr) => addr.address),
       addressList(parsed.to)
@@ -950,6 +1052,7 @@ const onDataOutgoing = async (
       // let the recipient's client collapse its line breaks.
       html: parsed.html || (parsed.text ? plainTextToHtml(parsed.text) : ""),
       sender,
+      senderDomain: domain,
       senderFullName: parsed.from?.value?.[0]?.name || sender,
       // A reply written in a mail client keeps its place in the conversation:
       // the headers go out with it and onto the stored Sent copy.

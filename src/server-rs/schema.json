@@ -1,6 +1,6 @@
 {
-  "schemaHash": "cae4339fa43f22d9",
-  "maintenanceHash": "75bdaa16327bdd14",
+  "schemaHash": "933087e50e7b0f84",
+  "maintenanceHash": "5c0e3e8b8a322c67",
   "tables": [
     {
       "name": "users",
@@ -525,6 +525,98 @@
           "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
         ]
       ]
+    },
+    {
+      "name": "domains",
+      "createSql": "CREATE TABLE IF NOT EXISTS domains (\n      domain_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n      name VARCHAR(253) UNIQUE NOT NULL,\n      user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,\n      verified_at TIMESTAMPTZ,\n      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP\n    )",
+      "columns": [
+        [
+          "domain_id",
+          "UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+        ],
+        [
+          "name",
+          "VARCHAR(253) UNIQUE NOT NULL"
+        ],
+        [
+          "user_id",
+          "UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE"
+        ],
+        [
+          "verified_at",
+          "TIMESTAMPTZ"
+        ],
+        [
+          "created_at",
+          "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+      ]
+    },
+    {
+      "name": "domain_claims",
+      "createSql": "CREATE TABLE IF NOT EXISTS domain_claims (\n      claim_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n      name VARCHAR(253) NOT NULL,\n      user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,\n      token VARCHAR(64) NOT NULL,\n      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,\n      UNIQUE (name, user_id)\n    )",
+      "columns": [
+        [
+          "claim_id",
+          "UUID PRIMARY KEY DEFAULT gen_random_uuid()"
+        ],
+        [
+          "name",
+          "VARCHAR(253) NOT NULL"
+        ],
+        [
+          "user_id",
+          "UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE"
+        ],
+        [
+          "token",
+          "VARCHAR(64) NOT NULL"
+        ],
+        [
+          "created_at",
+          "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+      ]
+    },
+    {
+      "name": "domain_roles",
+      "createSql": "CREATE TABLE IF NOT EXISTS domain_roles (\n      domain_id UUID NOT NULL REFERENCES domains(domain_id) ON DELETE CASCADE,\n      user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,\n      role VARCHAR(16) NOT NULL CHECK (role IN ('viewer')),\n      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,\n      PRIMARY KEY (domain_id, user_id)\n    )",
+      "columns": [
+        [
+          "domain_id",
+          "UUID NOT NULL REFERENCES domains(domain_id) ON DELETE CASCADE"
+        ],
+        [
+          "user_id",
+          "UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE"
+        ],
+        [
+          "role",
+          "VARCHAR(16) NOT NULL CHECK (role IN ('viewer'))"
+        ],
+        [
+          "created_at",
+          "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+      ]
+    },
+    {
+      "name": "former_domains",
+      "createSql": "CREATE TABLE IF NOT EXISTS former_domains (\n      user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,\n      name VARCHAR(253) NOT NULL,\n      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,\n      PRIMARY KEY (user_id, name)\n    )",
+      "columns": [
+        [
+          "user_id",
+          "UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE"
+        ],
+        [
+          "name",
+          "VARCHAR(253) NOT NULL"
+        ],
+        [
+          "created_at",
+          "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+      ]
     }
   ],
   "searchVectorDdl": [
@@ -662,6 +754,18 @@
     {
       "name": "idx_mailgun_events_occurred_at",
       "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_mailgun_events_occurred_at ON mailgun_events (occurred_at)"
+    },
+    {
+      "name": "idx_domains_user_id",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_domains_user_id ON domains (user_id)"
+    },
+    {
+      "name": "idx_domain_claims_user_id",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_domain_claims_user_id ON domain_claims (user_id)"
+    },
+    {
+      "name": "idx_domain_roles_user_id",
+      "sql": "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_domain_roles_user_id ON domain_roles (user_id)"
     },
     {
       "name": "idx_mails_search",

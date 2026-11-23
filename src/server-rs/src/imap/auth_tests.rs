@@ -14,7 +14,6 @@ use serde_json::{json, Value};
 
 use super::*;
 use crate::imap::test_support::{self, FakeAuthBackend as FakeBackend, FakeAuthCall as Call};
-use crate::read_only::{ADMIN_RO_USERNAME, ADMIN_USERNAME};
 use crate::sso::{build_sso, ClientOverrides, SsoEnv};
 
 const REMOTE_IP: &str = "203.0.113.7";
@@ -537,57 +536,77 @@ mod username_enumeration_resistance {
 }
 
 // ---------------------------------------------------------------------------
-// The read-only credential
+// Domain-scoped login
 // ---------------------------------------------------------------------------
 
-mod read_only_credential {
+mod domain_scoped_login {
     use super::*;
+    use crate::postgres::repositories::domains::{DomainAccess, DomainRole};
 
-    const RO_PASSWORD: &str = "ro-secret";
+    const PASSWORD: &str = "auditor-secret";
 
-    fn read_only_accounts(with_admin: bool) -> FakeBackend {
-        let mut users = vec![account("user-ro", ADMIN_RO_USERNAME, &hash_of(RO_PASSWORD))];
-        if with_admin {
-            let mut admin = account("user-admin", ADMIN_USERNAME, "unused");
-            admin.token = Some("reset-token".into());
-            admin.expiry = Some("2026-01-01".into());
-            users.push(admin);
+    fn access(role: DomainRole, name: &str) -> DomainAccess {
+        let (owner_id, owner_username) =
+            if role == DomainRole::Owner { ("user-auditor", "auditor") } else { ("user-owner", "owner") };
+        DomainAccess {
+            domain_id: "domain-1".into(),
+            name: name.into(),
+            owner_id: owner_id.into(),
+            owner_username: owner_username.into(),
+            role,
+            verified_at: None,
         }
-        FakeBackend::with_users(users)
+    }
+
+    /// The person (with a password) and the owner of the domains they view.
+    fn backend(roles: Vec<DomainAccess>) -> FakeBackend {
+        let users = vec![account("user-auditor", "auditor", &hash_of(PASSWORD)), account("user-owner", "owner", "unused")];
+        FakeBackend {
+            domains: roles.into_iter().map(|access| ("user-auditor".to_string(), access)).collect(),
+            ..FakeBackend::with_users(users)
+        }
     }
 
     #[tokio::test]
-    async fn binds_the_session_to_the_effective_account_while_attributing_the_credential() {
-        let backend = read_only_accounts(true);
+    async fn opens_the_owners_store_read_only_for_a_domain_the_person_views() {
+        let backend = backend(vec![access(DomainRole::Viewer, "example.com")]);
         let (result, connection) =
-            authenticate("E1", "PLAIN", Some(&plain(ADMIN_RO_USERNAME, RO_PASSWORD)), &backend).await;
+            authenticate("E1", "PLAIN", Some(&plain("auditor@example.com", PASSWORD)), &backend).await;
 
         let result = result.expect("signed in");
         assert!(result.is_read_only);
-        assert_eq!(result.authenticated_as, ADMIN_RO_USERNAME);
-        assert_eq!(result.user.id, "user-admin");
-        assert_eq!(result.user.username, ADMIN_USERNAME);
-        assert_eq!(result.user.is_read_only, Some(true));
-        assert_eq!(result.user.authenticated_as.as_deref(), Some(ADMIN_RO_USERNAME));
-        // The effective account's password-reset credential is not carried
-        // onto a session the read-only caller holds.
-        assert_eq!(result.user.token, None);
-        assert_eq!(result.user.expiry, None);
+        // The credential row, and the rate-limit bucket, are the person's.
+        assert_eq!(result.authenticated_as, "auditor");
+        assert!(backend.called(|call| *call == Call::DomainAccess("user-auditor".into(), "example.com".into())));
+        assert_eq!(result.user.id, "user-owner");
+        assert_eq!(result.store_scope.domains, Some(vec!["example.com".to_string()]));
+        assert_eq!(
+            result.scope,
+            Some(SessionScope {
+                user_id: "user-auditor".into(),
+                domain: "example.com".into(),
+                role: DomainRole::Viewer,
+                owner_id: "user-owner".into(),
+            })
+        );
+        let (ip, account) = ip_and("auditor");
+        assert!(backend.called(|call| *call == Call::Reset(ip.clone(), account.clone())));
         assert_eq!(connection.writes(), [format!("E1 OK [CAPABILITY {CAPABILITIES}] AUTHENTICATE completed\r\n")]);
     }
 
     #[tokio::test]
-    async fn attributes_the_audit_line_to_the_credential_not_the_effective_account() {
-        let backend = read_only_accounts(true);
-        authenticate("E2-audit", "PLAIN", Some(&plain(ADMIN_RO_USERNAME, RO_PASSWORD)), &backend).await;
+    async fn attributes_the_audit_line_to_the_person_and_names_the_domain() {
+        let backend = backend(vec![access(DomainRole::Viewer, "example.com")]);
+        authenticate("E2-audit", "PLAIN", Some(&plain("auditor@example.com", PASSWORD)), &backend).await;
 
         assert_eq!(
             audit_line("IMAP AUTHENTICATE success", "E2-audit"),
             Some(json!({
                 "component": "imap",
                 "tag": "E2-audit",
-                "authenticatedAs": ADMIN_RO_USERNAME,
-                "effectiveUsername": ADMIN_USERNAME,
+                "authenticatedAs": "auditor",
+                "scopeDomain": "example.com",
+                "effectiveUsername": "owner",
                 "isReadOnly": true,
                 "remote": format!("{REMOTE_IP}:45678"),
                 "mechanism": "PLAIN",
@@ -596,74 +615,80 @@ mod read_only_credential {
     }
 
     #[tokio::test]
-    async fn refuses_the_read_only_credential_when_the_effective_account_does_not_exist() {
-        let backend = read_only_accounts(false);
+    async fn opens_the_persons_own_store_filtered_to_the_domain_for_a_domain_they_own() {
+        let backend = backend(vec![access(DomainRole::Owner, "example.com")]);
+        let (result, _) = authenticate("E3", "PLAIN", Some(&plain("auditor@example.com", PASSWORD)), &backend).await;
+
+        let result = result.expect("signed in");
+        assert!(!result.is_read_only);
+        assert_eq!(result.user.id, "user-auditor");
+        assert_eq!(result.store_scope.domains, Some(vec!["example.com".to_string()]));
+        assert_eq!(result.store_scope.primary_domain, "example.com");
+    }
+
+    #[tokio::test]
+    async fn refuses_a_domain_the_person_holds_no_role_on_like_a_wrong_password() {
+        let backend = backend(vec![]);
         let (result, connection) =
-            authenticate("E3", "PLAIN", Some(&plain(ADMIN_RO_USERNAME, RO_PASSWORD)), &backend).await;
+            authenticate("E4", "PLAIN", Some(&plain("auditor@example.com", PASSWORD)), &backend).await;
 
         assert!(result.is_none());
-        assert_eq!(connection.writes(), [invalid("E3")]);
-        let (ip, account) = ip_and(ADMIN_RO_USERNAME);
+        assert_eq!(connection.writes(), [invalid("E4")]);
+        let (ip, account) = ip_and("auditor");
         assert!(backend.called(|call| *call == Call::Record(ip.clone(), account.clone())));
         assert!(!backend.called(|call| matches!(call, Call::Reset(..))));
-        assert!(!connection.closed());
     }
 
     #[tokio::test]
     async fn closes_the_connection_when_that_refusal_crosses_the_threshold() {
-        let backend = FakeBackend { record_limits: true, ..read_only_accounts(false) };
+        let backend = FakeBackend { record_limits: true, ..backend(vec![]) };
         let (result, connection) =
-            authenticate("E4", "PLAIN", Some(&plain(ADMIN_RO_USERNAME, RO_PASSWORD)), &backend).await;
+            authenticate("E5", "PLAIN", Some(&plain("auditor@example.com", PASSWORD)), &backend).await;
 
         assert!(result.is_none());
-        assert_eq!(connection.writes(), [too_many("E4")]);
+        assert_eq!(connection.writes(), [too_many("E5")]);
         assert!(connection.closed());
     }
 
     #[tokio::test]
-    async fn applies_the_same_remap_to_login() {
-        let backend = read_only_accounts(true);
-        let (result, connection) = login("E5-audit", &[ADMIN_RO_USERNAME, RO_PASSWORD], &backend).await;
+    async fn never_reads_the_role_when_the_password_is_wrong() {
+        let backend = backend(vec![access(DomainRole::Viewer, "example.com")]);
+        let (result, _) = authenticate("E6", "PLAIN", Some(&plain("auditor@example.com", "wrong")), &backend).await;
+
+        assert!(result.is_none());
+        assert!(!backend.called(|call| matches!(call, Call::DomainAccess(..))));
+    }
+
+    #[tokio::test]
+    async fn reads_the_whole_store_of_a_plain_login_listing_its_primary_domain() {
+        let own = crate::domains::account_domain("auditor");
+        let backend = backend(vec![
+            access(DomainRole::Owner, &own),
+            access(DomainRole::Owner, "example.org"),
+            access(DomainRole::Viewer, "example.net"),
+        ]);
+        let (result, _) = authenticate("E7", "PLAIN", Some(&plain("auditor", PASSWORD)), &backend).await;
+
+        let result = result.expect("signed in");
+        assert!(!result.is_read_only);
+        assert_eq!(result.scope, None);
+        assert_eq!(result.user.id, "user-auditor");
+        assert!(!backend.called(|call| matches!(call, Call::DomainAccess(..))));
+        // Account folders are read back on the primary domain, so only its
+        // addresses are listed.
+        assert_eq!(result.store_scope, crate::imap::store::StoreScope::whole_store(&own));
+    }
+
+    #[tokio::test]
+    async fn applies_the_same_scoping_to_login() {
+        let backend = backend(vec![access(DomainRole::Viewer, "example.com")]);
+        let (result, connection) = login("E8", &["auditor@example.com", PASSWORD], &backend).await;
 
         let result = result.unwrap().expect("signed in");
         assert!(result.is_read_only);
-        assert_eq!(result.authenticated_as, ADMIN_RO_USERNAME);
-        assert_eq!(result.user.id, "user-admin");
-        assert_eq!(connection.writes(), [format!("E5-audit OK [CAPABILITY {CAPABILITIES}] LOGIN completed\r\n")]);
-        assert_eq!(
-            audit_line("IMAP LOGIN success", "E5-audit"),
-            Some(json!({
-                "component": "imap",
-                "tag": "E5-audit",
-                "authenticatedAs": ADMIN_RO_USERNAME,
-                "effectiveUsername": ADMIN_USERNAME,
-                "isReadOnly": true,
-                "remote": format!("{REMOTE_IP}:45678"),
-            }))
-        );
-    }
-
-    #[tokio::test]
-    async fn closes_the_login_connection_when_that_refusal_crosses_the_threshold() {
-        let backend = FakeBackend { record_limits: true, ..read_only_accounts(false) };
-        let (result, connection) = login("E7", &[ADMIN_RO_USERNAME, RO_PASSWORD], &backend).await;
-
-        assert!(result.unwrap().is_none());
-        assert_eq!(connection.writes(), [too_many("E7")]);
-        assert!(connection.closed());
-    }
-
-    #[tokio::test]
-    async fn refuses_the_read_only_credential_on_login_when_the_effective_account_does_not_exist() {
-        let backend = read_only_accounts(false);
-        let (result, connection) = login("E6", &[ADMIN_RO_USERNAME, RO_PASSWORD], &backend).await;
-
-        assert!(result.unwrap().is_none());
-        assert_eq!(connection.writes(), [invalid("E6")]);
-        let (ip, account) = ip_and(ADMIN_RO_USERNAME);
-        assert!(backend.called(|call| *call == Call::Record(ip.clone(), account.clone())));
-        assert!(!backend.called(|call| matches!(call, Call::Reset(..))));
-        assert!(!connection.closed());
+        assert_eq!(result.authenticated_as, "auditor");
+        assert_eq!(result.user.id, "user-owner");
+        assert_eq!(connection.writes(), [format!("E8 OK [CAPABILITY {CAPABILITIES}] LOGIN completed\r\n")]);
     }
 }
 
@@ -804,16 +829,32 @@ mod single_sign_on {
     }
 
     #[tokio::test]
-    async fn keeps_the_read_only_credentials_remap_on_the_local_path() {
-        let users = vec![
-            account("user-ro", ADMIN_RO_USERNAME, &hash_of("ro-secret")),
-            account("user-admin", ADMIN_USERNAME, "unused"),
-        ];
-        let backend = FakeBackend { sso: Some(sso(true)), ..FakeBackend::with_users(users) };
-        let (result, _) = authenticate("S7", "PLAIN", Some(&plain(ADMIN_RO_USERNAME, "ro-secret")), &backend).await;
+    async fn checks_the_app_password_for_the_person_and_scopes_it_like_a_local_password() {
+        use crate::postgres::repositories::domains::{DomainAccess, DomainRole};
+        let owner = account("user-owner", "owner", "unused");
+        let viewer = DomainAccess {
+            domain_id: "domain-1".into(),
+            name: "example.com".into(),
+            owner_id: "user-owner".into(),
+            owner_username: "owner".into(),
+            role: DomainRole::Viewer,
+            verified_at: None,
+        };
+        let backend = FakeBackend {
+            sso: Some(sso(false)),
+            app_password: accepted(),
+            domains: vec![("user-alice".into(), viewer)],
+            ..FakeBackend::with_users(vec![owner])
+        };
+        let (result, _) =
+            authenticate("S7", "PLAIN", Some(&plain("alice@example.com", APP_PASSWORD)), &backend).await;
 
+        // The provider is asked about the person, without the domain.
+        assert!(backend.called(|call| matches!(call, Call::AppPassword(username, ..) if username == "alice")));
+        assert!(backend.called(|call| *call == Call::DomainAccess("user-alice".into(), "example.com".into())));
         let result = result.expect("signed in");
         assert!(result.is_read_only);
-        assert_eq!(result.user.id, "user-admin");
+        assert_eq!(result.user.id, "user-owner");
+        assert_eq!(result.password_version, 4);
     }
 }

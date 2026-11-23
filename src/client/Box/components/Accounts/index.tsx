@@ -58,6 +58,7 @@ import {
 } from "./accountList";
 import { useAnchoredSelectedAccount } from "./useAnchoredSelectedAccount";
 import { opensAccountsAfterFolderChange } from "./accountsMenu";
+import { sharedAccountKeys, withSharedAccounts } from "./sharedAccounts";
 
 import "./index.scss";
 
@@ -76,7 +77,7 @@ export const fetchAccounts = async () => {
   const { status, body, message } = await call.get<AccountsGetResponse>(
     accountsQueryUrl
   );
-  if (status === "success") return body as AccountsGetResponse;
+  if (status === "success") return withSharedAccounts(body as AccountsGetResponse);
   else throw new Error(message);
 };
 
@@ -140,10 +141,11 @@ const Accounts = ({
   };
 
   const onSuccess = (data: AccountsGetResponse) => {
-    const newMails = data.received.reduce(
-      (acc, e) => acc + e.unread_doc_count,
-      0
-    );
+    // The badge counts the user's own new mail, not the domains they view.
+    const shared = sharedAccountKeys(data);
+    const newMails = data.received
+      .filter((e) => !shared.has(e.key))
+      .reduce((acc, e) => acc + e.unread_doc_count, 0);
 
     setNewMailsTotal(newMails);
 
@@ -254,6 +256,7 @@ const Accounts = ({
 
   if (query.isSuccess) {
     const { received = [], sent = [], spam = [] } = query.data || {};
+    const sharedKeys = sharedAccountKeys(query.data);
 
     const renderAccount = (data: Account, i: number) => {
       const accountName = data.key;
@@ -295,8 +298,10 @@ const Accounts = ({
       };
 
       const isSelected = selectedAccount === accountName;
+      const isShared = sharedKeys.has(accountName);
       const classes = ["tag", "cursor"];
       if (isSelected) classes.push("clicked");
+      if (isShared) classes.push("shared");
 
       // One full-width row per account: the name truncates instead of
       // wrapping, and the count sits at the row's end rather than over its
@@ -307,13 +312,16 @@ const Accounts = ({
           type="button"
           className={classes.join(" ")}
           aria-current={isSelected ? "true" : undefined}
-          title={accountName}
+          title={isShared ? `${accountName} (read-only)` : accountName}
           onClick={onClickAccount}
         >
           <span className="tag-text">
             <span className="account-name">{displayName}</span>
-            {duplicatedNames.has(displayName) ? (
-              <span className="account-address">{accountName}</span>
+            {duplicatedNames.has(displayName) || isShared ? (
+              <span className="account-address">
+                {accountName}
+                {isShared ? " · read-only" : ""}
+              </span>
             ) : null}
           </span>
           {badge.count ? (

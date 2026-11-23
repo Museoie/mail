@@ -5,17 +5,10 @@
 
 export const getDomain = () => process.env.EMAIL_DOMAIN || "mydomain";
 
-export const getUserDomain = (username: string) => {
-  const domain = getDomain();
-  if (username === "admin") return domain;
-  return `${username}.${domain}`;
-};
-
 /**
- * Whether this host is responsible for `address`: `domain` itself, or any
- * subdomain under it, which is the set {@link getUserDomain} draws from. The
- * protocol layer and the mail-save path both decide locality here, so the
- * envelopes answered for and the envelopes stored are the same set.
+ * Whether `address` is under the served zone `domain`: `domain` itself, or
+ * any subdomain under it, where every account's own name sits. A domain
+ * someone added is local too, by its domain row (`resolveDeliveryDomain`).
  */
 export const isLocalAddress = (address: string, domain: string) => {
   const parsedAddress = address.split("@");
@@ -25,33 +18,9 @@ export const isLocalAddress = (address: string, domain: string) => {
 };
 
 /**
- * The username whose mailbox receives mail for `address`. The inverse of
- * {@link getUserDomain}: `x@<domain>` and `x@admin.<domain>` are admin's, and
- * `x@bob.<domain>` is bob's. Returns the address's own domain for anything
- * outside the served domain, which matches no username.
- */
-export const addressToUsername = (address: string) => {
-  const domain = getDomain().toLowerCase();
-  const parsedAddress = address.split("@");
-  const domainInAddress = parsedAddress[parsedAddress.length - 1].toLowerCase();
-  const subDomain = domainInAddress.split(`.${domain}`)[0];
-  return subDomain === domain ? "admin" : subDomain;
-};
-
-/**
- * The username an envelope recipient is delivered to, or `undefined` for an
- * address outside `domain`: {@link isLocalAddress}, then
- * {@link addressToUsername}. Delivery files a message under each recipient's
- * user by this, and the mail lists show a received row's envelope only as far
- * as it names the row's own user by the same rule.
- */
-export const recipientUsername = (address: string, domain: string): string | undefined =>
-  isLocalAddress(address, domain) ? addressToUsername(address) : undefined;
-
-/**
- * Whether `username` can name a mailbox: {@link getUserDomain} makes it a DNS
- * label under the served domain and {@link addressToUsername} reads it back
- * lower-cased, so only a lower-case label routes mail to the account.
+ * Whether `username` can name a mailbox: the account's own domain is
+ * `<username>.<EMAIL_DOMAIN>`, so only a lower-case DNS label routes mail to
+ * the account.
  */
 export const isRoutableUsername = (username: string) =>
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(username);

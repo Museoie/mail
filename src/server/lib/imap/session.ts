@@ -34,6 +34,8 @@ import {
   unregisterSession,
 } from "./session-registry";
 import { getCredentialPasswordVersion } from "./credential-version";
+import type { SessionScope } from "./auth";
+import { getDomainAccess } from "../postgres/repositories/domains";
 
 // Extracted module helpers
 import { handleAuthenticate, handleLogin } from "./auth";
@@ -76,8 +78,9 @@ export class ImapSession {
   private throttler: Throttler = new Throttler(100, 1000);
   private authenticated: boolean = false;
   /**
-   * True when the authenticated caller used a read-only credential. Set once
-   * at auth time from the returned {@link import("./auth").AuthResult}. Every
+   * True when the login is scoped to a domain the person only views (the
+   * viewer role): the store is the owner's, and nothing in it is theirs to
+   * change. Set once at auth time from the returned {@link import("./auth").AuthResult}. Every
    * state-mutating IMAP command (STORE / COPY / MOVE / APPEND / EXPUNGE, and
    * mailbox CREATE / DELETE / RENAME / SUBSCRIBE / UNSUBSCRIBE) refuses with
    * `NO [READ-ONLY]` when this is set; the flag is scoped to this one IMAP
@@ -85,6 +88,11 @@ export class ImapSession {
    */
   private isReadOnlyUser: boolean = false;
   private authenticatedAs: string | null = null;
+  /**
+   * The domain a `user@domain` login is scoped to and the role it rests on,
+   * re-checked on every command so a revoked or moved role ends the session.
+   */
+  private scope: SessionScope | undefined = undefined;
   /**
    * The credential generation the connection was minted from.
    * Stamped at LOGIN/AUTHENTICATE time from the credential row; the
@@ -383,6 +391,7 @@ export class ImapSession {
       this.authenticated = result.authenticated;
       this.isReadOnlyUser = result.isReadOnly;
       this.authenticatedAs = result.authenticatedAs;
+      this.scope = result.scope;
       this.credentialPasswordVersion = result.passwordVersion;
       if (this.authenticated) registerAuthenticatedSession(this);
     }
@@ -402,6 +411,7 @@ export class ImapSession {
       this.authenticated = result.authenticated;
       this.isReadOnlyUser = result.isReadOnly;
       this.authenticatedAs = result.authenticatedAs;
+      this.scope = result.scope;
       this.credentialPasswordVersion = result.passwordVersion;
       if (this.authenticated) registerAuthenticatedSession(this);
     }
@@ -418,8 +428,22 @@ export class ImapSession {
   private allowMutation = (tag: string, command: string): boolean => {
     if (!this.isReadOnlyUser) return true;
     const attributedTo = this.authenticatedAs || "read-only";
+    const domain = this.scope?.domain ?? "this domain";
     this.write(
-      `${tag} NO [READ-ONLY] ${command} not permitted for read-only user (${attributedTo}).\r\n`
+      `${tag} NO [READ-ONLY] ${command} not permitted: ${attributedTo} can only read ${domain}.\r\n`
+    );
+    return false;
+  };
+
+  /**
+   * Guard for the commands that manage user-created mailboxes. Those hold
+   * the whole store's mail, so a login scoped to one domain neither lists
+   * nor manages them.
+   */
+  private allowMailboxManagement = (tag: string, command: string): boolean => {
+    if (!this.store?.isDomainScoped()) return true;
+    this.write(
+      `${tag} NO [CANNOT] ${command} is not available to a login scoped to one domain.\r\n`
     );
     return false;
   };
@@ -433,6 +457,7 @@ export class ImapSession {
       return this.write(`${tag} NO Not authenticated.\r\n`);
     }
     if (!this.allowMutation(tag, "CREATE")) return;
+    if (!this.allowMailboxManagement(tag, "CREATE")) return;
     return createMailbox(tag, mailbox, this.store, this.write);
   };
 
@@ -441,6 +466,7 @@ export class ImapSession {
       return this.write(`${tag} NO Not authenticated.\r\n`);
     }
     if (!this.allowMutation(tag, "DELETE")) return;
+    if (!this.allowMailboxManagement(tag, "DELETE")) return;
     return deleteMailbox(tag, mailbox, this.store, this.write);
   };
 
@@ -449,6 +475,7 @@ export class ImapSession {
       return this.write(`${tag} NO Not authenticated.\r\n`);
     }
     if (!this.allowMutation(tag, "RENAME")) return;
+    if (!this.allowMailboxManagement(tag, "RENAME")) return;
     return renameMailbox(tag, oldName, newName, this.store, this.write);
   };
 
@@ -839,7 +866,7 @@ export class ImapSession {
     }
     const current = await getCredentialPasswordVersion(this.authenticatedAs);
     // A credential whose row is gone is revoked, as a rotated one is.
-    if (current !== null && current <= this.credentialPasswordVersion) return true;
+    if (current !== null && current <= this.credentialPasswordVersion) return this.verifyScope(tag);
     this.authenticated = false;
     this.credentialPasswordVersion = null;
     unregisterSession(this);
@@ -855,6 +882,32 @@ export class ImapSession {
     );
     this.write(
       `${tag} NO [AUTHENTICATIONFAILED] Credential changed, please re-authenticate\r\n`
+    );
+    return false;
+  };
+
+  /**
+   * The role a scoped login rests on, re-read on every command: a viewer whose
+   * role was revoked, or a domain that moved to another owner, loses the
+   * session at its next command on every server, not only where the change
+   * was made. Same refusal shape as a rotated credential.
+   */
+  private verifyScope = async (tag: string): Promise<boolean> => {
+    const scope = this.scope;
+    if (!scope) return true;
+    const access = await getDomainAccess(scope.userId, scope.domain);
+    if (access && access.role === scope.role && access.ownerId === scope.ownerId) return true;
+    this.authenticated = false;
+    this.credentialPasswordVersion = null;
+    unregisterSession(this);
+    logger.info("IMAP session de-authenticated: domain role changed after auth", {
+      component: "imap",
+      authenticatedAs: this.authenticatedAs,
+      scopeDomain: scope.domain,
+      sessionId: this.sessionId,
+    });
+    this.write(
+      `${tag} NO [AUTHENTICATIONFAILED] Your role on ${scope.domain} changed, please re-authenticate\r\n`
     );
     return false;
   };

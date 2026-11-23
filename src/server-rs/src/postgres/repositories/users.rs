@@ -269,16 +269,13 @@ pub async fn get_imap_uid_validity(user_id: &str) -> Result<i64> {
 }
 
 /// Signed-up accounts with this address ignoring case, not linked to a single
-/// sign-on subject and not deleted, minus `excluded_usernames`. At most two:
-/// enough to tell "exactly one" from "more than one".
-pub async fn find_unlinked_users_by_email(
-    email: &str,
-    excluded_usernames: &[String],
-) -> Result<Vec<UserModel>, DbError> {
+/// sign-on subject and not deleted. At most two: enough to tell "exactly one"
+/// from "more than one".
+pub async fn find_unlinked_users_by_email(email: &str) -> Result<Vec<UserModel>, DbError> {
     let sql = format!(
-        "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND auth_sub IS NULL AND password IS NOT NULL AND username <> ALL($2::text[]) AND {SOFT_DELETE_CONDITION} LIMIT 2"
+        "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND auth_sub IS NULL AND password IS NOT NULL AND {SOFT_DELETE_CONDITION} LIMIT 2"
     );
-    let result = pool().query(&sql, &params![email, excluded_usernames]).await?;
+    let result = pool().query(&sql, &params![email]).await?;
     Ok(result.rows.iter().map(UserModel::from_row).collect())
 }
 

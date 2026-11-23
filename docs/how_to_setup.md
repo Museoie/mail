@@ -20,7 +20,9 @@ For detailed instruction, please keep reading this document.
 2. Copy `.env.example` file and name it `.env.local` then determine environment variables in `.env.local` file as following.
 
    ```
-   EMAIL_DOMAIN             // Domain name to use when sending & receiving mails.
+   EMAIL_DOMAIN             // The served zone: every account receives mail at
+                            // <username>.<EMAIL_DOMAIN>. Accounts can add domains of
+                            // their own; see "Domains" below.
    APP_HOSTNAME             // Domain name that hosts the web app.
 
    SECRET                   // Private value that signs session cookies. Required when
@@ -28,11 +30,6 @@ For detailed instruction, please keep reading this document.
                             // unset or set to a value this repository publishes, because
                             // either one lets anyone forge a signed cookie. Generate one
                             // with `openssl rand -base64 32`.
-   ADMIN_PASSWORD           // Password the admin user is created with, on first run.
-
-   ADMIN_PASSWORD_RESET     // (optional) Set to 1 for one boot to reset admin's password
-                            // to ADMIN_PASSWORD. Remove it afterwards.
-
    MAILGUN_KEY              // (optional) API key issued by Mailgun. Used to send emails.
 
    OPENAI_KEY               // (optional) API key issued by OpenAI. Used to get insight of emails.
@@ -156,7 +153,163 @@ Default port number is 3004. So you can connect to Mail at http://(your-server-i
 
 For development mode, use port number 3000 instead.
 
-Admin username is `admin`. On the first run its password is the value of the environment variable called `ADMIN_PASSWORD`. After that, the password stored in the database wins — changing `ADMIN_PASSWORD` and restarting does not overwrite a password you changed in the app. To reset a password you have lost, boot once with `ADMIN_PASSWORD_RESET=1` and then remove that variable.
+No account exists until you create one. Without single sign-on, create accounts
+with the user script, which reads the same environment as the server (the
+database settings and `EMAIL_DOMAIN`) and reads the password from standard
+input, never from the command line:
+
+```
+bun run user create alice                       # alice receives *@alice.<EMAIL_DOMAIN>
+bun run user create alice --domain example.com  # ...and *@example.com too
+bun run user create bob --email bob@example.org # where bob's password resets go
+bun run user set-password alice                 # a new password, for a lost one
+bun run user add-domain alice example.org       # give an existing account a domain
+bun run user disable bob                        # end bob's password sign-in and sessions
+```
+
+In the Docker image, which carries only the built files, the same script is
+`bun ./build/cli/user.js`. With the `docker-compose.yml` setup, run it in the
+`mail` service, which has the server's environment and reaches its database;
+`exec` gives it a terminal, so a password is prompted for without echo:
+
+```
+docker-compose exec mail bun ./build/cli/user.js create alice
+docker-compose exec mail bun ./build/cli/user.js add-domain alice example.org
+printf '%s\n' "$PASSWORD" | docker-compose exec -T mail bun ./build/cli/user.js set-password alice
+```
+
+`-T` (no terminal) is for a piped password, as in the last line. With plain
+`docker`, use `docker exec -it <container> …` to type a password and
+`docker exec -i <container> …` to pipe one.
+
+`--domain` and `add-domain` assign a domain without the DNS check described
+below: run by the operator, the script vouches for it. That is how the account
+that should receive the bare `*@<EMAIL_DOMAIN>` gets it. A domain someone else
+already owns is refused. `set-password` ends the account's web sessions, and
+its mail apps lose their connection at their next command.
+
+With single sign-on, accounts are created at their first sign-in instead.
+
+## Domains
+
+Each domain this server receives mail for is a resource with exactly one
+owner. Every account owns its own name under the served zone,
+`<username>.<EMAIL_DOMAIN>`, which the server assigns, and it can own as many
+other domains as it adds.
+
+### Adding a domain
+
+In **Settings > Domains**, add the domain (for example `example.org`). Mail
+answers with a TXT record to publish:
+
+| Type | Name | Value |
+|---|---|---|
+| TXT | `_mail-verification.example.org` | `mail-verification=<token>` |
+
+Publish it, point the domain's MX record at this server, and press
+**Verify**. Until the record is verified nothing changes: mail for the domain
+is not received, and you cannot send from it. Adding a domain someone else
+has added but not verified blocks no one; the first to publish their record
+gets it. A name under the served zone cannot be added this way: the server
+assigns those itself.
+
+Whoever controls a domain's DNS decides who receives its mail, so verifying a
+domain that another account owns moves it to you. Its viewers are dropped with
+the move, and the mail already stored stays with the previous owner.
+
+To send from a domain outside the served zone, the Mailgun account has to have
+that domain too: Mail sends through the Mailgun domain of the same name. Until
+it does, a send from that domain is refused with a message saying so.
+
+Removing a domain stops new mail to it. The mail already received stays with
+you, and its addresses stay in your accounts list. The same holds when someone
+else verifies a domain you owned: new mail goes to them, and the mail you have
+stays yours.
+
+### Roles: owner and viewer
+
+| | viewer | owner |
+|---|---|---|
+| Web app | reads the domain's mail, read-only (opening a mail does not mark it read) | reads, sends from, marks, deletes, and shares the domain |
+| IMAP | reads it, read-only: `SELECT` acts as `EXAMINE`, and every change is refused | everything |
+| SMTP | cannot send as the domain | sends as any address on it |
+
+An owner shares a domain read-only in **Settings > Domains**, by the other
+person's username, and takes it back the same way. A role is checked on every
+web request and every IMAP command, so taking it back stops the next read.
+
+Anyone who reads a domain reads every token mailed to it: sign-up and
+password-reset links, and any confirmation another service sends. So Mail
+refuses the sign-up and reset flows for an address someone other than its own
+account can read, and never links such an account by email at sign-in (see
+"How existing accounts are linked" below). Share a domain only with someone you
+would trust with the mail sent to its addresses, at Mail and elsewhere.
+
+### Mail apps
+
+A mail app signs in with one of two kinds of username:
+
+- `alice`: every domain alice owns. This is the account's whole mailbox, as
+  before.
+- `alice@example.org`: only the domain `example.org`, which alice owns or
+  views. INBOX, Sent Messages and the account folders show that domain's mail
+  only, and folders alice created are not listed. A viewer's login is
+  read-only.
+
+Either way the password is alice's own (or, with single sign-on, alice's app
+password). Per-account folders (`INBOX/accounts/<name>`) are named by local
+part and read back on the login's main domain, so a plain `alice` login lists
+the folders of her default domain only: her own name under `EMAIL_DOMAIN`, or
+`EMAIL_DOMAIN` itself if she owns it. Every domain's mail is still in INBOX and
+Sent Messages, and `alice@example.org` lists `example.org`'s folders.
+
+Over SMTP, `alice` can send from any domain she owns: the `From` address picks
+it. `alice@example.org` can send from `example.org` only, and only if she owns
+it.
+
+### Upgrading from a version with `admin` and `admin-ro`
+
+Earlier versions created `admin` at boot from `ADMIN_PASSWORD`, gave it the
+bare `*@<EMAIL_DOMAIN>`, and offered a read-only `admin-ro` login through
+`ADMIN_RO_PASSWORD`. None of those variables is read any more.
+
+1. Remove `ADMIN_RO_PASSWORD` from the environment first: a previous version
+   that restarts re-seeds `admin-ro` while it is set.
+2. Before the new version takes traffic, run with its image (the commands
+   create the new tables and leave the previous version's working):
+
+   ```
+   bun run user add-domain admin <EMAIL_DOMAIN>   # admin keeps receiving *@<EMAIL_DOMAIN>
+   bun run user disable admin-ro                  # retire the read-only login
+   ```
+
+   With the `docker-compose.yml` setup, build the new image and run the
+   commands in a one-off `mail` container, which has the service's
+   environment and network, before `docker-compose up -d` replaces the
+   running one:
+
+   ```
+   docker-compose build mail
+   docker-compose run --rm mail bun ./build/cli/user.js add-domain admin <EMAIL_DOMAIN>
+   docker-compose run --rm mail bun ./build/cli/user.js disable admin-ro
+   ```
+
+   A container started another way needs the server's `POSTGRES_*` settings
+   and a network on which its database host resolves.
+
+   Until an account owns `<EMAIL_DOMAIN>`, mail to `*@<EMAIL_DOMAIN>` is
+   refused, and each boot warns about it.
+3. Roll out. Each boot gives every account that has none the domain row for
+   the name it already receives mail at, `<username>.<EMAIL_DOMAIN>`. No mail
+   moves.
+4. Remove `ADMIN_PASSWORD` and `ADMIN_PASSWORD_RESET`.
+
+`admin` is an ordinary account from then on: it keeps its password, and resets
+it like any other account, or with `bun run user set-password admin`
+(`bun ./build/cli/user.js set-password admin` in the image). To give
+someone the access `admin-ro` had, give their account the viewer role on
+`<EMAIL_DOMAIN>`. A session `admin-ro` signed in before the upgrade ends at its
+next request.
 
 ## Single sign-on (optional)
 
@@ -185,7 +338,7 @@ does, so a provider that is down does not stop Mail from starting.
 | `AUTH_BACKCHANNEL_URL` | no | A private-network URL of the same provider for server-to-server calls. |
 | `AUTH_AUDIENCE` | no | The service name in tokens' `aud`, when it differs from the client id. |
 | `AUTH_LOCAL_LOGIN` | no, default `false` | `true` keeps Mail's own passwords working alongside single sign-on: password sign-in, sign-up and reset in the web app, and local passwords on IMAP and SMTP. Meant for a migration period. |
-| `AUTH_LINK_USERS` | no | Comma-separated `<mail username>=<provider username>` pairs that link existing accounts on their first single sign-on, e.g. `admin=alice,bob=bob`. |
+| `AUTH_LINK_USERS` | no | Comma-separated `<mail username>=<provider username>` pairs that link existing accounts on their first single sign-on, e.g. `alice=alice,bob=robert`. |
 
 After signing out, the provider sends the browser back to the origin of the
 redirect URI, `https://<APP_HOSTNAME>/`, so register that as a post-logout
@@ -254,16 +407,15 @@ The first single sign-on of a person picks their Mail account in this order:
 
 1. the account already linked to them;
 2. the account `AUTH_LINK_USERS` names for their provider username, if it is
-   not linked yet. This is the only way the `admin` account is linked (for
-   example `AUTH_LINK_USERS=admin=alice`);
+   not linked yet. This is the way to link an account whose address someone
+   else can read (for example `AUTH_LINK_USERS=admin=alice`);
 3. the one account, not linked yet, whose sign-up email is the email address
    the provider gives for them, ignoring case, whether or not the provider
    marks it verified. When two or more such accounts have that address, none
-   is picked. A sign-up that was never finished, a deleted account, `admin-ro`
-   (a local account only) and `admin` are never picked. Email never links
-   `admin` because mail to its address, `admin@<EMAIL_DOMAIN>`, can be read by
-   the read-only `admin-ro` login: whoever holds that login could confirm that
-   address at the provider and take `admin` over;
+   is picked. A sign-up that was never finished, a deleted account, and an
+   account whose address someone else can read (the owner or a viewer of the
+   domain it is delivered into) are never picked: whoever reads that address
+   could confirm it at the provider and take the account over;
 4. otherwise a new account, named after their provider username. It is refused
    (`An account with your username already exists here`) when an account by
    that name exists but is not linked to them: link it with `AUTH_LINK_USERS`
@@ -281,7 +433,7 @@ signed up with an address they claimed.
 A new account's address is the email address the provider gives for them,
 verified or not, or, without one, its own mailbox address. Each sign-in copies
 a changed address onto the account only when the provider marks it verified,
-and never onto `admin` or `admin-ro`, whose address the boot sets.
+the same as for any other account.
 
 ### What changes while it is on
 
@@ -303,8 +455,10 @@ and never onto `admin` or `admin-ro`, whose address the boot sets.
 - While `AUTH_LOCAL_LOGIN=true`, an account's own password keeps signing it in
   even after the provider has removed the person; remove the setting once the
   migration is done to make the provider the only way in.
-- `admin-ro` is a local account only and signs in only while
-  `AUTH_LOCAL_LOGIN=true`. `ADMIN_PASSWORD` still seeds `admin`'s password.
+- Roles on domains are Mail's own and work the same as without single
+  sign-on: the provider's role on the `mail` service decides whether someone
+  may use Mail at all, and a role on a domain never grants that. Someone the
+  provider removes keeps their roles, which do nothing until they are back.
 
 ### Turning it off
 

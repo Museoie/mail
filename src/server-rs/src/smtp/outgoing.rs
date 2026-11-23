@@ -41,16 +41,24 @@ pub fn address_list(header: Option<&OneOrMany<ParsedAddress>>) -> Vec<String> {
     addresses
 }
 
-/// The account a submission is sent as, and the recipients left once that
+/// The address a submission is sent as, and the recipients left once that
 /// choice took one of them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutgoingSender {
     pub sender: String,
+    /// The domain the sender's address is on: one of the domains it may send from.
+    pub domain: String,
     pub recipients: Vec<String>,
 }
 
-/// Resolves which of the user's accounts an SMTP submission is sent as, given
-/// the parsed `To:` addresses in `addressed_to` (`resolveOutgoingSender`).
+/// Resolves which of the user's addresses an SMTP submission is sent as, given
+/// the domains it may send from (`domains`, the default first) and the parsed
+/// `To:` addresses in `addressed_to` (`resolveOutgoingSender`).
+///
+/// The default identity is `<username>@<default domain>`. A `From` on any of
+/// the domains picks that address; a client that can only send as the default
+/// identity picks another one by adding it as a Cc or Bcc recipient, which is
+/// then dropped from the delivery.
 ///
 /// Clients strip `Bcc:` before DATA and carry those addresses only in the
 /// envelope, so a Cc and a Bcc cannot be told apart here and both select.
@@ -58,46 +66,60 @@ pub struct OutgoingSender {
 /// which is what makes excluding it possible.
 pub fn resolve_outgoing_sender(
     username: &str,
-    user_domain: &str,
+    domains: &[String],
     from_header: Option<&str>,
     from_envelope: Option<&str>,
     recipients: &[String],
     addressed_to: &[String],
 ) -> OutgoingSender {
-    let user_domain = user_domain.to_lowercase();
-    let account_of = |address: Option<&str>| -> Option<String> {
+    let sendable: HashSet<String> = domains.iter().map(|domain| domain.to_lowercase()).collect();
+    let default_domain = domains.first().map(|domain| domain.to_lowercase()).unwrap_or_default();
+    // (local, domain) of an address on one of the sendable domains.
+    let account_of = |address: Option<&str>| -> Option<(String, String)> {
         let normalized = normalize(address.unwrap_or(""));
         let (local, domain) = split_address(&normalized)?;
-        (domain == user_domain).then(|| local.to_string())
+        sendable.contains(domain).then(|| (local.to_string(), domain.to_string()))
     };
+    let is_default_identity = |(local, domain): &(String, String)| local == username && *domain == default_domain;
+
     // `accountOf(header) || accountOf(envelope)`: an empty local part cannot
     // come out of `split_address`, so `Option::or` is the same.
     let from_account = account_of(from_header).or_else(|| account_of(from_envelope));
-    if let Some(account) = from_account.as_deref().filter(|account| *account != username) {
-        return OutgoingSender { sender: account.to_string(), recipients: recipients.to_vec() };
+    if let Some((local, domain)) = from_account.clone().filter(|account| !is_default_identity(account)) {
+        return OutgoingSender { sender: local, domain, recipients: recipients.to_vec() };
     }
 
     let addressed: HashSet<String> = addressed_to.iter().map(|address| normalize(address)).collect();
     let selected = recipients.iter().position(|address| {
-        account_of(Some(address)).is_some_and(|account| account != username && !addressed.contains(&normalize(address)))
+        account_of(Some(address))
+            .is_some_and(|account| !is_default_identity(&account) && !addressed.contains(&normalize(address)))
     });
 
     match selected {
-        Some(selected) if recipients.len() != 1 => OutgoingSender {
-            sender: account_of(Some(&recipients[selected])).expect("the selected recipient has an account"),
-            recipients: recipients
-                .iter()
-                .enumerate()
-                .filter(|(index, _)| *index != selected)
-                .map(|(_, r)| r.clone())
-                .collect(),
-        },
+        Some(selected) if recipients.len() != 1 => {
+            let (sender, domain) = account_of(Some(&recipients[selected])).expect("the selected recipient has an account");
+            OutgoingSender {
+                sender,
+                domain,
+                recipients: recipients
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| *index != selected)
+                    .map(|(_, r)| r.clone())
+                    .collect(),
+            }
+        }
         _ => {
-            let envelope_account = from_envelope
+            let envelope_local = from_envelope
                 .map(normalize)
                 .and_then(|normalized| split_address(&normalized).map(|(local, _)| local.to_string()));
+            let (from_local, from_domain) = match from_account {
+                Some((local, domain)) => (Some(local), Some(domain)),
+                None => (None, None),
+            };
             OutgoingSender {
-                sender: from_account.or(envelope_account).unwrap_or_else(|| username.to_string()),
+                sender: from_local.or(envelope_local).unwrap_or_else(|| username.to_string()),
+                domain: from_domain.unwrap_or(default_domain),
                 recipients: recipients.to_vec(),
             }
         }
@@ -152,18 +174,18 @@ mod tests {
         items.iter().map(|item| item.to_string()).collect()
     }
 
-    /// `resolveOutgoingSender("admin", "test.com", from, recipients, addressedTo)`.
+    /// `resolveOutgoingSender("admin", ["test.com"], from, recipients, addressedTo)`.
     fn resolve(
         header: Option<&str>,
         envelope: Option<&str>,
         recipients: &[&str],
         addressed_to: &[&str],
     ) -> OutgoingSender {
-        resolve_outgoing_sender("admin", "test.com", header, envelope, &strings(recipients), &strings(addressed_to))
+        resolve_outgoing_sender("admin", &strings(&["test.com"]), header, envelope, &strings(recipients), &strings(addressed_to))
     }
 
     fn sent_as(sender: &str, recipients: &[&str]) -> OutgoingSender {
-        OutgoingSender { sender: sender.to_string(), recipients: strings(recipients) }
+        OutgoingSender { sender: sender.to_string(), domain: "test.com".into(), recipients: strings(recipients) }
     }
 
     #[test]
@@ -289,14 +311,34 @@ mod tests {
         assert_eq!(
             resolve_outgoing_sender(
                 "alice",
-                "alice.test.com",
+                &strings(&["alice.test.com"]),
                 None,
                 Some("alice@alice.test.com"),
                 &strings(&["outside@other.com", "team@alice.test.com", "admin@test.com"]),
                 &[]
             ),
-            sent_as("team", &["outside@other.com", "admin@test.com"])
+            OutgoingSender {
+                sender: "team".into(),
+                domain: "alice.test.com".into(),
+                recipients: strings(&["outside@other.com", "admin@test.com"]),
+            }
         );
+    }
+
+    #[test]
+    fn sends_from_whichever_owned_domain_the_from_names_and_defaults_to_the_first() {
+        let domains = strings(&["alice.test.com", "example.org"]);
+        let sent = |header: Option<&str>, envelope: Option<&str>, recipients: &[&str]| {
+            resolve_outgoing_sender("alice", &domains, header, envelope, &strings(recipients), &[])
+        };
+        // The same local part on another of the user's domains is another identity.
+        let from_org = sent(Some("Alice@Example.org"), Some("alice@alice.test.com"), &["x@remote.example"]);
+        assert_eq!((from_org.sender.as_str(), from_org.domain.as_str()), ("alice", "example.org"));
+        let info = sent(None, Some("alice@alice.test.com"), &["x@remote.example", "info@example.org"]);
+        assert_eq!((info.sender.as_str(), info.domain.as_str()), ("info", "example.org"));
+        assert_eq!(info.recipients, strings(&["x@remote.example"]));
+        let plain = sent(Some("spoof@elsewhere.example"), None, &["x@remote.example"]);
+        assert_eq!((plain.sender.as_str(), plain.domain.as_str()), ("alice", "alice.test.com"));
     }
 
     #[test]

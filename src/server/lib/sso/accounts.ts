@@ -1,5 +1,6 @@
-import { ADMIN_RO_USERNAME, ADMIN_USERNAME, isReservedUsername } from "../read-only";
-import { getUserDomain, isRoutableUsername } from "../util";
+import { isRoutableUsername } from "../util";
+import { accountDomain, othersCanReadAddress } from "../domains";
+import { assignDomain } from "../postgres/repositories/domains";
 import { isValidEmail } from "../users";
 import {
   findUnlinkedUsersByEmail,
@@ -25,11 +26,10 @@ export interface AccountDirectory {
   findBySub(sub: string): Promise<LocalAccount | null>;
   /** Any account with this username, linked or not. */
   findByUsername(username: string): Promise<LocalAccount | null>;
-  /**
-   * Signed-up accounts with this address ignoring case, not linked or deleted,
-   * minus `excludedUsernames`.
-   */
-  findUnlinkedByEmail(email: string, excludedUsernames: string[]): Promise<LocalAccount[]>;
+  /** Signed-up accounts with this address ignoring case, not linked or deleted. */
+  findUnlinkedByEmail(email: string): Promise<LocalAccount[]>;
+  /** Whether anyone but `userId` can read mail delivered to `email`. */
+  othersCanRead(email: string, userId: string): Promise<boolean>;
   /** Null when the account or the subject was linked by another sign-in first. */
   link(userId: string, sub: string): Promise<LocalAccount | null>;
   /** Null when the username or the subject is taken. */
@@ -70,9 +70,10 @@ const emailOf = ({ email }: SsoIdentity): string | undefined => {
  *    it (one it has not verified was entered by its administrator, on account
  *    creation or import), so the match is as trustworthy as `linkUsers`. A
  *    provider that lets people claim addresses they have not confirmed must
- *    not be used this way. The reserved accounts never link this way:
- *    `admin-ro` is a local account only, and mail to `admin`'s address is
- *    readable by the read-only `admin-ro` login.
+ *    not be used this way. An account whose address someone else can read
+ *    (the owner or a viewer of the domain it is delivered into) never links
+ *    this way: they could confirm that address at the provider and take the
+ *    account over.
  * 4. a new account named after the provider username, unless that is not a
  *    routable mailbox name or an account by that name exists: guessing
  *    whose it is would hand someone else's mail over.
@@ -94,8 +95,6 @@ export const resolveSsoAccount = async (
 
   const withCurrentEmail = async (account: LocalAccount): Promise<LocalAccount> => {
     if (!verifiedEmail || account.email === verifiedEmail) return account;
-    // The reserved accounts' address is derived from EMAIL_DOMAIN at boot.
-    if (isReservedUsername(account.username)) return account;
     await directory.updateEmail(account.userId, verifiedEmail);
     return { ...account, email: verifiedEmail };
   };
@@ -121,17 +120,14 @@ export const resolveSsoAccount = async (
   }
 
   if (email) {
-    const candidates = await directory.findUnlinkedByEmail(email, [
-      ADMIN_USERNAME,
-      ADMIN_RO_USERNAME,
-    ]);
-    if (candidates.length === 1) {
+    const candidates = await directory.findUnlinkedByEmail(email);
+    if (candidates.length === 1 && !(await directory.othersCanRead(email, candidates[0].userId))) {
       const linked = await tryLink(candidates[0]);
       if (linked) return found(linked, "linked");
     }
   }
 
-  if (!isRoutableUsername(username) || username === ADMIN_RO_USERNAME) {
+  if (!isRoutableUsername(username)) {
     return { ok: false, reason: "invalid_username" };
   }
   if (await directory.findByUsername(username)) return { ok: false, reason: "account_exists" };
@@ -139,7 +135,7 @@ export const resolveSsoAccount = async (
     username,
     // Without an address in the token the account's own mailbox stands in:
     // the reset mail then reaches only its owner.
-    email: email ?? `${username}@${getUserDomain(username)}`,
+    email: email ?? `${username}@${accountDomain(username)}`,
     sub,
   });
   if (created) return found(created, "created");
@@ -161,9 +157,14 @@ const toFoundAccount = (model: UserModel | null): LocalAccount | null =>
 export const postgresAccountDirectory: AccountDirectory = {
   findBySub: async (sub) => toFoundAccount(await findUserByAuthSub(sub)),
   findByUsername: async (username) => toFoundAccount(await findUserByUsername(username)),
-  findUnlinkedByEmail: async (email, excludedUsernames) =>
-    (await findUnlinkedUsersByEmail(email, excludedUsernames)).map(toAccount),
+  findUnlinkedByEmail: async (email) => (await findUnlinkedUsersByEmail(email)).map(toAccount),
+  othersCanRead: othersCanReadAddress,
   link: async (userId, sub) => toFoundAccount(await linkUserAuthSub(userId, sub)),
-  create: async (account) => toFoundAccount(await insertSsoUser(account)),
+  create: async (account) => {
+    const created = toFoundAccount(await insertSsoUser(account));
+    // A new account owns its own name under the served zone.
+    if (created) await assignDomain(created.userId, accountDomain(created.username));
+    return created;
+  },
   updateEmail: updateUserEmail,
 };

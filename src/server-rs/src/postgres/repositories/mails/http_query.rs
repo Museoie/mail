@@ -9,6 +9,7 @@
 
 use serde_json::json;
 
+use super::domain_scope::{mail_in_domains_condition, scope_to_domains};
 use super::table::PreparedQuery;
 use crate::postgres::Param;
 
@@ -19,6 +20,8 @@ pub struct GetMailHeadersOptions {
     pub saved: bool,
     /// Spam-flagged received mail only.
     pub spam: bool,
+    /// Only the mail of these of the owner's domains (`mail_in_domains_condition`).
+    pub domains: Option<Vec<String>>,
     pub from: Option<i64>,
     pub size: Option<i64>,
     /// Rows changed after this time (`updated > since`).
@@ -60,6 +63,9 @@ const RECEIVED_ADDRESS_EXPANSION: &str = "jsonb_array_elements(
   COALESCE(bcc_address, '[]'::jsonb) ||
   COALESCE(envelope_to, '[]'::jsonb)
 )->>'address' as address";
+// The lower-cased domain part of the `address` an expansion produced.
+const ADDRESS_DOMAIN: &str = "lower(regexp_replace(address, '^.*@', ''))";
+
 const RECEIVED_ADDRESS_NOT_NULL: &str =
     "(to_address IS NOT NULL OR cc_address IS NOT NULL OR bcc_address IS NOT NULL OR envelope_to IS NOT NULL)";
 
@@ -129,6 +135,11 @@ pub fn build_mail_headers_query(
     } else {
         sql.push_str(" AND is_spam = FALSE");
     }
+    if let Some(domains) = &options.domains {
+        sql.push_str(&format!(" AND {}", mail_in_domains_condition(index, "")));
+        index += 1;
+        values.push(Param::array(domains));
+    }
     if let Some(since) = &options.since {
         sql.push_str(&format!(" AND updated > ${index}"));
         index += 1;
@@ -181,8 +192,8 @@ pub fn build_delta_eviction_query(
     let address_condition = build_header_address_condition(options.sent, options.saved);
     let eviction_condition =
         if options.spam { "(expunged = TRUE OR is_spam = FALSE)" } else { "(expunged = TRUE OR is_spam = TRUE)" };
-    PreparedQuery {
-        sql: format!(
+    let (sql, values) = scope_to_domains(
+        format!(
             "
       SELECT mail_id FROM mails
       WHERE user_id = $1
@@ -191,8 +202,11 @@ pub fn build_delta_eviction_query(
         AND updated > $3
     "
         ),
-        values: vec![Param::from(user_id), address_json(address), Param::from(since)],
-    }
+        vec![Param::from(user_id), address_json(address), Param::from(since)],
+        options.domains.as_deref(),
+        "",
+    );
+    PreparedQuery { sql, values }
 }
 
 /// A mail belongs to the unified view when any recipient column names one of
@@ -303,11 +317,18 @@ pub fn build_search_mails_query(user_id: &str, search_term: &str) -> PreparedQue
     }
 }
 
+/// The accounts (addresses) a store holds mail for, with their counts.
+///
+/// `domain_filter` keeps the addresses on those domains, so the external
+/// correspondents a mail names are not listed as accounts. `scope_domains`
+/// keeps only the mail of those domains, for a viewer reading one domain of
+/// the owner's.
 pub fn build_account_stats_query(
     user_id: &str,
     sent: bool,
-    domain_filter: Option<&str>,
+    domain_filter: Option<&[String]>,
     spam_only: bool,
+    scope_domains: Option<&[String]>,
 ) -> PreparedQuery {
     let use_sent_expansion = sent && !spam_only;
     let address_expansion = if use_sent_expansion {
@@ -317,8 +338,21 @@ pub fn build_account_stats_query(
     };
     let address_not_null = if use_sent_expansion { "from_address IS NOT NULL" } else { RECEIVED_ADDRESS_NOT_NULL };
     let spam_condition = if spam_only { "AND is_spam = TRUE AND sent = FALSE" } else { "AND is_spam = FALSE" };
-    let domain_filter = domain_filter.filter(|domain| !domain.is_empty());
-    let domain_condition = if domain_filter.is_some() { "AND address ILIKE '%@' || $2" } else { "" };
+    let mut values = vec![Param::from(user_id)];
+    let domain_condition = match domain_filter {
+        Some(domains) => {
+            values.push(Param::array(domains));
+            format!("AND {ADDRESS_DOMAIN} = ANY(${}::text[])", values.len())
+        }
+        None => String::new(),
+    };
+    let scope_condition = match scope_domains {
+        Some(domains) => {
+            values.push(Param::array(domains));
+            format!("AND {}", mail_in_domains_condition(values.len(), ""))
+        }
+        None => String::new(),
+    };
     let sql = format!(
         "
       WITH expanded_mails AS (
@@ -331,6 +365,7 @@ pub fn build_account_stats_query(
           AND draft = FALSE
           {spam_condition}
           AND {address_not_null}
+          {scope_condition}
       )
       SELECT
         address,
@@ -345,16 +380,12 @@ pub fn build_account_stats_query(
       ORDER BY latest DESC
     "
     );
-    let mut values = vec![Param::from(user_id)];
-    if let Some(domain) = domain_filter {
-        values.push(Param::from(domain));
-    }
     PreparedQuery { sql, values }
 }
 
-pub fn build_search_account_stats_query(user_id: &str, search_term: &str, domain_filter: Option<&str>) -> PreparedQuery {
-    let domain_filter = domain_filter.filter(|domain| !domain.is_empty());
-    let domain_condition = if domain_filter.is_some() { "AND address ILIKE '%@' || $3" } else { "" };
+pub fn build_search_account_stats_query(user_id: &str, search_term: &str, domain_filter: Option<&[String]>) -> PreparedQuery {
+    let domain_condition =
+        if domain_filter.is_some() { format!("AND {ADDRESS_DOMAIN} = ANY($3::text[])") } else { String::new() };
     let sql = format!(
         "
       WITH expanded_mails AS (
@@ -382,8 +413,8 @@ pub fn build_search_account_stats_query(user_id: &str, search_term: &str, domain
     "
     );
     let mut values = vec![Param::from(user_id), Param::from(search_term)];
-    if let Some(domain) = domain_filter {
-        values.push(Param::from(domain));
+    if let Some(domains) = domain_filter {
+        values.push(Param::array(domains));
     }
     PreparedQuery { sql, values }
 }
@@ -463,17 +494,40 @@ mod tests {
     }
 
     #[test]
-    fn account_stats_bind_the_domain_only_when_given() {
-        let sent = build_account_stats_query("u", true, Some("bob.mail.test"), false);
+    fn account_stats_bind_the_domains_only_when_given() {
+        let own = vec!["bob.mail.test".to_string(), "example.org".to_string()];
+        let sent = build_account_stats_query("u", true, Some(&own), false, None);
         assert!(sent.sql.contains("jsonb_array_elements(from_address)->>'address' as address"));
-        assert!(sent.sql.contains("AND address ILIKE '%@' || $2"));
+        assert!(sent.sql.contains("AND lower(regexp_replace(address, '^.*@', '')) = ANY($2::text[])"));
+        assert_eq!(text(&sent.values[1]), r#"{"bob.mail.test","example.org"}"#);
         assert_eq!(sent.values.len(), 2);
-        let spam = build_account_stats_query("u", true, None, true);
+        let spam = build_account_stats_query("u", true, None, true, None);
         assert!(spam.sql.contains("COALESCE(envelope_to, '[]'::jsonb)"));
         assert!(spam.sql.contains("AND is_spam = TRUE AND sent = FALSE"));
         assert_eq!(spam.values.len(), 1);
-        let search = build_search_account_stats_query("u", "term", Some("d"));
-        assert!(search.sql.contains("AND address ILIKE '%@' || $3"));
+        // A viewer's read: the owner's rows of one domain, accounts on it.
+        let shared = vec!["example.org".to_string()];
+        let viewed = build_account_stats_query("u", false, Some(&shared), false, Some(&shared));
+        assert!(viewed.sql.contains("= ANY($2::text[])"));
+        assert!(viewed.sql.contains("= ANY($3::text[])"));
+        assert_eq!(viewed.values.len(), 3);
+        let search = build_search_account_stats_query("u", "term", Some(&own));
+        assert!(search.sql.contains("= ANY($3::text[])"));
         assert_eq!(search.values.len(), 3);
+    }
+
+    #[test]
+    fn a_scoped_list_filters_to_its_domains_before_the_since() {
+        let options = GetMailHeadersOptions {
+            domains: Some(vec!["example.org".into()]),
+            since: Some("s".into()),
+            ..Default::default()
+        };
+        let query = build_mail_headers_query("u", "a@example.org", &options, None);
+        assert!(query.sql.contains("= ANY($3::text[])"));
+        assert!(query.sql.contains("AND updated > $4"));
+        let eviction = build_delta_eviction_query("u", "a@example.org", &options, "s");
+        assert!(eviction.sql.contains("= ANY($4::text[])"));
+        assert_eq!(eviction.values.len(), 4);
     }
 }

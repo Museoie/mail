@@ -47,8 +47,16 @@ afterAll(() => {
   if (realServer) mock.module("server", () => realServer);
 });
 
-import { Store, simplifyCriterion } from "./store";
+import { Store, type StoreScope, simplifyCriterion } from "./store";
 import { UTILITY_FOLDERS } from "./util";
+
+// The store a plain login opens: the user's whole store, listing the user's
+// own domain, as `auth.ts` resolves it.
+const newStore = (user: SignedUser, scope: Partial<StoreScope> = {}) => {
+  const domain = user.username === "admin" ? "example.com" : `${user.username}.example.com`;
+  return new Store(user, { accountDomains: [domain], primaryDomain: domain, ...scope });
+};
+
 
 const makeUser = (overrides: Partial<{ id: string; username: string; email: string }> = {}) =>
   new SignedUser({
@@ -67,26 +75,26 @@ describe("Store.listMailboxes", () => {
   });
 
   it("passes the user's domain as the third arg to both getAccountStats calls (regression PR #310 / #196)", async () => {
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     await store.listMailboxes();
 
     expect(mockGetAccountStats).toHaveBeenCalledTimes(2);
-    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, "alice.example.com");
-    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", true, "alice.example.com");
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", false, ["alice.example.com"], false, undefined);
+    expect(mockGetAccountStats).toHaveBeenCalledWith("user-123", true, ["alice.example.com"], false, undefined);
   });
 
   it("uses the bare EMAIL_DOMAIN for the admin user, not 'admin.<domain>'", async () => {
-    const store = new Store(
+    const store = newStore(
       makeUser({ id: "admin-1", username: "admin", email: "admin@example.com" })
     );
     await store.listMailboxes();
 
-    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", false, "example.com");
-    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", true, "example.com");
+    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", false, ["example.com"], false, undefined);
+    expect(mockGetAccountStats).toHaveBeenCalledWith("admin-1", true, ["example.com"], false, undefined);
   });
 
   it("returns only the server-defined boxes when no accounts and no user mailboxes exist", async () => {
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const result = await store.listMailboxes();
     expect(result).toEqual(["INBOX", "Drafts", "Junk", "Starred", "Trash"]);
   });
@@ -113,26 +121,26 @@ describe("Store.storeMail — what the destination box decides (#725)", () => {
     // A client that APPENDs to `Drafts` without sending `\Draft` still means
     // "this is a draft". Without the flag the row is written and shows up in no
     // mailbox the client asked for.
-    await new Store(makeUser()).storeMail(makeMail(), "Drafts");
+    await newStore(makeUser()).storeMail(makeMail(), "Drafts");
     expect(savedInput().placement).toEqual({ draft: true });
   });
 
   it("records no mapping row for a utility destination", async () => {
     // Utility views enumerate uid_domain; a mapping row would give the mail a
     // per-box UID nothing reads and burn a counter value.
-    await new Store(makeUser()).storeMail(makeMail(), "Junk");
+    await newStore(makeUser()).storeMail(makeMail(), "Junk");
     expect(savedInput().mailbox).toBeUndefined();
     expect(savedInput().placement).toEqual({ is_spam: true });
   });
 
   it("records the mapping row for a mapped destination and touches no flag", async () => {
-    await new Store(makeUser()).storeMail(makeMail(), "INBOX/accounts/alice");
+    await newStore(makeUser()).storeMail(makeMail(), "INBOX/accounts/alice");
     expect(savedInput().mailbox).toBe("INBOX/accounts/alice");
     expect(savedInput().placement).toBeUndefined();
   });
 
   it("saves an appended mail's threading headers", async () => {
-    await new Store(makeUser()).storeMail(
+    await newStore(makeUser()).storeMail(
       {
         ...(makeMail() as object),
         inReplyTo: "<a@x>",
@@ -145,16 +153,16 @@ describe("Store.storeMail — what the destination box decides (#725)", () => {
   });
 
   it("saves no threading headers for a mail that carries none, such as a copy", async () => {
-    await new Store(makeUser()).storeMail(makeMail(), "INBOX");
+    await newStore(makeUser()).storeMail(makeMail(), "INBOX");
     expect(savedInput().in_reply_to).toBeNull();
     expect(savedInput().reference_ids).toBeNull();
   });
 
   it("records no mapping row for INBOX or the unified Sent view", async () => {
-    await new Store(makeUser()).storeMail(makeMail(), "INBOX");
+    await newStore(makeUser()).storeMail(makeMail(), "INBOX");
     expect(savedInput().mailbox).toBeUndefined();
     mockSaveMail.mockClear();
-    await new Store(makeUser()).storeMail(makeMail(), "Sent Messages");
+    await newStore(makeUser()).storeMail(makeMail(), "Sent Messages");
     expect(savedInput().mailbox).toBeUndefined();
   });
 
@@ -162,7 +170,7 @@ describe("Store.storeMail — what the destination box decides (#725)", () => {
     mockGetMailboxesByUser.mockResolvedValue([
       { name: "Archive", special_use: null, address: null, subscribed: false },
     ] as never);
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     expect(await store.listMailboxes()).toEqual([
       "INBOX",
       "Drafts",
@@ -188,7 +196,7 @@ describe("Store.listMailboxEntries — subscription state for LSUB (#688)", () =
       { name: "ZzSubNo", special_use: null, address: null, subscribed: false },
     ] as never);
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const entries = await store.listMailboxEntries();
 
     expect(entries).toContainEqual({ name: "ZzSubYes", subscribed: true });
@@ -198,7 +206,7 @@ describe("Store.listMailboxEntries — subscription state for LSUB (#688)", () =
   it("marks the derived mailboxes subscribed — they have no row to unsubscribe from", async () => {
     mockGetAccountStats.mockResolvedValue([{ address: "work@alice.example.com" }] as never);
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const entries = await store.listMailboxEntries();
 
     expect(entries.length).toBeGreaterThan(1);
@@ -208,7 +216,7 @@ describe("Store.listMailboxEntries — subscription state for LSUB (#688)", () =
 
   it("falls back to a subscribed INBOX when the backend throws", async () => {
     mockGetMailboxesByUser.mockRejectedValue(new Error("db down"));
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     expect(await store.listMailboxEntries()).toEqual([{ name: "INBOX", subscribed: true }]);
   });
 });
@@ -325,22 +333,22 @@ describe("Store.getFirstUnseenUid", () => {
 
   it("forwards the resolved account/sent for INBOX and returns the unseen UID", async () => {
     mockGetFirstUnseenUid.mockResolvedValue(42);
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const result = await store.getFirstUnseenUid("INBOX");
 
     expect(result).toBe(42);
-    expect(mockGetFirstUnseenUid).toHaveBeenCalledWith("user-123", null, false);
+    expect(mockGetFirstUnseenUid).toHaveBeenCalledWith("user-123", null, false, undefined);
   });
 
   it("returns null when every message is read", async () => {
     mockGetFirstUnseenUid.mockResolvedValue(null);
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     expect(await store.getFirstUnseenUid("INBOX")).toBeNull();
   });
 
   it("returns null instead of throwing when the repository query fails", async () => {
     mockGetFirstUnseenUid.mockRejectedValue(new Error("db down"));
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     expect(await store.getFirstUnseenUid("INBOX")).toBeNull();
   });
 });
@@ -368,7 +376,7 @@ describe("Store.getMessages — replyTo mapping (#667)", () => {
       ]) as never
     );
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const mails = await store.getMessages("INBOX", 1, 1, ["replyTo", "from"]);
     const mail = mails.get("doc-1");
 
@@ -383,7 +391,7 @@ describe("Store.getMessages — replyTo mapping (#667)", () => {
       new Map([["doc-2", { message_id: "<m2>", from_address: [] }]]) as never
     );
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     const mails = await store.getMessages("INBOX", 1, 1, ["from"]);
 
     expect(mails.get("doc-2")?.replyTo).toBeUndefined();
@@ -398,7 +406,7 @@ describe("Store.getAllUids", () => {
   it("returns the repository's UIDs", async () => {
     mockGetAllUids.mockResolvedValue([4, 8, 15] as never);
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
 
     expect(await store.getAllUids("INBOX")).toEqual([4, 8, 15]);
   });
@@ -406,7 +414,7 @@ describe("Store.getAllUids", () => {
   it("reports a failed query as null, not as an empty mailbox", async () => {
     mockGetAllUids.mockRejectedValue(new Error("connection terminated") as never);
 
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
 
     expect(await store.getAllUids("INBOX")).toBeNull();
   });
@@ -433,7 +441,7 @@ describe("Store.getUidNext — counter key axis", () => {
 
   const scopeFor = async (box: string) => {
     mockGetUidNext.mockClear();
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     await store.getUidNext(box);
     return mockGetUidNext.mock.calls[0][1];
   };
@@ -508,7 +516,7 @@ describe("Store.getUidNext — counter key axis", () => {
   it("propagates a repository failure instead of substituting a floor", async () => {
     // A swallowed fault would surface as a too-low UIDNEXT — the bug itself.
     mockGetUidNext.mockImplementation(() => Promise.reject(new Error("DB down")));
-    const store = new Store(makeUser());
+    const store = newStore(makeUser());
     await expect(store.getUidNext("INBOX")).rejects.toThrow("DB down");
   });
 });

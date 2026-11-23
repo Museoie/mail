@@ -9,16 +9,18 @@ use anyhow::{anyhow, bail, Result};
 use serde_json::json;
 use tokio::task::JoinHandle;
 
+use crate::domains::account_domain;
 use crate::imap::session_registry::evict_imap_sessions;
 use crate::models::{SignedUser, User};
+use crate::postgres::repositories::domains::assign_domain;
 use crate::postgres::repositories::sessions::delete_sessions_for_user;
 use crate::postgres::repositories::users::{
     find_user_model_by_id, hard_delete_user, insert_pending_user, rotate_user_password, search_user,
     update_user_columns, UserFilter,
 };
 use crate::postgres::Param;
-use crate::read_only::is_reserved_username;
 use crate::smtp::registry::evict_smtp_connections;
+use crate::util::is_routable_username;
 use crate::verify_password::hash_password;
 use crate::{env, js, logger};
 
@@ -210,10 +212,6 @@ pub async fn set_user_info(email: &str, username: &str, password: &str, token: O
     let username = match registered_name {
         Some(existing_name) => existing_name.to_string(),
         None => {
-            // `admin-ro` has no row until it is configured, and would sign in as admin's read-only view.
-            if is_reserved_username(Some(username)) {
-                bail!("`setUserInfo` failed because username is reserved.");
-            }
             let taken = get_user(&UserQuery::username(username)).await?;
             if taken.is_some_and(|other| other.id.as_deref() != Some(id.as_str())) {
                 bail!("`setUserInfo` failed because username already exists.");
@@ -240,6 +238,12 @@ pub async fn set_user_info(email: &str, username: &str, password: &str, token: O
     // reconnect on the old one.
     evict_imap_sessions(&username);
     evict_smtp_connections(&username);
+
+    // A finished sign-up owns its own name under the served zone from now on.
+    // Idempotent, so a password reset on an existing account changes nothing.
+    if is_routable_username(&username) {
+        assign_domain(&id, &account_domain(&username)).await?;
+    }
 
     User {
         id: Some(id),
@@ -292,8 +296,8 @@ pub fn create_authentication_mail(email: &str, token: &str, username: Option<&st
 "#
     );
     AuthenticationMail {
-        sender_full_name: "Administrator".to_string(),
-        sender: "admin".to_string(),
+        sender_full_name: "Mail".to_string(),
+        sender: "no-reply".to_string(),
         to: email.to_string(),
         subject: "Please set your password for Mail".to_string(),
         html,

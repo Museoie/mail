@@ -10,6 +10,7 @@ import handlePush from "./push";
 import handleHealth from "./health";
 import handleClientError from "./client-error";
 import handleAuth from "./auth";
+import handleDomains from "./domains";
 import { getClientIp } from "server";
 import { sendAlarm } from "../../alarm";
 import { mailgunEventsLimiter } from "../rate-limit";
@@ -25,6 +26,7 @@ const subRouters: [string, SubRouter][] = [
   ["/mails", handleMails],
   ["/push", handlePush],
   ["/auth", handleAuth],
+  ["/domains", handleDomains],
 ];
 
 const logRequest = (req: HttpRequest, url: string) => {
@@ -106,3 +108,4 @@ export * from "./mails";
 export * from "./push";
 export * from "./mailgun-events";
 export * from "./auth";
+export * from "./domains";

@@ -7,7 +7,7 @@
 //! the mapped box, and the counter that assigns its UIDs.
 //!
 //! ```ignore
-//! let store = Store::new(user);
+//! let store = Store::new(user, StoreScope::whole_store(&primary_domain));
 //! if store.mailbox_exists("Archive").await? {
 //!     let uids = store.get_all_uids("Archive").await;
 //!     let mails = store.get_messages("Archive", 1.0, 50.0, &["uid", "read", "subject"], true, None).await;
@@ -44,7 +44,7 @@ use crate::postgres::repositories::mails::model::PartialMailModel;
 use crate::postgres::repositories::mails::table::{run_query, PreparedQuery};
 use crate::postgres::repositories::mails::views::domain_view_for_destination;
 use crate::postgres::DbResult;
-use crate::util::{get_random_id, get_user_domain};
+use crate::util::get_random_id;
 use crate::{js, logger};
 
 pub use crate::postgres::repositories::mails::imap::{
@@ -394,14 +394,30 @@ pub fn simplify_criterion(criterion: &SearchCriterion) -> SimplifiedCriterion {
 
 /// The statement behind the account list: the HTTP repository's, for the
 /// received and sent sides (never the spam view).
-fn build_account_stats_query(user_id: &str, sent: bool, domain_filter: Option<&str>) -> PreparedQuery {
-    crate::postgres::repositories::mails::http_query::build_account_stats_query(user_id, sent, domain_filter, false)
+fn build_account_stats_query(
+    user_id: &str,
+    sent: bool,
+    domain_filter: &[String],
+    scope_domains: Option<&[String]>,
+) -> PreparedQuery {
+    crate::postgres::repositories::mails::http_query::build_account_stats_query(
+        user_id,
+        sent,
+        Some(domain_filter),
+        false,
+        scope_domains,
+    )
 }
 
 /// The addresses of the account list, newest mail first. A database fault
 /// reads as no accounts.
-async fn get_account_addresses(user_id: &str, sent: bool, domain_filter: Option<&str>) -> Vec<String> {
-    match run_query(&build_account_stats_query(user_id, sent, domain_filter)).await {
+async fn get_account_addresses(
+    user_id: &str,
+    sent: bool,
+    domain_filter: &[String],
+    scope_domains: Option<&[String]>,
+) -> Vec<String> {
+    match run_query(&build_account_stats_query(user_id, sent, domain_filter, scope_domains)).await {
         Ok(result) => result
             .rows
             .iter()
@@ -433,20 +449,59 @@ fn resolve_mapped_box(mailbox: &str) -> (Option<&str>, bool) {
     (mailbox_arg, is_sent_box(mailbox))
 }
 
+/// Which of a store's mail an IMAP session sees.
+///
+/// - `domains` `None`: the whole store, every domain its user owns (a plain
+///   `user` login).
+/// - `domains` set: only the mail of those domains, in every box (a
+///   `user@domain` login, whose store is the domain owner's).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StoreScope {
+    pub domains: Option<Vec<String>>,
+    /// The domains whose addresses LIST shows as account folders: the
+    /// scope's domains, or the user's primary domain, read at login.
+    pub account_domains: Vec<String>,
+    /// The domain account folders (named by local part) are read under.
+    pub primary_domain: String,
+}
+
+impl StoreScope {
+    /// A plain login's scope when its primary domain is `domain`.
+    pub fn whole_store(domain: &str) -> StoreScope {
+        StoreScope { domains: None, account_domains: vec![domain.to_string()], primary_domain: domain.to_string() }
+    }
+}
+
 /// One user's mailboxes and messages.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Store {
     user: SignedUser,
+    scope: StoreScope,
 }
 
 impl Store {
-    pub fn new(user: SignedUser) -> Store {
-        Store { user }
+    /// `user` is the account whose rows the session reads: the owner of its mail.
+    pub fn new(user: SignedUser, scope: StoreScope) -> Store {
+        Store { user, scope }
     }
 
     /// The user this store belongs to.
     pub fn get_user(&self) -> &SignedUser {
         &self.user
+    }
+
+    /// The domains the session is scoped to, or `None` for the whole store.
+    pub fn get_domains(&self) -> Option<&[String]> {
+        self.scope.domains.as_deref()
+    }
+
+    /// Whether the session sees only some domains of the store.
+    pub fn is_domain_scoped(&self) -> bool {
+        self.scope.domains.is_some()
+    }
+
+    pub fn get_primary_domain(&self) -> &str {
+        &self.scope.primary_domain
     }
 
     /// The counter row that assigns a mailbox's UIDs. The three answers are
@@ -462,20 +517,28 @@ impl Store {
                 UidScope::Mailbox { mailbox: utility.name.to_string() }
             }
             _ => UidScope::Account {
-                account: box_to_account(&self.user.username, mailbox),
+                account: box_to_account(&self.scope.primary_domain, mailbox),
                 sent: is_sent_box(mailbox),
             },
         }
     }
 
     async fn list_mailbox_entries_or_throw(&self) -> Result<Vec<MailboxEntry>> {
-        // Only addresses of the user's own domain are accounts: the mail
-        // also names every outside address it was copied to.
-        let user_domain = get_user_domain(&self.user.username);
+        // Only addresses on the session's domains are accounts: the mail
+        // also names every outside address it was copied to. A scoped session
+        // also counts only its domains' mail, and has no user-created
+        // mailboxes: those hold the whole store's mail.
+        let domains = &self.scope.account_domains;
+        let scope = self.scope.domains.as_deref();
         let (received, sent, user_mailboxes) = tokio::join!(
-            get_account_addresses(&self.user.id, false, Some(&user_domain)),
-            get_account_addresses(&self.user.id, true, Some(&user_domain)),
-            get_mailboxes_by_user(&self.user.id),
+            get_account_addresses(&self.user.id, false, domains, scope),
+            get_account_addresses(&self.user.id, true, domains, scope),
+            async {
+                match scope {
+                    Some(_) => Ok(Vec::new()),
+                    None => get_mailboxes_by_user(&self.user.id).await,
+                }
+            },
         );
         let user_mailboxes = user_mailboxes?;
 
@@ -577,7 +640,7 @@ impl Store {
     /// handles both.
     pub async fn count_messages(&self, mailbox: &str) -> Option<MessageCounts> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        Some(count_messages(&self.user.id, mailbox_arg, is_sent).await)
+        Some(count_messages(&self.user.id, mailbox_arg, is_sent, self.scope.domains.as_deref()).await)
     }
 
     /// UIDNEXT of a mailbox, read from the counter that assigns its UIDs.
@@ -594,7 +657,7 @@ impl Store {
     /// so this is always `Some`, as it is for the Bun server.
     pub async fn get_all_uids(&self, mailbox: &str) -> Option<Vec<i64>> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        Some(get_all_uids(&self.user.id, mailbox_arg, is_sent).await)
+        Some(get_all_uids(&self.user.id, mailbox_arg, is_sent, self.scope.domains.as_deref()).await)
     }
 
     /// The UID and flags of the named mails as `mailbox` shows them, for
@@ -603,21 +666,21 @@ impl Store {
     /// [`Store::get_all_uids`].
     pub async fn get_mail_flag_updates(&self, mailbox: &str, mail_ids: &[String]) -> Option<Vec<MailFlagUpdate>> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        Some(get_mail_flag_updates(&self.user.id, mailbox_arg, is_sent, mail_ids).await)
+        Some(get_mail_flag_updates(&self.user.id, mailbox_arg, is_sent, mail_ids, self.scope.domains.as_deref()).await)
     }
 
     /// The UID of the first unread message of a mailbox, or `None` when all
     /// are read (or the read failed).
     pub async fn get_first_unseen_uid(&self, mailbox: &str) -> Option<i64> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        get_first_unseen_uid(&self.user.id, mailbox_arg, is_sent).await
+        get_first_unseen_uid(&self.user.id, mailbox_arg, is_sent, self.scope.domains.as_deref()).await
     }
 
     /// HIGHESTMODSEQ of a mailbox (RFC 4551 §3.1.1); 1, the floor every
     /// message starts at, when the read fails.
     pub async fn get_highest_modseq(&self, mailbox: &str) -> i64 {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        get_highest_modseq(&self.user.id, mailbox_arg, is_sent).await
+        get_highest_modseq(&self.user.id, mailbox_arg, is_sent, self.scope.domains.as_deref()).await
     }
 
     /// The messages `start..=end` of a mailbox, by UID when `use_uid` and by
@@ -639,7 +702,17 @@ impl Store {
     ) -> BoxFuture<'static, FetchedMails> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
         let columns: Vec<&str> = fields.iter().flat_map(|field| map_field_name(field.as_ref())).collect();
-        let read = get_mails_by_range(&self.user.id, mailbox_arg, is_sent, start, end, use_uid, &columns, changed_since);
+        let read = get_mails_by_range(
+            &self.user.id,
+            mailbox_arg,
+            is_sent,
+            start,
+            end,
+            use_uid,
+            &columns,
+            changed_since,
+            self.scope.domains.as_deref(),
+        );
         async move { read.await.iter().map(|(mail_id, model)| (mail_id.clone(), fetched_mail(model))).collect() }.boxed()
     }
 
@@ -658,7 +731,18 @@ impl Store {
         unchanged_since: Option<f64>,
     ) -> BoxFuture<'static, SetMailFlagsResult> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        set_mail_flags(&self.user.id, mailbox_arg, is_sent, start, end, flags, use_uid, operation, unchanged_since)
+        set_mail_flags(
+            &self.user.id,
+            mailbox_arg,
+            is_sent,
+            start,
+            end,
+            flags,
+            use_uid,
+            operation,
+            unchanged_since,
+            self.scope.domains.as_deref(),
+        )
     }
 
     /// EXPUNGE: removes the `\Deleted` messages of a mailbox and returns
@@ -669,7 +753,7 @@ impl Store {
     /// kept for the session.
     pub async fn expunge(&self, mailbox: &str) -> DbResult<Vec<i64>> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        Ok(expunge_deleted_mails(&self.user.id, mailbox_arg, is_sent).await)
+        Ok(expunge_deleted_mails(&self.user.id, mailbox_arg, is_sent, self.scope.domains.as_deref()).await)
     }
 
     /// Removes the named UIDs from a mailbox without touching `\Deleted`, for
@@ -681,7 +765,7 @@ impl Store {
             return Ok(Vec::new());
         }
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
-        expunge_mails_by_uid(&self.user.id, mailbox_arg, is_sent, uids).await
+        expunge_mails_by_uid(&self.user.id, mailbox_arg, is_sent, uids, self.scope.domains.as_deref()).await
     }
 
     /// The UIDs of the messages of a mailbox that match every criterion,
@@ -690,7 +774,7 @@ impl Store {
     pub async fn search(&self, mailbox: &str, criteria: &[SearchCriterion]) -> Vec<i64> {
         let (mailbox_arg, is_sent) = resolve_mapped_box(mailbox);
         let simplified: Vec<SimplifiedCriterion> = criteria.iter().map(simplify_criterion).collect();
-        search_mails_by_uid(&self.user.id, mailbox_arg, is_sent, &simplified).await
+        search_mails_by_uid(&self.user.id, mailbox_arg, is_sent, &simplified, self.scope.domains.as_deref()).await
     }
 
     /// What `store_mail` asks the repository to save.
@@ -807,8 +891,15 @@ mod tests {
         SignedUser::new(Some(USER_ID.to_string()), Some(username.to_string()), Some(format!("{username}@example.com")))
     }
 
+    /// The store a plain login opens: the user's whole store, listing the
+    /// user's own domain, as `auth.rs` resolves it.
+    fn store_of(username: &str) -> Store {
+        let domain = crate::domains::account_domain(username);
+        Store::new(user(username), StoreScope::whole_store(&domain))
+    }
+
     fn store() -> Store {
-        Store::new(user("alice"))
+        store_of("alice")
     }
 
     fn no_rows() -> crate::postgres::DbResult<crate::postgres::repositories::mails::table::Rows> {
@@ -842,21 +933,40 @@ mod tests {
     async fn asks_for_the_accounts_of_the_users_own_domain_received_and_sent() {
         let (_, trace) = with_script(vec![no_rows(), no_rows(), no_rows()], store().list_mailboxes()).await;
         assert_eq!(trace.len(), 3);
-        let domain = format!("alice.{}", get_domain());
-        assert_eq!(trace[0].values, vec![Param::from(USER_ID), Param::from(domain.as_str())]);
-        assert_eq!(trace[1].values, vec![Param::from(USER_ID), Param::from(domain.as_str())]);
+        let domain = vec![format!("alice.{}", get_domain())];
+        assert_eq!(trace[0].values, vec![Param::from(USER_ID), Param::array(&domain)]);
+        assert_eq!(trace[1].values, vec![Param::from(USER_ID), Param::array(&domain)]);
         assert!(trace[0].sql.contains("COALESCE(envelope_to, '[]'::jsonb)"));
         assert!(trace[1].sql.contains("jsonb_array_elements(from_address)->>'address' as address"));
-        assert!(trace[0].sql.contains("AND address ILIKE '%@' || $2"));
+        assert!(trace[0].sql.contains("= ANY($2::text[])"));
         assert!(trace[2].sql.contains("FROM mailboxes"));
     }
 
     #[tokio::test]
-    async fn uses_the_bare_domain_for_the_admin_user() {
-        let admin = Store::new(user("admin"));
+    async fn lists_the_primary_domain_it_was_opened_with() {
+        let admin = Store::new(user("admin"), StoreScope::whole_store(&get_domain()));
         let (_, trace) = with_script(vec![no_rows(), no_rows(), no_rows()], admin.list_mailboxes()).await;
-        assert_eq!(trace[0].values, vec![Param::from(USER_ID), Param::from(get_domain())]);
-        assert_eq!(trace[1].values, vec![Param::from(USER_ID), Param::from(get_domain())]);
+        assert_eq!(trace[0].values, vec![Param::from(USER_ID), Param::array(&[get_domain()])]);
+        assert_eq!(trace[1].values, vec![Param::from(USER_ID), Param::array(&[get_domain()])]);
+    }
+
+    #[tokio::test]
+    async fn a_scoped_store_counts_only_its_domains_and_lists_no_user_mailboxes() {
+        let domains = vec!["example.org".to_string()];
+        let scoped = Store::new(
+            user("alice"),
+            StoreScope {
+                domains: Some(domains.clone()),
+                account_domains: domains.clone(),
+                primary_domain: "example.org".into(),
+            },
+        );
+        let (boxes, trace) = with_script(vec![no_rows(), no_rows()], scoped.list_mailboxes()).await;
+        assert_eq!(boxes, SERVER_BOXES);
+        assert_eq!(trace.len(), 2, "no mailboxes read");
+        assert_eq!(trace[0].values, vec![Param::from(USER_ID), Param::array(&domains), Param::array(&domains)]);
+        assert!(scoped.is_domain_scoped());
+        assert_eq!(scoped.get_primary_domain(), "example.org");
     }
 
     #[tokio::test]
@@ -1226,7 +1336,7 @@ mod tests {
     async fn forwards_the_resolved_mailbox_for_inbox_and_returns_the_unseen_uid() {
         let (uid, trace) = with_script(vec![rows(json!([{ "uid": 42 }]))], store().get_first_unseen_uid("INBOX")).await;
         assert_eq!(uid, Some(42));
-        assert_eq!(trace, vec![build_first_unseen_uid_query(USER_ID, None, false)]);
+        assert_eq!(trace, vec![build_first_unseen_uid_query(USER_ID, None, false, None)]);
     }
 
     #[tokio::test]
@@ -1347,6 +1457,7 @@ mod tests {
             true,
             &["message_id", "uid_domain", "uid_mailbox", "from_address", "from_text", "read"],
             Some(3.0),
+            None,
         );
         assert_eq!((trace[0].sql.as_str(), &trace[0].values), (expected.sql.as_str(), &expected.values));
         assert_eq!(mails.len(), 1);
@@ -1364,7 +1475,7 @@ mod tests {
         let (uids, trace) =
             with_script(vec![rows(json!([{ "uid": 4 }, { "uid": 8 }, { "uid": 15 }]))], store().get_all_uids("INBOX")).await;
         assert_eq!(uids, Some(vec![4, 8, 15]));
-        assert_eq!(trace, vec![build_all_uids_query(USER_ID, None, false)]);
+        assert_eq!(trace, vec![build_all_uids_query(USER_ID, None, false, None)]);
     }
 
     // The Bun test injects a failing repository and expects `null`. The

@@ -10,7 +10,6 @@ use crate::http::upload::MAX_ATTACHMENTS_PER_MAIL;
 use crate::mails::body::get_mail_body;
 use crate::mails::send::{send_mail, MailDataToSend, SendMailError, SendMailOptions};
 use crate::mails::update::{delete_mail as delete, mark_read, mark_saved};
-use crate::read_only::refuse_read_only;
 use crate::util::is_uuid;
 use crate::push;
 
@@ -23,9 +22,6 @@ fn spawn_flag_change(username: &str, mail_id: &str) {
 
 pub async fn post_mark(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = session_user(req)?;
-    if let Some(message) = refuse_read_only(Some(&user), "Marking mail") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let Some(body) = req.body_object() else {
         return Ok(ApiResponse::failed("Invalid request body.").into());
     };
@@ -62,9 +58,6 @@ pub async fn post_mark(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 
 pub async fn post_send(req: &mut HttpRequest) -> anyhow::Result<Reply> {
     let user = session_user(req)?;
-    if let Some(message) = refuse_read_only(Some(&user), "Sending mail") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let files = req.files.as_ref().map(|files| files.get("attachments").to_vec()).unwrap_or_default();
     if files.len() > MAX_ATTACHMENTS_PER_MAIL {
         return Ok(ApiResponse::failed(format!("A mail may carry at most {MAX_ATTACHMENTS_PER_MAIL} attachments")).into());
@@ -83,10 +76,6 @@ pub async fn post_send(req: &mut HttpRequest) -> anyhow::Result<Reply> {
 /// Also reached without a session, as `DELETE /domain` (the one path the
 /// gate lets through), where the id check refuses it.
 pub async fn delete_mail(req: &mut HttpRequest) -> anyhow::Result<Reply> {
-    let user = req.session.user.clone();
-    if let Some(message) = refuse_read_only(user.as_ref(), "Deleting mail") {
-        return Ok(ApiResponse::failed(message).into());
-    }
     let mail_id = req.param("id").to_string();
     if !is_uuid(&mail_id) {
         return Ok(ApiResponse::failed(NOT_YOUR_MAIL).into());
