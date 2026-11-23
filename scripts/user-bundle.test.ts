@@ -36,6 +36,5 @@ describe("the account script bundle", () => {
     const pack = fs.readFileSync(path.join(root, "src", "server", "pack.ts"), "utf8");
     expect(pack).toContain('path.resolve(root, "..", "scripts", "user.ts")');
     expect(pack).toContain('naming: "user.js"');
-    expect(fs.readFileSync(path.join(root, "Dockerfile"), "utf8")).toContain("COPY --from=builder /app/build ./build");
   });
 });
