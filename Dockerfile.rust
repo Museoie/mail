@@ -1,0 +1,57 @@
+FROM oven/bun:1.4.4 AS bun
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY tsconfig.json tsconfig.node.json ./
+COPY vite.config.ts ./
+COPY bunfig.toml ./
+COPY src src
+COPY scripts scripts
+COPY public public
+COPY index.html ./
+COPY .env.example ./
+
+RUN bun install --frozen-lockfile
+RUN bun run typecheck
+RUN bun test
+RUN bun run build
+
+FROM rust:1.97.0-slim-trixie AS rust
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends pkg-config libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+COPY src/server-rs/Cargo.toml src/server-rs/Cargo.lock src/server-rs/rust-toolchain.toml ./
+# Dependencies only, so a change to the server's own source reuses this layer.
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && touch src/lib.rs \
+ && cargo build --release --locked \
+ && rm -rf src target/release/.fingerprint/mail-server-* target/release/deps/mail_server-* target/release/deps/libmail_server-*
+COPY src/server-rs/ ./
+RUN cargo build --release --locked
+
+# Same Debian release as the rust stage, so the binary finds the glibc and OpenSSL it was built against.
+FROM debian:trixie-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libssl3t64 \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=rust /src/target/release/mail-server /usr/local/bin/mail-server
+COPY --from=bun /app/build/client ./build/client
+# The account script (`bun ./build/cli/user.js`) is still the way to create accounts.
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=bun /app/build/cli ./build/cli
+COPY healthcheck.sh ./healthcheck.sh
+
+EXPOSE 3004 25 465 587 143 993
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+  CMD ["/app/healthcheck.sh"]
+
+CMD ["/usr/local/bin/mail-server"]

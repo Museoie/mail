@@ -34,6 +34,34 @@ It reads the environment the Bun server reads. Two things differ:
 - Attachments are stored in `./attachments` under the working directory,
   as they are for the Bun server.
 
+## Docker
+
+`Dockerfile.rust`, at the repository root, builds the server's image with the
+repository root as the context. CI builds it on every pull request.
+
+```bash
+docker build -f Dockerfile.rust -t mail-rust .
+```
+
+It stands in for the Bun image that `Dockerfile` builds: the same working
+directory (`/app`), ports (3004, 25, 465, 587, 143, 993) and attachments
+directory (`/app/attachments`), and it runs as root, as the Bun image does, so
+an attachments volume the Bun image wrote stays writable. Its Bun stage runs
+the checks `Dockerfile`'s builder runs (`bun run typecheck`, `bun test`) and
+builds the web client and the account script.
+
+- **Configuration** comes from the process environment only: the server reads
+  no `.env` file. Pass `--env-file`, or compose's `env_file`.
+- **Health.** `/app/healthcheck.sh` checks what `healthcheck.js` checks:
+  `/api/health` answers 200 with every check `ok`, and `/` serves the web
+  client. Without a TLS certificate the TLS ports report `not_configured`, and
+  the container stays unhealthy, as the Bun image does.
+- **Stopping.** The server is PID 1 and shuts down on SIGTERM: HTTP drains for
+  up to 10 s, then SMTP gives an open DATA up to 5 s. Give it more than
+  Docker's 10 s default: `docker stop -t 20`, or `stop_grace_period: 20s`.
+- **Accounts.** Bun is in the image for the account script only:
+  `bun ./build/cli/user.js` (see `docs/how_to_setup.md`).
+
 ## Test
 
 ```bash

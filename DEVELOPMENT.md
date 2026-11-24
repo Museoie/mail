@@ -238,6 +238,10 @@ Keeping the two in step:
 compiler), runs the Rust unit and integration tests; set
 `MAIL_TEST_POSTGRES=1` to include the database-backed ones. Conventions for Rust code are in `src/server-rs/README.md`.
 
+`Dockerfile.rust` builds the Rust server's image, a stand-in for the Bun image
+`Dockerfile` builds; its healthcheck is `healthcheck.sh`. See "Docker" in
+`src/server-rs/README.md`.
+
 ## Code Style
 
 ### TypeScript
@@ -756,6 +760,7 @@ Rate limit counters should be shared across HTTP/IMAP/SMTP to prevent protocol-s
 
 - ESLint linting
 - Unit tests
+- The Rust server's image, `Dockerfile.rust`, builds (nothing is pushed)
 
 > **TypeScript type checking runs in the Dockerfile builder stage**, not in CI. This prevents accidentally bypassing type checks via a PR that skips the Docker build. Do **not** add a separate `typecheck` step to GitHub Actions workflows.
 
