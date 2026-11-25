@@ -20,8 +20,40 @@ jobs:
             echo "defined=false" >> $GITHUB_OUTPUT;
           fi
 
+  rust-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/server-rs/target
+          key: cargo-debug-${{ hashFiles('src/server-rs/Cargo.lock', 'src/server-rs/rust-toolchain.toml') }}
+          restore-keys: cargo-debug-
+      - name: Rust toolchain from rust-toolchain.toml
+        working-directory: src/server-rs
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Rust unit and integration tests
+        working-directory: src/server-rs
+        env:
+          MAIL_TEST_POSTGRES: "1"
+        run: cargo test --locked
+
   docker-build-push:
-    needs: [check-secrets]
+    needs: [check-secrets, rust-test]
     runs-on: ubuntu-latest
     if: needs.check-secrets.outputs.secrets-exist == 'true'
     steps:
@@ -41,7 +73,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.rust
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/mail:latest

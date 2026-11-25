@@ -3,7 +3,9 @@ version: "3.3"
 
 services:
   mail:
-    build: ./
+    build:
+      context: ./
+      dockerfile: Dockerfile.rust
     env_file:
       - ./.env.local
     ports:
@@ -14,11 +16,13 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: ["CMD", "bun", "./healthcheck.js"]
+      test: ["CMD", "/app/healthcheck.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    # The server drains HTTP for up to 10 s, then gives an SMTP DATA up to 5 s.
+    stop_grace_period: 20s
     restart: always
     # journald log driver so container stdout persists across restart /
     # `compose down`/recreate. json-file (the docker default) is keyed by

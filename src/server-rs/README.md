@@ -43,12 +43,14 @@ repository root as the context. CI builds it on every pull request.
 docker build -f Dockerfile.rust -t mail-rust .
 ```
 
-It stands in for the Bun image that `Dockerfile` builds: the same working
+It is the image production runs. It replaced the Bun image that `Dockerfile`
+builds, which is kept for rolling back, and matches it: the same working
 directory (`/app`), ports (3004, 25, 465, 587, 143, 993) and attachments
 directory (`/app/attachments`), and it runs as root, as the Bun image does, so
 an attachments volume the Bun image wrote stays writable. Its Bun stage runs
 the checks `Dockerfile`'s builder runs (`bun run typecheck`, `bun test`) and
-builds the web client and the account script.
+builds the web client and the account script. CD runs the Rust tests in a job
+of its own before it builds the image.
 
 - **Configuration** comes from the process environment only: the server reads
   no `.env` file. Pass `--env-file`, or compose's `env_file`.

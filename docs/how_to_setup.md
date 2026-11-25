@@ -145,7 +145,9 @@ terminates it as before.
 
 ### Environment Variables
 
-This app in default uses `.env` and `.env.local` to load environment variables. `.env` is included in the repository, intending to determine consistent variables that are related to React's build process, etc. `.env.local` is not included in the repository, intending to determine variables that differ by the app's host environment, external API credentials, etc. Additionally, we have an option to add another one as `.env.<NODE_ENV>` where you can set `NODE_ENV` in your terminal for example in Mac/Linux, `NODE_ENV=development` or in Windows cmd, `set NODE_ENV=development`.
+In development (`bun run dev`), Bun loads environment variables from `.env` and `.env.local` in the working directory, and from `.env.<NODE_ENV>` when `NODE_ENV` is set, for example `NODE_ENV=development` in your terminal on Mac/Linux, or `set NODE_ENV=development` in Windows cmd. Keep variables that differ by host, such as external API credentials, in `.env.local`, which is not committed; `.env.example` lists them.
+
+The Docker image runs the Rust server, which reads only its process environment and loads no `.env` file. `docker-compose.yml` passes `.env.local` to it with `env_file`; a container started another way needs its variables passed explicitly, for example with `docker run --env-file`.
 
 ## 5. Enjoy!
 
