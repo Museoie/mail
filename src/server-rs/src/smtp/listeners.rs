@@ -33,7 +33,12 @@ pub const SMTP_CLOSE_TIMEOUT_MS: u64 = 5 * 1000;
 pub const MAX_MESSAGE_BYTES: u64 = 35 * 1024 * 1024;
 
 // A peer rejecting our certificate (expired, wrong hostname, unknown CA) is a
-// server-side defect even though it surfaces as a TLS-layer error, so it pages.
+// server-side defect even though it surfaces as a TLS-layer error, so it pages
+// when the peer asked, by SNI, for a host in the zone this server serves: that
+// is a client trying to reach us. One that asked for no host or a host
+// elsewhere, as a scanner dialing the address does, refuses whatever it is
+// given and is logged at warn. A client that checks certificates but sends no
+// SNI goes unpaged too; mail apps send it.
 const PEER_CERT_REJECTION_ALERTS: [&str; 6] = [
     "ALERT_BAD_CERTIFICATE",
     "ALERT_UNSUPPORTED_CERTIFICATE",
@@ -42,6 +47,11 @@ const PEER_CERT_REJECTION_ALERTS: [&str; 6] = [
     "ALERT_CERTIFICATE_UNKNOWN",
     "ALERT_UNKNOWN_CA",
 ];
+
+/// Whether the TLS client asked, by SNI, for a host in the zone this server serves.
+fn asked_for_a_served_host(error: &SmtpServerError) -> bool {
+    error.server_name.as_deref().is_some_and(|name| crate::domains::is_in_served_zone(name.trim_end_matches('.')))
+}
 
 /// Whether the peer refused this server's certificate (`peer-cert-rejection.ts`).
 pub fn is_peer_cert_rejection(error: &SmtpServerError) -> bool {
@@ -116,7 +126,7 @@ pub enum ServerErrorReport {
 /// anything else pages.
 pub fn classify_server_error(port: u16, secure: bool, error: &SmtpServerError) -> ServerErrorReport {
     let message = error.message.as_str();
-    let suppressed = !is_peer_cert_rejection(error)
+    let suppressed = !(is_peer_cert_rejection(error) && asked_for_a_served_host(error))
         && (is_implicit_tls_handshake_failure(secure, error)
             || is_tls_layer_error(error)
             || is_peer_drop_error(error)
@@ -130,7 +140,8 @@ pub fn classify_server_error(port: u16, secure: bool, error: &SmtpServerError) -
         None => error.remote_address.clone(),
     };
     let remote_line = remote_address.as_ref().map(|address| format!("**Remote:** {address}\n")).unwrap_or_default();
-    let detail = format!("**Port:** {port}\n{remote_line}**Error:** Error: {message}");
+    let name_line = error.server_name.as_ref().map(|name| format!("**Server name:** {name}\n")).unwrap_or_default();
+    let detail = format!("**Port:** {port}\n{remote_line}{name_line}**Error:** Error: {message}");
     ServerErrorReport::Alarm { remote_address, detail }
 }
 
@@ -138,12 +149,21 @@ fn report_server_error(port: u16, secure: bool, error: &SmtpServerError) {
     match classify_server_error(port, secure, error) {
         // Still logged (at warn, not error) so a real failure hiding in this
         // bucket leaves a trace — only the page is suppressed.
-        ServerErrorReport::Warn => logger::warn_with(format!("SMTP Server({port}) Error"), json!({}), error),
+        ServerErrorReport::Warn => {
+            let context = match &error.server_name {
+                Some(name) => json!({ "serverName": name }),
+                None => json!({}),
+            };
+            logger::warn_with(format!("SMTP Server({port}) Error"), context, error)
+        }
         ServerErrorReport::Alarm { remote_address, detail } => {
-            let context = match remote_address {
+            let mut context = match remote_address {
                 Some(address) => json!({ "remoteAddress": address }),
                 None => json!({}),
             };
+            if let Some(name) = &error.server_name {
+                context["serverName"] = json!(name);
+            }
             logger::error_with(format!("SMTP Server({port}) Error"), context, error);
             alarm::spawn_alarm("SMTP Server Error", detail);
         }
@@ -399,34 +419,72 @@ mod tests {
         assert!(!warns(false, &not_the_tls_library));
     }
 
+    /// A host in the zone this server serves.
+    fn served_host() -> String {
+        format!("mail.{}", crate::domains::served_zone())
+    }
+
+    /// A failure from a client that asked, by SNI, for `host`.
+    fn asking_for(host: &str, error: SmtpServerError) -> SmtpServerError {
+        SmtpServerError { server_name: Some(host.to_string()), ..error }
+    }
+
+    /// A failure from a client that asked for a host this server serves.
+    fn named(error: SmtpServerError) -> SmtpServerError {
+        asking_for(&served_host(), error)
+    }
+
     #[test]
     fn pages_when_the_peer_rejects_our_certificate() {
-        assert!(!warns(false, &boring_ssl("SSLV3_ALERT_BAD_CERTIFICATE")));
-        assert!(!warns(false, &boring_ssl("TLSV1_ALERT_UNKNOWN_CA")));
+        assert!(!warns(false, &named(boring_ssl("SSLV3_ALERT_BAD_CERTIFICATE"))));
+        assert!(!warns(false, &named(boring_ssl("TLSV1_ALERT_UNKNOWN_CA"))));
         let open_ssl_1 = SmtpServerError {
             library: Some("SSL routines".to_string()),
             reason: Some("sslv3 alert bad certificate".to_string()),
             code: Some("ERR_SSL_SSLV3_ALERT_BAD_CERTIFICATE".to_string()),
             ..error("error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate")
         };
-        assert!(!warns(false, &open_ssl_1));
+        assert!(!warns(false, &named(open_ssl_1)));
         let open_ssl_3 = SmtpServerError {
             library: Some("SSL routines".to_string()),
             reason: Some("ssl/tls alert bad certificate".to_string()),
             code: Some("ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE".to_string()),
             ..error("error:0A000412:SSL routines::ssl/tls alert bad certificate")
         };
-        assert!(!warns(false, &open_ssl_3));
-        assert!(warns(false, &boring_ssl("NO_SHARED_CIPHER")));
+        assert!(!warns(false, &named(open_ssl_3)));
+        assert!(warns(false, &named(boring_ssl("NO_SHARED_CIPHER"))));
         // It pages on the implicit-TLS listener too, where any other handshake failure is noise.
-        assert!(!warns(true, &boring_ssl("SSLV3_ALERT_CERTIFICATE_EXPIRED")));
+        assert!(!warns(true, &named(boring_ssl("SSLV3_ALERT_CERTIFICATE_EXPIRED"))));
+    }
+
+    #[test]
+    fn a_certificate_refused_by_a_client_that_asked_for_another_host_or_none_is_noise() {
+        let zone = crate::domains::served_zone();
+        for reason in ["SSLV3_ALERT_BAD_CERTIFICATE", "TLSV1_ALERT_UNKNOWN_CA", "SSLV3_ALERT_CERTIFICATE_EXPIRED"] {
+            for secure in [true, false] {
+                assert!(warns(secure, &boring_ssl(reason)), "{reason}, no SNI, secure={secure}");
+                assert!(warns(secure, &asking_for("other.example", boring_ssl(reason))), "{reason}, secure={secure}");
+                // Ends with the zone's text without being under it.
+                assert!(warns(secure, &asking_for(&format!("evil{zone}"), boring_ssl(reason))), "{reason}, secure={secure}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_certificate_refused_by_a_client_that_asked_for_any_served_host_pages_whether_or_not_the_certificate_names_it() {
+        let zone = crate::domains::served_zone();
+        // The zone itself, a host under it that no certificate need name, and
+        // the same written in capitals with the root's trailing dot.
+        for host in [zone.clone(), format!("imap.{zone}"), format!("MAIL.{}.", zone.to_uppercase())] {
+            assert!(!warns(true, &asking_for(&host, boring_ssl("SSLV3_ALERT_BAD_CERTIFICATE"))), "{host}");
+        }
     }
 
     #[test]
     fn names_the_peer_of_a_certificate_rejected_during_the_implicit_tls_handshake() {
         let rejected = SmtpServerError {
             meta: meta("connect", Some("203.0.113.7")),
-            ..boring_ssl("SSLV3_ALERT_BAD_CERTIFICATE")
+            ..named(boring_ssl("SSLV3_ALERT_BAD_CERTIFICATE"))
         };
         let report = classify_server_error(PORT, true, &rejected);
         let ServerErrorReport::Alarm { remote_address, detail } = report else {
@@ -434,6 +492,7 @@ mod tests {
         };
         assert_eq!(remote_address.as_deref(), Some("203.0.113.7"));
         assert!(detail.contains("**Remote:** 203.0.113.7\n"), "{detail}");
+        assert!(detail.contains(&format!("**Server name:** {}\n", served_host())), "{detail}");
     }
 
     #[test]
@@ -475,8 +534,13 @@ mod tests {
 
     /// What the TLS stream reports for an OpenSSL failure, by its reason.
     fn openssl_error(reason: &str) -> SmtpServerError {
+        openssl_failure(reason, None)
+    }
+
+    /// The same, from a client that asked by SNI for `server_name`.
+    fn openssl_failure(reason: &str, server_name: Option<String>) -> SmtpServerError {
         let message = format!("error:0A000000:SSL routines:ssl3_read_bytes:{reason}");
-        let error = crate::tls::TlsError { reason: reason.to_string(), message };
+        let error = crate::tls::TlsError { reason: reason.to_string(), message, server_name };
         SmtpServerError::from_io("read", &std::io::Error::new(std::io::ErrorKind::InvalidData, error))
     }
 
@@ -492,7 +556,8 @@ mod tests {
         assert!(warns(false, &openssl_error("sslv3 alert handshake failure")));
         assert!(warns(false, &openssl_error("tlsv1 alert protocol version")));
 
-        // A client that refuses this server's certificate: a defect here.
+        // A client that asked for a host this server serves and refuses its
+        // certificate: a defect here. One that asked for none: noise.
         for reason in [
             "sslv3 alert bad certificate",
             "sslv3 alert unsupported certificate",
@@ -501,10 +566,14 @@ mod tests {
             "sslv3 alert certificate unknown",
             "tlsv1 alert unknown ca",
         ] {
-            let rejected = openssl_error(reason);
+            let rejected = openssl_failure(reason, Some(served_host()));
+            assert_eq!(rejected.server_name, Some(served_host()), "{reason}");
             assert!(is_peer_cert_rejection(&rejected), "{reason}");
             assert!(!warns(false, &rejected), "{reason}");
             assert!(!warns(true, &rejected), "{reason}");
+            let unnamed = openssl_failure(reason, None);
+            assert!(warns(false, &unnamed), "{reason}");
+            assert!(warns(true, &unnamed), "{reason}");
         }
         assert!(!is_peer_cert_rejection(&openssl_error("sslv3 alert handshake failure")));
     }

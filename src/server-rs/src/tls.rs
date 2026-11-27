@@ -29,7 +29,7 @@ use openssl::pkey::PKey;
 use openssl::sha::Sha256;
 use openssl::ssl::{
     self, ClientHelloResponse, ErrorCode, Ssl, SslAlert, SslContext, SslMethod, SslOptions, SslRef,
-    SslSessionCacheMode, SslVersion,
+    NameType, SslSessionCacheMode, SslVersion,
 };
 use openssl::x509::X509;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
@@ -349,8 +349,27 @@ impl TlsAcceptor {
             Ok(()) => Ok(TlsStream(stream)),
             // A close_notify before the handshake is through: a hang-up.
             Err(error) if error.code() == ErrorCode::ZERO_RETURN => Err(io::ErrorKind::UnexpectedEof.into()),
-            Err(error) => Err(io_error(error)),
+            Err(error) => {
+                let server_name = stream.ssl().servername(NameType::HOST_NAME).map(str::to_owned);
+                Err(with_server_name(io_error(error), server_name))
+            }
         }
+    }
+}
+
+/// Records on a handshake's TLS failure the host the client asked for by SNI.
+fn with_server_name(error: io::Error, server_name: Option<String>) -> io::Error {
+    if server_name.is_none() || error.get_ref().and_then(|inner| inner.downcast_ref::<TlsError>()).is_none() {
+        return error;
+    }
+    let kind = error.kind();
+    match error.into_inner().map(|inner| inner.downcast::<TlsError>()) {
+        Some(Ok(mut tls)) => {
+            tls.server_name = server_name;
+            io::Error::new(kind, *tls)
+        }
+        Some(Err(other)) => io::Error::new(kind, other),
+        None => kind.into(),
     }
 }
 
@@ -378,6 +397,8 @@ pub struct TlsError {
     pub reason: String,
     /// The whole error line, with the function that raised it.
     pub message: String,
+    /// For a failed handshake, the host the client asked for by SNI.
+    pub server_name: Option<String>,
 }
 
 impl std::fmt::Display for TlsError {
@@ -404,7 +425,10 @@ fn io_error(error: ssl::Error) -> io::Error {
     }
     if let Some(first) = first {
         let reason = first.reason().unwrap_or("unknown").to_string();
-        return io::Error::new(io::ErrorKind::InvalidData, TlsError { reason, message: first.to_string() });
+        return io::Error::new(
+            io::ErrorKind::InvalidData,
+            TlsError { reason, message: first.to_string(), server_name: None },
+        );
     }
     error.into_io_error().unwrap_or_else(io::Error::other)
 }
@@ -544,6 +568,30 @@ mod tests {
 
     fn tls_error(error: &io::Error) -> &TlsError {
         error.get_ref().and_then(|inner| inner.downcast_ref::<TlsError>()).expect("a TLS-layer error")
+    }
+
+    /// What the server's handshake reports when a client that checks
+    /// certificates (and trusts none of this test's) refuses it, having asked
+    /// for `server_name` by SNI, or for nothing.
+    async fn refusal_seen_by_the_server(server_name: Option<&str>) -> TlsError {
+        let acceptor = rsa_acceptor();
+        let connector = SslConnector::builder(SslMethod::tls_client()).unwrap().build();
+        let (server, client) = tokio::io::duplex(1 << 16);
+        let config = connector.configure().unwrap().verify_hostname(false).use_server_name_indication(server_name.is_some());
+        let ssl = config.into_ssl(server_name.unwrap_or("localhost")).unwrap();
+        let mut client = tokio_openssl::SslStream::new(ssl, client).unwrap();
+        let (server, connected) = tokio::join!(acceptor.accept(server), Pin::new(&mut client).connect());
+        assert!(connected.is_err(), "the client refuses a certificate it can't verify");
+        tls_error(&server.err().expect("the server sees the refusal")).clone()
+    }
+
+    #[tokio::test]
+    async fn a_refused_handshake_records_the_host_the_client_asked_for() {
+        let asked = refusal_seen_by_the_server(Some("localhost")).await;
+        assert!(asked.reason.contains("unknown ca"), "{}", asked.message);
+        assert_eq!(asked.server_name.as_deref(), Some("localhost"));
+        assert_eq!(refusal_seen_by_the_server(Some("other.example")).await.server_name.as_deref(), Some("other.example"));
+        assert_eq!(refusal_seen_by_the_server(None).await.server_name, None);
     }
 
     #[tokio::test]
